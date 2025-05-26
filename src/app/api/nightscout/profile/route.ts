@@ -166,4 +166,43 @@ export async function GET() {
       details: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 });
   }
+}
+
+export async function POST(request: Request) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session) {
+      return new NextResponse('Unauthorized', { status: 401 });
+    }
+
+    const { url } = await request.json();
+    if (!url) {
+      return new NextResponse('Nightscout URL is required', { status: 400 });
+    }
+
+    // Clean up the URL
+    const baseUrl = url.trim().replace(/\/$/, '');
+    const profileUrl = `${baseUrl}/api/v1/profile.json`;
+
+    const response = await fetch(profileUrl);
+    if (!response.ok) {
+      throw new Error('Failed to fetch Nightscout profile');
+    }
+
+    const data = await response.json();
+    if (!data || !data[0] || !data[0].defaultProfile || !data[0].store || !data[0].store[data[0].defaultProfile]) {
+      throw new Error('Invalid profile data structure');
+    }
+
+    // Get the default profile data
+    const profile = data[0].store[data[0].defaultProfile];
+
+    return NextResponse.json(profile);
+  } catch (error) {
+    console.error('Error fetching Nightscout profile:', error);
+    return new NextResponse(
+      error instanceof Error ? error.message : 'Failed to fetch profile',
+      { status: 500 }
+    );
+  }
 } 

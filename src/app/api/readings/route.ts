@@ -5,7 +5,7 @@ import { authOptions } from '../auth/[...nextauth]/route';
 
 type Reading = {
   id?: string;
-  timestamp: Date;
+  date: Date;
   sgv: number;
   direction?: string | null;
   source: 'manual' | 'nightscout';
@@ -22,7 +22,7 @@ type DBTreatment = {
 
 type GlucoseReading = {
   id: string;
-  timestamp: Date;
+  date: Date;
   sgv: number;
   direction: string | null;
   source: string;
@@ -67,11 +67,27 @@ export async function POST(request: Request) {
 
         // Handle Nightscout format (has date and dateString fields)
         if (r.date && !r.timestamp) {
-          r.timestamp = new Date(r.date); // Use the date field from Nightscout
+          const rawDate = r.date;
+          r.date = new Date(r.date); // Use the date field from Nightscout
+          console.log('Processing Nightscout reading:', { 
+            rawData: r,
+            processedDate: r.date,
+            sgv: r.sgv,
+            direction: r.direction
+          });
+        } else if (r.timestamp && !r.date) {
+          const rawTimestamp = r.timestamp;
+          r.date = new Date(r.timestamp); // Convert timestamp to date
+          console.log('Processing Nightscout reading:', {
+            rawData: r,
+            processedDate: r.date,
+            sgv: r.sgv,
+            direction: r.direction
+          });
         }
 
-        if (!r.timestamp && !r.date) {
-          console.warn('Missing timestamp and date in reading:', r);
+        if (!r.date) {
+          console.warn('Missing date in reading:', r);
           return false;
         }
 
@@ -80,19 +96,19 @@ export async function POST(request: Request) {
           return false;
         }
 
-        // Convert timestamp to Date object if it's not already
-        if (!(r.timestamp instanceof Date)) {
-          r.timestamp = new Date(r.timestamp);
+        // Convert date to Date object if it's not already
+        if (!(r.date instanceof Date)) {
+          r.date = new Date(r.date);
         }
 
-        if (isNaN(r.timestamp.getTime())) {
-          console.warn('Invalid timestamp/date:', r.timestamp, 'Original:', r.date);
+        if (isNaN(r.date.getTime())) {
+          console.warn('Invalid date:', r.date, 'Original:', r.timestamp);
           return false;
         }
 
         // Add source if not present
         if (!r.source) {
-          r.source = r.device === 'unknown' ? 'nightscout' : 'manual';
+          r.source = 'nightscout'; // Default to nightscout for Nightscout data
         }
 
         // Map Nightscout direction to our format
@@ -116,21 +132,21 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'No valid readings provided' }, { status: 400 });
     }
 
-    // Check if readings already exist for these timestamps
-    const existingReadings = await prisma.glucoseReading.findMany({
+    // Check if readings already exist for these dates
+    const existingReadings = await prisma.reading.findMany({
       where: {
         userId: user.id,
-        timestamp: {
-          in: validReadings.map((r: Reading) => r.timestamp)
+        date: {
+          in: validReadings.map((r: Reading) => r.date)
         }
       }
     });
 
-    const existingTimestamps = new Set(existingReadings.map((r: GlucoseReading) => r.timestamp.getTime()));
+    const existingTimestamps = new Set(existingReadings.map((r: any) => r.date.getTime()));
 
     // Filter out readings that already exist
     const newReadings = validReadings.filter((reading: Reading) => 
-      !existingTimestamps.has(reading.timestamp.getTime())
+      !existingTimestamps.has(reading.date.getTime())
     );
 
     if (newReadings.length === 0) {
@@ -138,18 +154,25 @@ export async function POST(request: Request) {
     }
 
     // Create new readings
-    const createdReadings = await prisma.glucoseReading.createMany({
+    const createdReadings = await prisma.reading.createMany({
       data: newReadings.map((reading: Reading) => {
-        // Ensure source is either 'manual' or 'nightscout'
-        const source = reading.source === 'manual' || reading.source === 'nightscout' 
-          ? reading.source 
-          : 'nightscout';
+        // Ensure source is set correctly
+        const source = reading.source || 'nightscout';
+
+        console.log('Creating reading:', {
+          date: reading.date,
+          sgv: reading.sgv,
+          direction: reading.direction,
+          source: source,
+          originalSource: reading.source
+        });
 
         return {
           userId: user.id,
-          timestamp: reading.timestamp,
+          date: reading.date,
           sgv: reading.sgv,
           direction: reading.direction || null,
+          type: 'sgv',
           source: source
         };
       })
@@ -185,15 +208,29 @@ export async function GET(request: Request) {
     const endDateParam = searchParams.get('endDate');
     const source = searchParams.get('source'); // 'manual', 'nightscout', or 'combined'
 
-    // Convert Unix timestamps to Date objects
-    const startDate = startDateParam ? new Date(Number(startDateParam)) : undefined;
-    const endDate = endDateParam ? new Date(Number(endDateParam)) : undefined;
+    // Convert Unix timestamps to Date objects with validation
+    let startDate: Date | undefined;
+    let endDate: Date | undefined;
+
+    if (startDateParam) {
+      const startTimestamp = Number(startDateParam);
+      if (!isNaN(startTimestamp)) {
+        startDate = new Date(startTimestamp);
+      }
+    }
+
+    if (endDateParam) {
+      const endTimestamp = Number(endDateParam);
+      if (!isNaN(endTimestamp)) {
+        endDate = new Date(endTimestamp);
+      }
+    }
 
     // Validate dates
-    if (startDateParam && isNaN(startDate!.getTime())) {
+    if (startDateParam && (!startDate || isNaN(startDate.getTime()))) {
       return NextResponse.json({ error: 'Invalid start date' }, { status: 400 });
     }
-    if (endDateParam && isNaN(endDate!.getTime())) {
+    if (endDateParam && (!endDate || isNaN(endDate.getTime()))) {
       return NextResponse.json({ error: 'Invalid end date' }, { status: 400 });
     }
 
@@ -209,8 +246,8 @@ export async function GET(request: Request) {
 
     // Time range filter for both queries
     const timeFilter = {
-      gte: startDate,
-      lte: endDate,
+      ...(startDate && { gte: startDate }),
+      ...(endDate && { lte: endDate }),
     };
 
     // Fetch Nightscout readings if source is 'nightscout' or 'combined'
@@ -218,21 +255,27 @@ export async function GET(request: Request) {
       console.log('Fetching Nightscout readings with filter:', {
         userId: user.id,
         source: 'nightscout',
-        timeFilter
+        timeFilter,
+        timeFilterKeys: Object.keys(timeFilter),
+        hasTimeFilter: Object.keys(timeFilter).length > 0
       });
 
-      const nightscoutReadings = await prisma.glucoseReading.findMany({
+      const nightscoutReadings = await prisma.reading.findMany({
         where: {
           userId: user.id,
           source: 'nightscout',
-          timestamp: timeFilter,
+          ...(Object.keys(timeFilter).length > 0 && { date: timeFilter }),
         },
         orderBy: {
-          timestamp: 'desc',
+          date: 'desc',
         },
       });
 
-      console.log('Found Nightscout readings:', nightscoutReadings.length);
+      console.log('Found Nightscout readings:', {
+        count: nightscoutReadings.length,
+        sample: nightscoutReadings[0],
+        timeRange: timeFilter
+      });
       allReadings = [...allReadings, ...nightscoutReadings];
     }
 
@@ -245,14 +288,14 @@ export async function GET(request: Request) {
       });
 
       // Get manual glucose readings
-      const manualReadings = await prisma.glucoseReading.findMany({
+      const manualReadings = await prisma.reading.findMany({
         where: {
           userId: user.id,
           source: 'manual',
-          timestamp: timeFilter,
+          ...(Object.keys(timeFilter).length > 0 && { date: timeFilter }),
         },
         orderBy: {
-          timestamp: 'desc',
+          date: 'desc',
         },
       });
 
@@ -283,7 +326,7 @@ export async function GET(request: Request) {
       // Convert treatments to reading format
       const treatmentReadings: Reading[] = treatments.map((t: DBTreatment) => ({
         id: `t_${t.id}`,
-        timestamp: t.timestamp,
+        date: t.timestamp,
         sgv: t.glucoseValue,
         direction: null,
         source: 'manual',
@@ -294,9 +337,17 @@ export async function GET(request: Request) {
     }
 
     // Sort all readings by timestamp, most recent first
-    const sortedReadings = allReadings.sort(
-      (a, b) => b.timestamp.getTime() - a.timestamp.getTime()
-    );
+    const sortedReadings = allReadings.sort((a, b) => {
+      const timeA = a.date?.getTime() || (a as any).date?.getTime();
+      const timeB = b.date?.getTime() || (b as any).date?.getTime();
+      
+      if (!timeA || !timeB) {
+        console.warn('Invalid timestamp in reading:', !timeA ? a : b);
+        return 0;
+      }
+      
+      return timeB - timeA;
+    });
 
     console.log('Total readings after filtering:', sortedReadings.length);
     return NextResponse.json(sortedReadings);

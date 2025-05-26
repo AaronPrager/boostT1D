@@ -131,27 +131,6 @@ export default function ReadingsPage() {
   });
 
   useEffect(() => {
-    const fetchTreatments = async () => {
-      try {
-        const response = await fetch('/api/treatments');
-        if (!response.ok) {
-          throw new Error('Failed to fetch treatments');
-        }
-        const data = await response.json();
-        setTreatments(data);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load treatments');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (session) {
-      fetchTreatments();
-    }
-  }, [session]);
-
-  useEffect(() => {
     const fetchSettings = async () => {
       try {
         const res = await fetch('/api/settings');
@@ -162,11 +141,15 @@ export default function ReadingsPage() {
         }
       } catch (error) {
         console.error('Error fetching settings:', error);
+      } finally {
+        setLoading(false);
       }
     };
 
-    fetchSettings();
-  }, []);
+    if (session) {
+      fetchSettings();
+    }
+  }, [session]);
 
   useEffect(() => {
     const filtered = readings.filter(reading => {
@@ -176,12 +159,6 @@ export default function ReadingsPage() {
     setFilteredReadings(filtered);
     calculateStatistics(filtered);
   }, [readings, sourceFilter]);
-
-  useEffect(() => {
-    if (session) {
-      fetchReadings();
-    }
-  }, [session, dateRange]);
 
   const calculateStatistics = (readings: Reading[]) => {
     if (readings.length === 0) return;
@@ -297,11 +274,11 @@ export default function ReadingsPage() {
 
       // Transform database readings to match our Reading type and ensure valid dates
       const formattedReadings = dbReadings
-        .filter((reading: any) => reading.timestamp)
+        .filter((reading: any) => reading.date)
         .map((reading: any) => {
-          const timestamp = new Date(reading.timestamp);
+          const timestamp = new Date(reading.date);
           if (isNaN(timestamp.getTime())) {
-            console.error('Invalid timestamp in reading:', reading);
+            console.error('Invalid date in reading:', reading);
             return null;
           }
           return {
@@ -331,8 +308,9 @@ export default function ReadingsPage() {
 
     try {
       const daysAgo = parseInt(dateRange);
-      const endDate = new Date();
-      const startDate = new Date();
+      const now = new Date();
+      const endDate = new Date(now.getTime());
+      const startDate = new Date(now.getTime());
       startDate.setDate(startDate.getDate() - daysAgo);
 
       // Fetch all readings first
@@ -579,139 +557,143 @@ export default function ReadingsPage() {
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-8">Blood Glucose Readings</h1>
       
-      <div className="mb-8 grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="bg-white p-4 rounded-lg shadow">
-          <h2 className="text-xl font-semibold mb-4">Data Source</h2>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Nightscout URL</label>
-              <input
-                type="text"
-                value={nightscoutUrl}
-                onChange={(e) => setNightscoutUrl(e.target.value)}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                placeholder="https://your-site.herokuapp.com"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Date Range</label>
-              <select
-                value={dateRange}
-                onChange={(e) => setDateRange(e.target.value as DateRange)}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-              >
-                <option value="1">Last 24 Hours</option>
-                <option value="2">Last 48 Hours</option>
-                <option value="7">Last 7 Days</option>
-                <option value="30">Last 30 Days</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Filter Source</label>
-              <select
-                value={sourceFilter}
-                onChange={(e) => setSourceFilter(e.target.value as 'all' | 'manual' | 'nightscout')}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-              >
-                <option value="all">All Sources</option>
-                <option value="manual">Manual Entries</option>
-                <option value="nightscout">Nightscout</option>
-              </select>
-            </div>
-            <button
-              onClick={fetchReadings}
-              className="w-full bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+      {/* Data Source Controls */}
+      <div className="bg-white p-4 rounded-lg shadow mb-8">
+        <h2 className="text-xl font-semibold mb-4">Data Source</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Nightscout URL</label>
+            <input
+              type="text"
+              value={nightscoutUrl}
+              onChange={(e) => setNightscoutUrl(e.target.value)}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+              placeholder="https://your-site.herokuapp.com"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Date Range</label>
+            <select
+              value={dateRange}
+              onChange={(e) => setDateRange(e.target.value as DateRange)}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
             >
-              Fetch Readings
-            </button>
+              <option value="1">Last 24 Hours</option>
+              <option value="2">Last 48 Hours</option>
+              <option value="7">Last 7 Days</option>
+              <option value="30">Last 30 Days</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Filter Source</label>
+            <select
+              value={sourceFilter}
+              onChange={(e) => setSourceFilter(e.target.value as 'all' | 'manual' | 'nightscout')}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+            >
+              <option value="all">All Sources</option>
+              <option value="manual">Manual Entries</option>
+              <option value="nightscout">Nightscout</option>
+            </select>
+          </div>
+        </div>
+        <button
+          onClick={fetchReadings}
+          className="mt-4 w-full bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+        >
+          Fetch Readings
+        </button>
+      </div>
+
+      {/* Statistics Section */}
+      <div className="bg-white p-4 rounded-lg shadow mb-8">
+        <h2 className="text-xl font-semibold mb-4">Statistics</h2>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          <div>
+            <p className="text-sm text-gray-500">Estimated A1C</p>
+            <p className="text-lg font-semibold">{statistics.estimatedA1C}%</p>
+          </div>
+          <div>
+            <p className="text-sm text-gray-500">GMI</p>
+            <p className="text-lg font-semibold">{statistics.gmi}%</p>
+          </div>
+          <div>
+            <p className="text-sm text-gray-500">Average Glucose</p>
+            <p className="text-lg font-semibold">{statistics.averageGlucose} mg/dL</p>
+          </div>
+          <div>
+            <p className="text-sm text-gray-500">Standard Deviation</p>
+            <p className="text-lg font-semibold">{statistics.standardDeviation} mg/dL</p>
+          </div>
+          <div>
+            <p className="text-sm text-gray-500">Coefficient of Variation</p>
+            <p className="text-lg font-semibold">{statistics.coefficientOfVariation}%</p>
+          </div>
+          <div>
+            <p className="text-sm text-gray-500">Total Readings</p>
+            <p className="text-lg font-semibold">{statistics.totalReadings}</p>
           </div>
         </div>
 
-        <div className="bg-white p-4 rounded-lg shadow">
-          <h2 className="text-xl font-semibold mb-4">Statistics</h2>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <p className="text-sm text-gray-500">Estimated A1C</p>
-              <p className="text-lg font-semibold">{statistics.estimatedA1C}%</p>
+        <div className="mt-6">
+          <h3 className="text-lg font-semibold mb-2">Time in Range</h3>
+          <div className="grid grid-cols-3 gap-2">
+            <div className="text-center p-2 bg-red-100 rounded">
+              <p className="text-sm text-red-800">Below</p>
+              <p className="font-semibold">{statistics.timeBelowRange}%</p>
             </div>
-            <div>
-              <p className="text-sm text-gray-500">GMI</p>
-              <p className="text-lg font-semibold">{statistics.gmi}%</p>
+            <div className="text-center p-2 bg-green-100 rounded">
+              <p className="text-sm text-green-800">In Range</p>
+              <p className="font-semibold">{statistics.timeInRange}%</p>
             </div>
-            <div>
-              <p className="text-sm text-gray-500">Average Glucose</p>
-              <p className="text-lg font-semibold">{statistics.averageGlucose} mg/dL</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Standard Deviation</p>
-              <p className="text-lg font-semibold">{statistics.standardDeviation} mg/dL</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Coefficient of Variation</p>
-              <p className="text-lg font-semibold">{statistics.coefficientOfVariation}%</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Total Readings</p>
-              <p className="text-lg font-semibold">{statistics.totalReadings}</p>
+            <div className="text-center p-2 bg-yellow-100 rounded">
+              <p className="text-sm text-yellow-800">Above</p>
+              <p className="font-semibold">{statistics.timeAboveRange}%</p>
             </div>
           </div>
+        </div>
 
-          <div className="mt-4">
-            <h3 className="text-lg font-semibold mb-2">Time in Range</h3>
-            <div className="grid grid-cols-3 gap-2">
-              <div className="text-center p-2 bg-red-100 rounded">
-                <p className="text-sm text-red-800">Below</p>
-                <p className="font-semibold">{statistics.timeBelowRange}%</p>
-              </div>
-              <div className="text-center p-2 bg-green-100 rounded">
-                <p className="text-sm text-green-800">In Range</p>
-                <p className="font-semibold">{statistics.timeInRange}%</p>
-              </div>
-              <div className="text-center p-2 bg-yellow-100 rounded">
-                <p className="text-sm text-yellow-800">Above</p>
-                <p className="font-semibold">{statistics.timeAboveRange}%</p>
-              </div>
+        <div className="mt-6">
+          <h3 className="text-lg font-semibold mb-2">Daily Patterns</h3>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <p className="text-sm text-gray-500">Overnight (00:00-06:00)</p>
+              <p className="font-semibold">{statistics.dailyPatterns.overnight} mg/dL</p>
             </div>
-          </div>
-
-          <div className="mt-4">
-            <h3 className="text-lg font-semibold mb-2">Daily Patterns</h3>
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <p className="text-sm text-gray-500">Overnight (00:00-06:00)</p>
-                <p className="font-semibold">{statistics.dailyPatterns.overnight} mg/dL</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Morning (06:00-12:00)</p>
-                <p className="font-semibold">{statistics.dailyPatterns.morning} mg/dL</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Afternoon (12:00-18:00)</p>
-                <p className="font-semibold">{statistics.dailyPatterns.afternoon} mg/dL</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Evening (18:00-24:00)</p>
-                <p className="font-semibold">{statistics.dailyPatterns.evening} mg/dL</p>
-              </div>
+            <div>
+              <p className="text-sm text-gray-500">Morning (06:00-12:00)</p>
+              <p className="font-semibold">{statistics.dailyPatterns.morning} mg/dL</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Afternoon (12:00-18:00)</p>
+              <p className="font-semibold">{statistics.dailyPatterns.afternoon} mg/dL</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Evening (18:00-24:00)</p>
+              <p className="font-semibold">{statistics.dailyPatterns.evening} mg/dL</p>
             </div>
           </div>
         </div>
       </div>
 
+      {/* Chart Section */}
       <div className="bg-white p-4 rounded-lg shadow mb-8">
-        <div className="h-[400px]">
+        <div className="h-[500px]">
           <Line options={chartOptions} data={chartData} />
         </div>
       </div>
 
+      {/* Data Table Section */}
       <div className="bg-white p-4 rounded-lg shadow">
-        <h2 className="text-xl font-semibold mb-4">Raw Data</h2>
-        <button
-          onClick={() => setShowData(!showData)}
-          className="mb-4 bg-gray-100 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
-        >
-          {showData ? 'Hide Data' : 'Show Data'}
-        </button>
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-semibold">Raw Data</h2>
+          <button
+            onClick={() => setShowData(!showData)}
+            className="bg-gray-100 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+          >
+            {showData ? 'Hide Data' : 'Show Data'}
+          </button>
+        </div>
         
         {showData && (
           <div className="overflow-x-auto">
