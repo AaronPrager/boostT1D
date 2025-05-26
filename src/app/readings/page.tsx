@@ -14,7 +14,9 @@ import {
   Legend,
   ChartOptions,
   ChartData,
-  TimeScale
+  TimeScale,
+  ChartDataset,
+  Point
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
 import 'chartjs-adapter-date-fns';
@@ -379,7 +381,7 @@ export default function ReadingsPage() {
   };
 
   // Helper function to group readings by day
-  const groupReadingsByDay = (readings: Reading[]) => {
+  const groupReadingsByDay = (readings: Reading[]): { [key: string]: Reading[] } => {
     const days: { [key: string]: Reading[] } = {};
     
     readings.forEach(reading => {
@@ -388,14 +390,93 @@ export default function ReadingsPage() {
       if (!days[dayKey]) {
         days[dayKey] = [];
       }
+
+      // Create a reference date (using today's date to ensure proper time handling)
+      const refDate = new Date();
+      // Set hours, minutes, seconds from the original reading
+      refDate.setHours(date.getHours(), date.getMinutes(), date.getSeconds(), 0);
+      
+      // Skip readings exactly at midnight to prevent line connection
+      if (date.getHours() === 0 && date.getMinutes() === 0) {
+        refDate.setMinutes(1); // Move midnight readings to 00:01 to prevent connection
+      }
+      
       days[dayKey].push({
         ...reading,
-        // Normalize the time to be between 00:00-24:00
-        date: new Date(date).setHours(date.getHours(), date.getMinutes(), 0, 0)
+        date: refDate.getTime()
       });
     });
 
     return days;
+  };
+
+  const chartOptions: ChartOptions<'line'> = {
+    responsive: true,
+    maintainAspectRatio: false,
+    scales: {
+      x: {
+        type: 'time',
+        time: {
+          unit: 'hour',
+          displayFormats: {
+            hour: 'HH:mm'
+          }
+        },
+        min: new Date().setHours(0, 0, 0, 0),    // Start at 00:00
+        max: new Date().setHours(24, 0, 0, 0),   // End at 24:00
+        title: {
+          display: true,
+          text: 'Time of Day'
+        },
+        ticks: {
+          source: 'auto',
+          autoSkip: true,
+          maxRotation: 0,
+          callback: function(value) {
+            const hour = new Date(value).getHours();
+            return hour === 24 ? '24:00' : `${hour.toString().padStart(2, '0')}:00`;
+          }
+        }
+      },
+      y: {
+        title: {
+          display: true,
+          text: 'Blood Glucose (mg/dL)'
+        },
+        min: 40,
+        max: 400,
+        grid: {
+          color: (context) => {
+            if (context.tick.value === settings.highGlucose) return 'rgba(255, 0, 0, 0.2)';
+            if (context.tick.value === settings.lowGlucose) return 'rgba(255, 0, 0, 0.2)';
+            return '#e5e5e5';
+          }
+        }
+      }
+    },
+    plugins: {
+      legend: {
+        position: 'top' as const,
+        labels: {
+          usePointStyle: true,
+          pointStyle: 'circle'
+        }
+      },
+      tooltip: {
+        callbacks: {
+          title: (context: any) => {
+            if (!context.length) return '';
+            const date = new Date(context[0].raw.x as number);
+            const dayLabel = context[0].dataset.label || '';
+            const hours = date.getHours();
+            const minutes = date.getMinutes();
+            const timeString = hours === 24 ? '24:00' : 
+              `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+            return `${dayLabel} ${timeString}`;
+          }
+        }
+      }
+    }
   };
 
   // Generate different colors for each day
@@ -413,78 +494,52 @@ export default function ReadingsPage() {
     return Array(count).fill(0).map((_, i) => colors[i % colors.length]);
   };
 
-  const chartOptions: ChartOptions<'line'> = {
-    responsive: true,
-    maintainAspectRatio: false,
-    scales: {
-      x: {
-        type: 'time',
-        time: {
-          unit: 'hour',
-          parser: 'HH:mm',
-          displayFormats: {
-            hour: 'HH:mm'
-          },
-          tooltipFormat: 'MMM d, HH:mm'
-        },
-        title: {
-          display: true,
-          text: 'Time of Day'
-        },
-        min: '00:00',
-        max: '23:59'
-      },
-      y: {
-        title: {
-          display: true,
-          text: 'Blood Glucose (mg/dL)'
-        },
-        min: 40,
-        max: 400,
-        grid: {
-          color: (context) => {
-            if (context.tick.value === settings.highGlucose) return '#ff0000';
-            if (context.tick.value === settings.lowGlucose) return '#ff0000';
-            return '#e5e5e5';
-          }
-        }
-      }
-    },
-    plugins: {
-      legend: {
-        position: 'top' as const,
-      },
-      title: {
-        display: true,
-        text: 'Blood Glucose Readings'
-      },
-      tooltip: {
-        callbacks: {
-          title: (context) => {
-            const date = new Date(context[0].raw.x);
-            return date.toLocaleString();
-          }
-        }
-      }
-    }
-  };
-
-  // Group readings by day and create datasets
   const dayGroups = groupReadingsByDay(filteredReadings);
   const dayColors = generateDayColors(Object.keys(dayGroups).length);
 
   const chartData: ChartData<'line'> = {
-    datasets: Object.entries(dayGroups).map(([day, readings], index) => ({
-      label: new Date(day).toLocaleDateString(),
-      data: readings.map(reading => ({
-        x: new Date(reading.date),
-        y: reading.sgv
-      })),
-      borderColor: dayColors[index],
-      backgroundColor: dayColors[index],
-      tension: 0.1,
-      pointRadius: 2
-    }))
+    datasets: [
+      // Range limit lines
+      {
+        label: 'High Limit',
+        data: [
+          { x: new Date().setHours(0, 0, 0, 0), y: settings.highGlucose },
+          { x: new Date().setHours(24, 0, 0, 0), y: settings.highGlucose }
+        ],
+        borderColor: 'rgba(255, 0, 0, 0.5)',
+        borderWidth: 1,
+        borderDash: [5, 5],
+        pointRadius: 0,
+        fill: false,
+        tension: 0
+      },
+      {
+        label: 'Low Limit',
+        data: [
+          { x: new Date().setHours(0, 0, 0, 0), y: settings.lowGlucose },
+          { x: new Date().setHours(24, 0, 0, 0), y: settings.lowGlucose }
+        ],
+        borderColor: 'rgba(255, 0, 0, 0.5)',
+        borderWidth: 1,
+        borderDash: [5, 5],
+        pointRadius: 0,
+        fill: false,
+        tension: 0
+      },
+      // Glucose readings
+      ...(Object.entries(dayGroups) as [string, Reading[]][]).map(([day, dayReadings], index) => ({
+        label: new Date(day).toLocaleDateString(),
+        data: dayReadings.map(reading => ({
+          x: reading.date as number,
+          y: reading.sgv
+        })).sort((a, b) => (a.x as number) - (b.x as number)),
+        borderColor: dayColors[index],
+        backgroundColor: dayColors[index],
+        tension: 0.1,
+        pointRadius: 2,
+        spanGaps: false
+      }))
+    ] as ChartDataset<'line', Point[]>[]
   };
 
   if (!session) {
