@@ -1,16 +1,16 @@
-import type { Metadata } from "next";
-import { Inter } from "next/font/google";
-import "./globals.css";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "./api/auth/[...nextauth]/route";
-import Navigation from "@/components/Navigation";
-import AuthProvider from "@/components/AuthProvider";
+import React from 'react';
+import './globals.css';
+import { Inter } from 'next/font/google';
+import Navigation from '@/components/Navigation';
+import Footer from '@/components/Footer';
+import AuthProvider from '@/components/AuthProvider';
+import { getServerSession } from 'next-auth';
 
-const inter = Inter({ subsets: ["latin"] });
+const inter = Inter({ subsets: ['latin'] });
 
-export const metadata: Metadata = {
-  title: "Nightscout Profile",
-  description: "Personal Nightscout data management",
+export const metadata = {
+  title: 'BoostT1D',
+  description: 'Empowering Type 1 Diabetes Management',
 };
 
 export default async function RootLayout({
@@ -18,14 +18,15 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const session = await getServerSession(authOptions);
-
   return (
-    <html lang="en">
-      <body className={inter.className}>
-        <AuthProvider session={session}>
+    <html lang="en" className="h-full">
+      <body className={`${inter.className} min-h-screen flex flex-col`}>
+        <AuthProvider>
           <Navigation />
-          <main>{children}</main>
+          <main className="flex-grow">
+            {children}
+          </main>
+          <Footer />
         </AuthProvider>
       </body>
     </html>

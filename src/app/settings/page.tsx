@@ -5,18 +5,18 @@ import { useRouter } from 'next/navigation';
 
 type Settings = {
   nightscoutUrl: string;
+  nightscoutApiToken: string;
   lowGlucose: number;
   highGlucose: number;
-  timeFormat: '12h' | '24h';
 };
 
 export default function SettingsPage() {
   const router = useRouter();
   const [settings, setSettings] = useState<Settings>({
     nightscoutUrl: '',
+    nightscoutApiToken: '',
     lowGlucose: 70.0,
-    highGlucose: 180.0,
-    timeFormat: '12h'
+    highGlucose: 180.0
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -30,9 +30,9 @@ export default function SettingsPage() {
           const data = await res.json();
           setSettings({
             nightscoutUrl: data.nightscoutUrl || '',
+            nightscoutApiToken: data.nightscoutApiToken || '',
             lowGlucose: Number(data.lowGlucose) || 70.0,
-            highGlucose: Number(data.highGlucose) || 180.0,
-            timeFormat: data.timeFormat || '12h'
+            highGlucose: Number(data.highGlucose) || 180.0
           });
         }
       } catch (error) {
@@ -108,6 +108,23 @@ export default function SettingsPage() {
                   placeholder="https://your-site.herokuapp.com"
                   className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                 />
+                <p className="mt-1 text-sm text-gray-500">Your Nightscout site URL</p>
+              </div>
+
+              <div>
+                <label htmlFor="nightscoutApiToken" className="block text-sm font-medium text-gray-700">
+                  Nightscout API Token
+                </label>
+                <input
+                  type="password"
+                  id="nightscoutApiToken"
+                  name="nightscoutApiToken"
+                  value={settings.nightscoutApiToken}
+                  onChange={(e) => handleChange('nightscoutApiToken', e.target.value)}
+                  placeholder="Enter your API token"
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                />
+                <p className="mt-1 text-sm text-gray-500">Your Nightscout API token (if required)</p>
               </div>
 
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
@@ -144,22 +161,6 @@ export default function SettingsPage() {
                   />
                   <p className="mt-1 text-sm text-gray-500">Range: 120-300 mg/dL</p>
                 </div>
-              </div>
-
-              <div>
-                <label htmlFor="timeFormat" className="block text-sm font-medium text-gray-700">
-                  Time Format
-                </label>
-                <select
-                  id="timeFormat"
-                  name="timeFormat"
-                  value={settings.timeFormat}
-                  onChange={(e) => handleChange('timeFormat', e.target.value as '12h' | '24h')}
-                  className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
-                >
-                  <option value="12h">12-hour (AM/PM)</option>
-                  <option value="24h">24-hour</option>
-                </select>
               </div>
 
               {error && (

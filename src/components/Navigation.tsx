@@ -1,84 +1,60 @@
 'use client';
 
-import { usePathname } from 'next/navigation';
+import React from 'react';
 import Link from 'next/link';
-import { signOut, useSession } from 'next-auth/react';
+import { useSession, signOut } from 'next-auth/react';
 
 export default function Navigation() {
-  const pathname = usePathname();
   const { data: session } = useSession();
 
-  const navigation = [
-    { name: 'Profile', href: '/profile' },
-    { name: 'Settings', href: '/settings' },
-    { name: 'Readings', href: '/readings' },
-  ];
-
-  const isActive = (path: string) => {
-    return pathname === path ? 'bg-gray-900 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white';
-  };
-
-  if (!session) {
-    return (
-      <nav className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
-            <div className="flex">
-              <div className="flex-shrink-0 flex items-center">
-                <Link href="/" className="text-xl font-bold text-indigo-600">
-                  UserProfile
-                </Link>
-              </div>
-            </div>
-            <div className="flex items-center space-x-4">
-              <Link
-                href="/login"
-                className="text-gray-700 hover:text-indigo-600 px-3 py-2 rounded-md text-sm font-medium"
-              >
-                Login
-              </Link>
-              <Link
-                href="/register"
-                className="bg-indigo-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-indigo-700"
-              >
-                Register
-              </Link>
-            </div>
-          </div>
-        </div>
-      </nav>
-    );
-  }
-
   return (
-    <nav className="bg-gray-800">
+    <nav className="bg-white shadow-lg">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
-          <div className="flex items-center">
-            <div className="flex-shrink-0">
-              <span className="text-white font-bold">Nightscout Profile</span>
+        <div className="flex justify-between h-16">
+          <div className="flex">
+            <div className="flex-shrink-0 flex items-center">
+              <Link href="/" className="text-xl font-bold text-gray-800">
+                BoostT1D
+              </Link>
             </div>
-            <div className="hidden md:block">
-              <div className="ml-10 flex items-baseline space-x-4">
-                {navigation.map((item) => (
-                  <Link
-                    key={item.name}
-                    href={item.href}
-                    className={`px-3 py-2 rounded-md text-sm font-medium ${isActive(item.href)}`}
-                  >
-                    {item.name}
+            <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
+              <Link href="/" className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">
+                Home
+              </Link>
+              {session && (
+                <>
+                  <Link href="/dashboard" className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">
+                    Dashboard
                   </Link>
-                ))}
-              </div>
+                  <Link href="/treatments" className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">
+                    Treatments
+                  </Link>
+                  <Link href="/readings" className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">
+                    Readings
+                  </Link>
+                  <Link href="/profile" className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">
+                    Profile
+                  </Link>
+                  <Link href="/settings" className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">
+                    Settings
+                  </Link>
+                </>
+              )}
             </div>
           </div>
           <div className="flex items-center">
-            <button
-              onClick={() => signOut()}
-              className="text-gray-700 hover:text-indigo-600 px-3 py-2 rounded-md text-sm font-medium"
-            >
-              Sign out
-            </button>
+            {session ? (
+              <button
+                onClick={() => signOut()}
+                className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
+              >
+                Sign Out
+              </button>
+            ) : (
+              <Link href="/auth/signin" className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">
+                Sign In
+              </Link>
+            )}
           </div>
         </div>
       </div>

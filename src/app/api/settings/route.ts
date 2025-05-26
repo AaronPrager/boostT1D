@@ -41,9 +41,9 @@ export async function GET() {
       console.log('No settings found, returning defaults');
       return NextResponse.json({
         nightscoutUrl: '',
+        nightscoutApiToken: '',
         lowGlucose: 70.0,
-        highGlucose: 180.0,
-        timeFormat: '12h'
+        highGlucose: 180.0
       });
     }
 
@@ -86,13 +86,13 @@ export async function PUT(req: Request) {
       return new NextResponse("Invalid request body", { status: 400 });
     }
 
-    const { nightscoutUrl, lowGlucose, highGlucose, timeFormat } = body;
+    const { nightscoutUrl, nightscoutApiToken, lowGlucose, highGlucose } = body;
 
     console.log('Parsed settings values:', {
       nightscoutUrl,
-      lowGlucose: typeof lowGlucose, // Log the type
-      highGlucose: typeof highGlucose, // Log the type
-      timeFormat,
+      nightscoutApiToken: nightscoutApiToken ? '***' : undefined,
+      lowGlucose: typeof lowGlucose,
+      highGlucose: typeof highGlucose
     });
 
     // Validate the settings
@@ -119,18 +119,13 @@ export async function PUT(req: Request) {
       return new NextResponse("Low glucose must be less than high glucose", { status: 400 });
     }
 
-    if (!timeFormat || !['12h', '24h'].includes(timeFormat)) {
-      console.log('Invalid time format:', timeFormat);
-      return new NextResponse("Time format must be either '12h' or '24h'", { status: 400 });
-    }
-
     console.log('Attempting to update settings for user:', {
       userId: user.id,
       settings: {
         nightscoutUrl,
+        nightscoutApiToken,
         lowGlucose: parsedLowGlucose,
-        highGlucose: parsedHighGlucose,
-        timeFormat
+        highGlucose: parsedHighGlucose
       }
     });
 
@@ -141,16 +136,16 @@ export async function PUT(req: Request) {
         },
         update: {
           nightscoutUrl,
+          nightscoutApiToken,
           lowGlucose: parsedLowGlucose,
-          highGlucose: parsedHighGlucose,
-          timeFormat,
+          highGlucose: parsedHighGlucose
         },
         create: {
           userId: user.id,
           nightscoutUrl,
+          nightscoutApiToken,
           lowGlucose: parsedLowGlucose,
-          highGlucose: parsedHighGlucose,
-          timeFormat,
+          highGlucose: parsedHighGlucose
         },
       });
 
