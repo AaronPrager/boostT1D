@@ -32,14 +32,13 @@ ChartJS.register(
   TimeScale
 );
 
-type DateRange = '1' | '2' | '7' | '30';
-
 type Reading = {
   sgv: number;
   date: number;
   direction?: string;
   type: string;
   source: 'manual' | 'nightscout';
+  originalDate?: number; // For preserving original date in overlay mode
 };
 
 type Settings = {
@@ -102,7 +101,16 @@ export default function ReadingsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [nightscoutUrl, setNightscoutUrl] = useState('');
-  const [dateRange, setDateRange] = useState<DateRange>('7');
+  const [fromDate, setFromDate] = useState<string>(() => {
+    // Default to today
+    const today = new Date();
+    return today.toISOString().split('T')[0];
+  });
+  const [toDate, setToDate] = useState<string>(() => {
+    // Default to today
+    const today = new Date();
+    return today.toISOString().split('T')[0];
+  });
   const [readings, setReadings] = useState<Reading[]>([]);
   const [filteredReadings, setFilteredReadings] = useState<Reading[]>([]);
   const [sourceFilter, setSourceFilter] = useState<'all' | 'manual' | 'nightscout'>('all');
@@ -307,26 +315,55 @@ export default function ReadingsPage() {
     setError('');
 
     try {
-      const daysAgo = parseInt(dateRange);
       const now = new Date();
-      const endDate = new Date(now.getTime());
-      const startDate = new Date(now.getTime());
-      startDate.setDate(startDate.getDate() - daysAgo);
+      let endDate = new Date(now.getTime());
+      let startDate: Date;
+      
+      if (fromDate && toDate) {
+        // Create dates in local timezone for proper inclusive behavior
+        startDate = new Date(fromDate + 'T00:00:00'); // Start of the from date in local time
+        endDate = new Date(toDate + 'T23:59:59.999'); // End of the to date in local time
+      } else if (fromDate) {
+        startDate = new Date(fromDate + 'T00:00:00');
+        endDate = new Date(fromDate + 'T23:59:59.999');
+      } else {
+        // Fallback to today
+        const today = new Date();
+        const todayStr = today.toISOString().split('T')[0];
+        startDate = new Date(todayStr + 'T00:00:00');
+        endDate = new Date(todayStr + 'T23:59:59.999');
+      }
+
+      console.log(`Date range calculation for ${fromDate} to ${toDate}:`, {
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString(),
+        startDateLocal: startDate.toLocaleString(),
+        endDateLocal: endDate.toLocaleString()
+      });
 
       // Fetch all readings first
       const allReadings = await fetchAllReadings(startDate, endDate);
+      
+      // Apply client-side filtering for exact time windows
+      const filterReadings = (readings: any[]) => {
+        const startTime = startDate.getTime();
+        const endTime = endDate.getTime();
+        return readings.filter(reading => 
+          reading.date >= startTime && reading.date <= endTime
+        );
+      };
       
       // If we have a Nightscout URL, fetch and store new readings
       if (nightscoutUrl) {
         try {
           const nsUrl = new URL('/api/nightscout', window.location.origin);
-          nsUrl.searchParams.set('url', nightscoutUrl.trim());
           nsUrl.searchParams.set('startDate', startDate.getTime().toString());
           nsUrl.searchParams.set('endDate', endDate.getTime().toString());
           
           const nsResponse = await fetch(nsUrl);
           if (!nsResponse.ok) {
-            throw new Error('Failed to fetch Nightscout readings');
+            const errorText = await nsResponse.text();
+            throw new Error(`Failed to fetch Nightscout readings: ${errorText}`);
           }
 
           // Store new Nightscout readings
@@ -340,15 +377,17 @@ export default function ReadingsPage() {
             
             // Fetch updated readings after storing new ones
             const updatedReadings = await fetchAllReadings(startDate, endDate);
-            setReadings(updatedReadings);
+            setReadings(filterReadings(updatedReadings));
+          } else {
+            setReadings(filterReadings(allReadings));
           }
         } catch (nsError) {
           console.error('Error fetching Nightscout data:', nsError);
           // Still show local readings even if Nightscout fetch fails
-          setReadings(allReadings);
+          setReadings(filterReadings(allReadings));
         }
       } else {
-        setReadings(allReadings);
+        setReadings(filterReadings(allReadings));
       }
     } catch (error) {
       setError('Failed to fetch readings');
@@ -359,33 +398,209 @@ export default function ReadingsPage() {
   };
 
   // Helper function to group readings by day
-  const groupReadingsByDay = (readings: Reading[]): { [key: string]: Reading[] } => {
+  const groupReadingsByDay = (readings: Reading[], uniqueDays: string[]): { [key: string]: Reading[] } => {
     const days: { [key: string]: Reading[] } = {};
     
     readings.forEach(reading => {
       const date = new Date(reading.date);
-      const dayKey = date.toISOString().split('T')[0];
+      // Use local timezone date instead of UTC to avoid timezone shifts
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const dayKey = `${year}-${month}-${day}`;
+      
       if (!days[dayKey]) {
         days[dayKey] = [];
       }
 
-      // Create a reference date (using today's date to ensure proper time handling)
-      const refDate = new Date();
-      // Set hours, minutes, seconds from the original reading
-      refDate.setHours(date.getHours(), date.getMinutes(), date.getSeconds(), 0);
-      
-      // Skip readings exactly at midnight to prevent line connection
-      if (date.getHours() === 0 && date.getMinutes() === 0) {
-        refDate.setMinutes(1); // Move midnight readings to 00:01 to prevent connection
-      }
+      // For overlay mode, normalize all readings to the same reference day (2000-01-01)
+      // but add a tiny millisecond offset for each day to keep datasets separate
+      const dayIndex = uniqueDays.indexOf(dayKey);
+      const refDate = new Date(2000, 0, 1); // Always use 2000-01-01 as base
+      refDate.setHours(date.getHours(), date.getMinutes(), date.getSeconds(), dayIndex); // Use dayIndex as milliseconds
       
       days[dayKey].push({
         ...reading,
-        date: refDate.getTime()
+        date: refDate.getTime(),
+        originalDate: reading.date // Preserve original date for tooltip
       });
     });
 
+    // Sort each day's readings by time and add gaps to prevent day boundary connections
+    Object.keys(days).forEach(dayKey => {
+      days[dayKey] = days[dayKey]
+        .sort((a, b) => a.date - b.date)
+        .map((reading, index, arr) => {
+          // If this is not the first reading, check for large time gaps
+          if (index > 0) {
+            const timeDiff = reading.date - arr[index - 1].date;
+            // If gap is more than 2 hours, insert a null reading to break the line
+            if (timeDiff > 2 * 60 * 60 * 1000) {
+              return [
+                {
+                  ...reading,
+                  sgv: null as any, // null value creates gap in Chart.js
+                  date: arr[index - 1].date + (timeDiff / 2),
+                  originalDate: (arr[index - 1].originalDate || arr[index - 1].date) + (timeDiff / 2)
+                },
+                reading
+              ];
+            }
+          }
+          return reading;
+        })
+        .flat();
+    });
+
+    console.log('Grouped readings by day:', Object.keys(days).map(day => ({
+      day,
+      count: days[day].length
+    })));
+
     return days;
+  };
+
+  // Generate different colors for each day
+  const generateDayColors = (count: number) => {
+    const colors = [
+      'rgb(75, 192, 192)',   // teal
+      'rgb(255, 99, 132)',   // red
+      'rgb(54, 162, 235)',   // blue
+      'rgb(255, 206, 86)',   // yellow
+      'rgb(153, 102, 255)',  // purple
+      'rgb(255, 159, 64)',   // orange
+      'rgb(75, 192, 100)',   // green
+    ];
+    
+    return Array(count).fill(0).map((_, i) => colors[i % colors.length]);
+  };
+
+  // Always use overlay mode to show all data on the same 24-hour timeline
+  const useActualTimeline = false; // Always false to force overlay mode
+  
+  // Calculate unique days first for consistent color assignment
+  const uniqueDays = Array.from(new Set(filteredReadings.map(reading => {
+    const date = new Date(reading.date);
+    // Use local timezone date instead of UTC to avoid timezone shifts
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }))).sort();
+  
+  // Calculate day groups for overlay mode
+  const dayGroups = groupReadingsByDay(filteredReadings, uniqueDays);
+  const dayCount = Object.keys(dayGroups).length;
+  
+  // Debug: Log the grouping results
+  console.log('Day grouping debug:', {
+    dayGroups: Object.keys(dayGroups).map(day => ({
+      day,
+      count: dayGroups[day].length,
+      firstReading: dayGroups[day][0] ? {
+        originalDate: new Date(dayGroups[day][0].originalDate || dayGroups[day][0].date).toISOString(),
+        normalizedDate: new Date(dayGroups[day][0].date).toISOString(),
+        sgv: dayGroups[day][0].sgv
+      } : null,
+      lastReading: dayGroups[day][dayGroups[day].length - 1] ? {
+        originalDate: new Date(dayGroups[day][dayGroups[day].length - 1].originalDate || dayGroups[day][dayGroups[day].length - 1].date).toISOString(),
+        normalizedDate: new Date(dayGroups[day][dayGroups[day].length - 1].date).toISOString(),
+        sgv: dayGroups[day][dayGroups[day].length - 1].sgv
+      } : null
+    }))
+  });
+  
+  // Debug: Log filtered readings to understand what's being charted
+  console.log('Chart data debug:', {
+    fromDate,
+    toDate,
+    useActualTimeline,
+    filteredReadingsCount: filteredReadings.length,
+    dayCount,
+    filteredReadingsSample: filteredReadings.slice(0, 3).map(r => ({
+      sgv: r.sgv,
+      date: new Date(r.date).toISOString(),
+      source: r.source
+    }))
+  });
+  
+  // Generate colors for each day
+  const dayColors = generateDayColors(dayCount);
+  
+  const chartDatasets = (Object.entries(dayGroups) as [string, Reading[]][]).map(([day, dayReadings], index) => {
+    // Use the day's position in the sorted uniqueDays array for consistent coloring
+    const dayIndex = uniqueDays.indexOf(day);
+    const dataset = {
+      label: new Date(day + 'T00:00:00').toLocaleDateString('en-US', { 
+        weekday: 'short', 
+        month: 'short', 
+        day: 'numeric' 
+      }),
+      data: dayReadings.map(reading => ({
+        x: reading.date as number,
+        y: reading.sgv === null ? null : reading.sgv, // Preserve null values for gaps
+        originalDate: reading.originalDate || reading.date, // Include original date for tooltip
+        direction: reading.direction, // Include direction for tooltip
+        dayKey: day // Include day key for tooltip
+      })).sort((a, b) => (a.x as number) - (b.x as number)),
+      borderColor: dayColors[dayIndex], // Use dayIndex from sorted array
+      backgroundColor: dayColors[dayIndex], // Use dayIndex from sorted array
+      tension: 0.1,
+      pointRadius: 2,
+      spanGaps: false, // This is key - don't span gaps created by null values
+      segment: {
+        // Add explicit segment styling to handle gaps better
+        borderColor: (ctx: any) => {
+          return ctx.p0.parsed.y === null || ctx.p1.parsed.y === null ? 'transparent' : undefined;
+        }
+      }
+    };
+    
+    // Debug: Log each dataset
+    console.log(`Dataset ${index} (${day}):`, {
+      label: dataset.label,
+      dayIndex,
+      color: dayColors[dayIndex],
+      dataCount: dataset.data.length,
+      firstPoint: dataset.data[0],
+      lastPoint: dataset.data[dataset.data.length - 1]
+    });
+    
+    return dataset;
+  });
+
+  const chartData: ChartData<'line'> = {
+    datasets: [
+      // Range limit lines
+      {
+        label: 'High Limit',
+        data: [
+          { x: new Date(2000, 0, 1, 0, 0, 0, 0).getTime(), y: settings.highGlucose },
+          { x: new Date(2000, 0, 1, 23, 59, 59, 999).getTime(), y: settings.highGlucose }
+        ],
+        borderColor: 'rgba(255, 0, 0, 0.5)',
+        borderWidth: 1,
+        borderDash: [5, 5],
+        pointRadius: 0,
+        fill: false,
+        tension: 0
+      },
+      {
+        label: 'Low Limit',
+        data: [
+          { x: new Date(2000, 0, 1, 0, 0, 0, 0).getTime(), y: settings.lowGlucose },
+          { x: new Date(2000, 0, 1, 23, 59, 59, 999).getTime(), y: settings.lowGlucose }
+        ],
+        borderColor: 'rgba(255, 0, 0, 0.5)',
+        borderWidth: 1,
+        borderDash: [5, 5],
+        pointRadius: 0,
+        fill: false,
+        tension: 0
+      },
+      // Glucose readings
+      ...chartDatasets
+    ] as ChartDataset<'line', Point[]>[]
   };
 
   const chartOptions: ChartOptions<'line'> = {
@@ -397,22 +612,34 @@ export default function ReadingsPage() {
         time: {
           unit: 'hour',
           displayFormats: {
+            minute: 'HH:mm',
             hour: 'HH:mm'
-          }
+          },
+          tooltipFormat: 'HH:mm'
         },
-        min: new Date().setHours(0, 0, 0, 0),    // Start at 00:00
-        max: new Date().setHours(24, 0, 0, 0),   // End at 24:00
+        // Always use 00:00-24:00 range for consistent day view
+        min: new Date(2000, 0, 1, 0, 0, 0, 0).getTime(), // 2000-01-01 00:00:00
+        max: new Date(2000, 0, 1, 23, 59, 59, 999).getTime(), // 2000-01-01 23:59:59
         title: {
           display: true,
-          text: 'Time of Day'
+          text: useActualTimeline 
+            ? `${new Date(fromDate).toLocaleDateString()} (${Intl.DateTimeFormat().resolvedOptions().timeZone})`
+            : `${new Date(fromDate).toLocaleDateString()} - ${new Date(toDate).toLocaleDateString()} (${Intl.DateTimeFormat().resolvedOptions().timeZone})`
         },
         ticks: {
           source: 'auto',
-          autoSkip: true,
+          autoSkip: false,
           maxRotation: 0,
+          maxTicksLimit: 49, // 24 hours * 2 (30-min intervals) + 1
           callback: function(value) {
-            const hour = new Date(value).getHours();
-            return hour === 24 ? '24:00' : `${hour.toString().padStart(2, '0')}:00`;
+            const date = new Date(value);
+            const hour = date.getHours();
+            const minute = date.getMinutes();
+            // Only show ticks at 30-minute intervals
+            if (minute === 0 || minute === 30) {
+              return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+            }
+            return '';
           }
         }
       },
@@ -444,80 +671,53 @@ export default function ReadingsPage() {
         callbacks: {
           title: (context: any) => {
             if (!context.length) return '';
-            const date = new Date(context[0].raw.x as number);
+            const dataPoint = context[0].raw;
             const dayLabel = context[0].dataset.label || '';
-            const hours = date.getHours();
-            const minutes = date.getMinutes();
-            const timeString = hours === 24 ? '24:00' : 
-              `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-            return `${dayLabel} ${timeString}`;
+            
+            if (useActualTimeline) {
+              // For timeline view, show full date and time
+              const date = new Date(dataPoint.x as number);
+              const localDate = date.toLocaleDateString();
+              const localTime = date.toLocaleTimeString('en-US', { 
+                hour: '2-digit', 
+                minute: '2-digit',
+                hour12: false 
+              });
+              return `${localDate} ${localTime}`;
+            } else {
+              // For overlay view, show the actual date from the original reading
+              if (dataPoint.originalDate) {
+                const originalDate = new Date(dataPoint.originalDate);
+                const localDate = originalDate.toLocaleDateString();
+                const localTime = originalDate.toLocaleTimeString('en-US', { 
+                  hour: '2-digit', 
+                  minute: '2-digit',
+                  hour12: false 
+                });
+                return `${localDate} ${localTime}`;
+              } else {
+                // Fallback to day label and normalized time
+                const dateForTime = new Date(dataPoint.x as number);
+                const localTime = dateForTime.toLocaleTimeString('en-US', { 
+                  hour: '2-digit', 
+                  minute: '2-digit',
+                  hour12: false 
+                });
+                return `${dayLabel} ${localTime}`;
+              }
+            }
+          },
+          label: (context: any) => {
+            const value = context.parsed.y;
+            const dataPoint = context.raw;
+            // Use direction directly from data point
+            const direction = dataPoint.direction;
+            const arrow = direction ? DIRECTION_ARROWS[direction] || direction : '';
+            return `${value} mg/dL ${arrow}`;
           }
         }
       }
     }
-  };
-
-  // Generate different colors for each day
-  const generateDayColors = (count: number) => {
-    const colors = [
-      'rgb(75, 192, 192)',   // teal
-      'rgb(255, 99, 132)',   // red
-      'rgb(54, 162, 235)',   // blue
-      'rgb(255, 206, 86)',   // yellow
-      'rgb(153, 102, 255)',  // purple
-      'rgb(255, 159, 64)',   // orange
-      'rgb(75, 192, 100)',   // green
-    ];
-    
-    return Array(count).fill(0).map((_, i) => colors[i % colors.length]);
-  };
-
-  const dayGroups = groupReadingsByDay(filteredReadings);
-  const dayColors = generateDayColors(Object.keys(dayGroups).length);
-
-  const chartData: ChartData<'line'> = {
-    datasets: [
-      // Range limit lines
-      {
-        label: 'High Limit',
-        data: [
-          { x: new Date().setHours(0, 0, 0, 0), y: settings.highGlucose },
-          { x: new Date().setHours(24, 0, 0, 0), y: settings.highGlucose }
-        ],
-        borderColor: 'rgba(255, 0, 0, 0.5)',
-        borderWidth: 1,
-        borderDash: [5, 5],
-        pointRadius: 0,
-        fill: false,
-        tension: 0
-      },
-      {
-        label: 'Low Limit',
-        data: [
-          { x: new Date().setHours(0, 0, 0, 0), y: settings.lowGlucose },
-          { x: new Date().setHours(24, 0, 0, 0), y: settings.lowGlucose }
-        ],
-        borderColor: 'rgba(255, 0, 0, 0.5)',
-        borderWidth: 1,
-        borderDash: [5, 5],
-        pointRadius: 0,
-        fill: false,
-        tension: 0
-      },
-      // Glucose readings
-      ...(Object.entries(dayGroups) as [string, Reading[]][]).map(([day, dayReadings], index) => ({
-        label: new Date(day).toLocaleDateString(),
-        data: dayReadings.map(reading => ({
-          x: reading.date as number,
-          y: reading.sgv
-        })).sort((a, b) => (a.x as number) - (b.x as number)),
-        borderColor: dayColors[index],
-        backgroundColor: dayColors[index],
-        tension: 0.1,
-        pointRadius: 2,
-        spanGaps: false
-      }))
-    ] as ChartDataset<'line', Point[]>[]
   };
 
   if (!session) {
@@ -573,16 +773,26 @@ export default function ReadingsPage() {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700">Date Range</label>
-            <select
-              value={dateRange}
-              onChange={(e) => setDateRange(e.target.value as DateRange)}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-            >
-              <option value="1">Last 24 Hours</option>
-              <option value="2">Last 48 Hours</option>
-              <option value="7">Last 7 Days</option>
-              <option value="30">Last 30 Days</option>
-            </select>
+            <div className="mt-1 flex space-x-4">
+              <div>
+                <label className="block text-xs text-gray-500">From</label>
+                <input
+                  type="date"
+                  value={fromDate}
+                  onChange={(e) => setFromDate(e.target.value)}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500">To</label>
+                <input
+                  type="date"
+                  value={toDate}
+                  onChange={(e) => setToDate(e.target.value)}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                />
+              </div>
+            </div>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700">Filter Source</label>
@@ -710,7 +920,17 @@ export default function ReadingsPage() {
                 {filteredReadings.map((reading, index) => (
                   <tr key={index}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {new Date(reading.date).toLocaleString()}
+                      <div>
+                        <div className="font-medium">{new Date(reading.date).toLocaleDateString()}</div>
+                        <div className="text-xs text-gray-400">
+                          {new Date(reading.date).toLocaleTimeString('en-US', { 
+                            hour: '2-digit', 
+                            minute: '2-digit',
+                            second: '2-digit',
+                            hour12: false 
+                          })}
+                        </div>
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {reading.sgv} mg/dL

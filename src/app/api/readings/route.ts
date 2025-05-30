@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { prisma } from '@/lib/prisma';
-import { authOptions } from '../auth/[...nextauth]/route';
+import { authOptions } from '@/lib/auth';
 
 type Reading = {
   id?: string;
@@ -250,6 +250,18 @@ export async function GET(request: Request) {
       ...(endDate && { lte: endDate }),
     };
 
+    // Calculate appropriate limit based on time range
+    let queryLimit = 1000; // Default for short periods
+    if (startDate && endDate) {
+      const timeDiffDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+      if (timeDiffDays >= 7) {
+        queryLimit = 5000; // For week+ views, allow more readings
+      }
+      if (timeDiffDays >= 30) {
+        queryLimit = 10000; // For month+ views, allow even more readings
+      }
+    }
+
     // Fetch Nightscout readings if source is 'nightscout' or 'combined'
     if (source === 'nightscout' || source === 'combined' || !source) {
       console.log('Fetching Nightscout readings with filter:', {
@@ -257,7 +269,8 @@ export async function GET(request: Request) {
         source: 'nightscout',
         timeFilter,
         timeFilterKeys: Object.keys(timeFilter),
-        hasTimeFilter: Object.keys(timeFilter).length > 0
+        hasTimeFilter: Object.keys(timeFilter).length > 0,
+        queryLimit
       });
 
       const nightscoutReadings = await prisma.reading.findMany({
@@ -269,6 +282,7 @@ export async function GET(request: Request) {
         orderBy: {
           date: 'desc',
         },
+        take: queryLimit,
       });
 
       console.log('Found Nightscout readings:', {
@@ -276,7 +290,7 @@ export async function GET(request: Request) {
         sample: nightscoutReadings[0],
         timeRange: timeFilter
       });
-      allReadings = [...allReadings, ...nightscoutReadings];
+      allReadings = [...allReadings, ...nightscoutReadings as Reading[]];
     }
 
     // Fetch Manual readings if source is 'manual' or 'combined'
@@ -297,6 +311,7 @@ export async function GET(request: Request) {
         orderBy: {
           date: 'desc',
         },
+        take: queryLimit,
       });
 
       console.log('Found manual readings:', manualReadings.length);
@@ -324,16 +339,18 @@ export async function GET(request: Request) {
       console.log('Found BG treatments:', treatments.length);
 
       // Convert treatments to reading format
-      const treatmentReadings: Reading[] = treatments.map((t: DBTreatment) => ({
-        id: `t_${t.id}`,
-        date: t.timestamp,
-        sgv: t.glucoseValue,
-        direction: null,
-        source: 'manual',
-        userId: t.userId,
-      }));
+      const treatmentReadings: Reading[] = treatments
+        .filter(t => t.glucoseValue !== null)
+        .map((t) => ({
+          id: `t_${t.id}`,
+          date: t.timestamp,
+          sgv: t.glucoseValue!,
+          direction: null,
+          source: 'manual' as const,
+          userId: t.userId,
+        }));
 
-      allReadings = [...allReadings, ...manualReadings, ...treatmentReadings];
+      allReadings = [...allReadings, ...manualReadings as Reading[], ...treatmentReadings];
     }
 
     // Sort all readings by timestamp, most recent first

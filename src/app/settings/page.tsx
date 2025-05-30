@@ -21,6 +21,7 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   useEffect(() => {
     const fetchSettings = async () => {
@@ -29,8 +30,8 @@ export default function SettingsPage() {
         if (res.ok) {
           const data = await res.json();
           setSettings({
-            nightscoutUrl: data.nightscoutUrl || '',
-            nightscoutApiToken: data.nightscoutApiToken || '',
+            nightscoutUrl: data.nightscoutUrl ?? '',
+            nightscoutApiToken: data.nightscoutApiToken ?? '',
             lowGlucose: Number(data.lowGlucose) || 70.0,
             highGlucose: Number(data.highGlucose) || 180.0
           });
@@ -38,6 +39,8 @@ export default function SettingsPage() {
       } catch (error) {
         console.error('Error fetching settings:', error);
         setError('Failed to load settings');
+      } finally {
+        setIsInitialLoad(false);
       }
     };
 
@@ -103,7 +106,7 @@ export default function SettingsPage() {
                   type="url"
                   id="nightscoutUrl"
                   name="nightscoutUrl"
-                  value={settings.nightscoutUrl}
+                  value={settings.nightscoutUrl ?? ''}
                   onChange={(e) => handleChange('nightscoutUrl', e.target.value)}
                   placeholder="https://your-site.herokuapp.com"
                   className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
@@ -119,7 +122,7 @@ export default function SettingsPage() {
                   type="password"
                   id="nightscoutApiToken"
                   name="nightscoutApiToken"
-                  value={settings.nightscoutApiToken}
+                  value={settings.nightscoutApiToken ?? ''}
                   onChange={(e) => handleChange('nightscoutApiToken', e.target.value)}
                   placeholder="Enter your API token"
                   className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
@@ -138,7 +141,7 @@ export default function SettingsPage() {
                     name="lowGlucose"
                     min="40"
                     max="100"
-                    value={settings.lowGlucose}
+                    value={settings.lowGlucose ?? 70}
                     onChange={(e) => handleChange('lowGlucose', parseFloat(e.target.value))}
                     className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                   />
@@ -155,7 +158,7 @@ export default function SettingsPage() {
                     name="highGlucose"
                     min="120"
                     max="300"
-                    value={settings.highGlucose}
+                    value={settings.highGlucose ?? 180}
                     onChange={(e) => handleChange('highGlucose', parseFloat(e.target.value))}
                     className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                   />

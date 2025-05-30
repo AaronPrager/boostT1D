@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { authOptions } from "../auth/[...nextauth]/route";
+import { authOptions } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 import fetch, { RequestInit } from 'node-fetch';
 import https from 'https';
 
@@ -15,14 +16,35 @@ const agent = new https.Agent({
 
 export async function GET(req: Request) {
   try {
-    // Get the URL and date range from query parameters
+    // Check authentication
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.email) {
+      return new NextResponse('Unauthorized', { status: 401 });
+    }
+
+    // Get the date range from query parameters
     const { searchParams } = new URL(req.url);
-    const nightscoutUrl = searchParams.get('url');
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
 
-    if (!nightscoutUrl || !startDate || !endDate) {
+    if (!startDate || !endDate) {
       return new NextResponse("Missing required parameters", { status: 400 });
+    }
+
+    // Get user settings including Nightscout URL and API token
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email },
+      include: { settings: true }
+    });
+
+    if (!user || !user.settings) {
+      return new NextResponse("User settings not found. Please configure your Nightscout settings first.", { status: 404 });
+    }
+
+    const { nightscoutUrl, nightscoutApiToken } = user.settings;
+
+    if (!nightscoutUrl) {
+      return new NextResponse("Nightscout URL not configured. Please set your Nightscout URL in settings.", { status: 400 });
     }
 
     // Clean up the URL and ensure HTTPS
@@ -40,11 +62,18 @@ export async function GET(req: Request) {
     const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
 
     try {
+      const headers: any = {
+        'Accept': 'application/json',
+        'User-Agent': 'BoostT1D/1.0',
+      };
+
+      // Add API token if provided
+      if (nightscoutApiToken) {
+        headers['api-secret'] = nightscoutApiToken;
+      }
+
       const fetchOptions: RequestInit = {
-        headers: {
-          'Accept': 'application/json',
-          'User-Agent': 'BoostT1D/1.0',
-        },
+        headers,
         agent,
         signal: controller.signal as any, // Type assertion to avoid compatibility issues
         compress: true, // Enable compression
@@ -60,6 +89,11 @@ export async function GET(req: Request) {
           status: response.status,
           statusText: response.statusText,
         });
+        
+        if (response.status === 401) {
+          return new NextResponse("Unauthorized access to Nightscout. Please check your API token.", { status: 401 });
+        }
+        
         return new NextResponse(`Nightscout API error: ${response.statusText}`, { status: response.status });
       }
 

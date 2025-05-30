@@ -22,10 +22,21 @@ interface Settings {
 }
 
 // Add these helper functions at the top level
+const formatDateForInput = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = (date.getMonth() + 1).toString().padStart(2, '0');
+  const day = date.getDate().toString().padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 const formatTimeForInput = (date: Date): string => {
   const hours = date.getHours().toString().padStart(2, '0');
   const minutes = date.getMinutes().toString().padStart(2, '0');
   return `${hours}:${minutes}`;
+};
+
+const formatDateTimeForInput = (date: Date): string => {
+  return `${formatDateForInput(date)}T${formatTimeForInput(date)}`;
 };
 
 const parseTimeString = (timeStr: string): { hours: number; minutes: number } => {
@@ -42,7 +53,7 @@ export default function TreatmentsPage() {
   });
   const [formData, setFormData] = useState<TreatmentFormData>({
     type: 'bg',
-    timestamp: new Date().toISOString().slice(0, 16), // Format: YYYY-MM-DDTHH:mm
+    timestamp: formatDateTimeForInput(new Date()), // Use local time format
   });
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -121,19 +132,17 @@ export default function TreatmentsPage() {
   };
 
   const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newDate = new Date(formData.timestamp);
+    const currentDate = new Date(formData.timestamp);
     const [year, month, day] = e.target.value.split('-').map(Number);
-    newDate.setFullYear(year);
-    newDate.setMonth(month - 1); // Months are 0-based
-    newDate.setDate(day);
-    setFormData({ ...formData, timestamp: newDate.toISOString() });
+    const newDate = new Date(year, month - 1, day, currentDate.getHours(), currentDate.getMinutes());
+    setFormData({ ...formData, timestamp: formatDateTimeForInput(newDate) });
   };
 
   const handleTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newDate = new Date(formData.timestamp);
+    const currentDate = new Date(formData.timestamp);
     const { hours, minutes } = parseTimeString(e.target.value);
-    newDate.setHours(hours, minutes);
-    setFormData({ ...formData, timestamp: newDate.toISOString() });
+    const newDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate(), hours, minutes);
+    setFormData({ ...formData, timestamp: formatDateTimeForInput(newDate) });
   };
 
   if (!session) {
@@ -198,7 +207,7 @@ export default function TreatmentsPage() {
                       <input
                         type="date"
                         id="date"
-                        value={new Date(formData.timestamp).toISOString().split('T')[0]}
+                        value={formatDateForInput(new Date(formData.timestamp))}
                         onChange={handleDateChange}
                         className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white text-gray-900"
                         required

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { prisma } from "@/lib/prisma";
-import { authOptions } from "../auth/[...nextauth]/route";
+import { authOptions } from "@/lib/auth";
 
 interface SessionUser {
   id: string;
@@ -57,26 +57,26 @@ export async function PUT(req: Request) {
     const body = await req.json();
     const { bio, location, website, birthDate, phoneNumber, occupation } = body;
 
+    const profileData = {
+      bio,
+      location,
+      website,
+      birthDate: birthDate ? new Date(birthDate) : null,
+      phoneNumber,
+      occupation,
+    };
+
     const profile = await prisma.profile.upsert({
       where: {
         userId: user.id,
       },
       update: {
-        bio,
-        location,
-        website,
-        birthDate: birthDate ? new Date(birthDate) : null,
-        phoneNumber,
-        occupation,
+        data: profileData,
+        updatedAt: new Date(),
       },
       create: {
         userId: user.id,
-        bio,
-        location,
-        website,
-        birthDate: birthDate ? new Date(birthDate) : null,
-        phoneNumber,
-        occupation,
+        data: profileData,
       },
     });
 

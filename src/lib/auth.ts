@@ -1,8 +1,8 @@
 import { NextAuthOptions } from 'next-auth';
-import { PrismaAdapter } from '@auth/prisma-adapter';
-import { prisma } from './prisma';
 import CredentialsProvider from 'next-auth/providers/credentials';
-import bcrypt from 'bcryptjs';
+import { PrismaAdapter } from '@auth/prisma-adapter';
+import { prisma } from '@/lib/prisma';
+import bcrypt from "bcryptjs";
 
 declare module 'next-auth' {
   interface Session {
@@ -21,7 +21,7 @@ export const authOptions: NextAuthOptions = {
     CredentialsProvider({
       name: 'credentials',
       credentials: {
-        email: { label: 'Email', type: 'text' },
+        email: { label: 'Email', type: 'email' },
         password: { label: 'Password', type: 'password' }
       },
       async authorize(credentials) {
@@ -35,13 +35,16 @@ export const authOptions: NextAuthOptions = {
           }
         });
 
-        if (!user) {
+        if (!user || !user.password) {
           return null;
         }
 
-        const passwordsMatch = await bcrypt.compare(credentials.password, user.password || '');
+        const isPasswordValid = await bcrypt.compare(
+          credentials.password,
+          user.password
+        );
 
-        if (!passwordsMatch) {
+        if (!isPasswordValid) {
           return null;
         }
 
@@ -49,46 +52,29 @@ export const authOptions: NextAuthOptions = {
           id: user.id,
           email: user.email,
           name: user.name,
+          image: user.image,
         };
       }
     })
   ],
-  session: {
-    strategy: 'jwt'
-  },
-  secret: process.env.NEXTAUTH_SECRET,
   pages: {
-    signIn: '/login',
+    signIn: '/auth/signin',
   },
   callbacks: {
-    async session({ token, session }) {
-      if (token && session.user) {
-        session.user.id = token.id as string;
-        session.user.name = token.name;
-        session.user.email = token.email;
+    async session({ session, user, token }) {
+      if (session.user) {
+        session.user.id = (user?.id || token?.sub) as string;
       }
-
       return session;
     },
     async jwt({ token, user }) {
-      const dbUser = await prisma.user.findFirst({
-        where: {
-          email: token.email || '',
-        },
-      });
-
-      if (!dbUser) {
-        if (user) {
-          token.id = user?.id;
-        }
-        return token;
+      if (user) {
+        token.id = user.id;
       }
-
-      return {
-        id: dbUser.id,
-        name: dbUser.name,
-        email: dbUser.email,
-      };
-    }
-  }
+      return token;
+    },
+  },
+  session: {
+    strategy: 'jwt',
+  },
 }; 

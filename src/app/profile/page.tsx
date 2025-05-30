@@ -161,7 +161,7 @@ export default function ProfilePage() {
           <div className="space-y-6">
             <div>
               <h2 className="text-xl font-semibold mb-4">General Settings</h2>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700">DIA (hours)</label>
                   <p className="mt-1 text-sm text-gray-900">{profile.dia}</p>
@@ -179,7 +179,7 @@ export default function ProfilePage() {
 
             <div>
               <h2 className="text-xl font-semibold mb-4">Insulin Sensitivity Factor (ISF)</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="space-y-2">
                 {profile.sens.map((item, index) => (
                   <div key={index} className="bg-gray-50 p-2 rounded">
                     {formatTimeValue(item)}
@@ -190,7 +190,7 @@ export default function ProfilePage() {
 
             <div>
               <h2 className="text-xl font-semibold mb-4">Carb Ratio (IC)</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="space-y-2">
                 {profile.carbratio.map((item, index) => (
                   <div key={index} className="bg-gray-50 p-2 rounded">
                     {formatTimeValue(item)}
@@ -201,7 +201,7 @@ export default function ProfilePage() {
 
             <div>
               <h2 className="text-xl font-semibold mb-4">Basal Rates</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="space-y-2">
                 {profile.basal.map((item, index) => (
                   <div key={index} className="bg-gray-50 p-2 rounded">
                     {formatTimeValue(item)}
@@ -212,10 +212,10 @@ export default function ProfilePage() {
 
             <div>
               <h2 className="text-xl font-semibold mb-4">Target Range</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-6">
                 <div>
                   <h3 className="text-lg font-medium mb-2">Low</h3>
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  <div className="space-y-2">
                     {profile.target_low.map((item, index) => (
                       <div key={index} className="bg-gray-50 p-2 rounded">
                         {formatTimeValue(item)}
@@ -225,7 +225,7 @@ export default function ProfilePage() {
                 </div>
                 <div>
                   <h3 className="text-lg font-medium mb-2">High</h3>
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  <div className="space-y-2">
                     {profile.target_high.map((item, index) => (
                       <div key={index} className="bg-gray-50 p-2 rounded">
                         {formatTimeValue(item)}
