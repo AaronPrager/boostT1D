@@ -3,24 +3,9 @@
 import React from 'react';
 import Link from 'next/link';
 import { useSession, signOut } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
 
 export default function Navigation() {
   const { data: session } = useSession();
-  const router = useRouter();
-
-  const handleSignOut = async () => {
-    try {
-      await signOut({ 
-        callbackUrl: '/',
-        redirect: true 
-      });
-    } catch (error) {
-      console.error('Sign out error:', error);
-      // Fallback: manually redirect to home page
-      router.push('/');
-    }
-  };
 
   return (
     <nav className="bg-white shadow-lg">
@@ -47,9 +32,6 @@ export default function Navigation() {
                   <Link href="/readings" className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">
                     Readings
                   </Link>
-                  <Link href="/food-analysis" className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">
-                    🍎 Food Analysis
-                  </Link>
                   <Link href="/analysis" className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">
                     Analysis
                   </Link>
@@ -59,6 +41,9 @@ export default function Navigation() {
                   <Link href="/profile" className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">
                     Diabetes Profile
                   </Link>
+                  <Link href="/settings" className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">
+                    Settings
+                  </Link>
                 </>
               )}
             </div>
@@ -66,7 +51,7 @@ export default function Navigation() {
           <div className="flex items-center">
             {session ? (
               <button
-                onClick={handleSignOut}
+                onClick={() => signOut()}
                 className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
               >
                 Sign Out

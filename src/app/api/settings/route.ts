@@ -26,6 +26,7 @@ export async function GET(request: Request) {
         data: {
           userId: user.id,
           nightscoutUrl: '',
+          nightscoutApiToken: '',
           lowGlucose: 70,
           highGlucose: 180
         }
@@ -71,12 +72,14 @@ export async function PUT(request: Request) {
       },
       update: {
         nightscoutUrl: body.nightscoutUrl,
+        nightscoutApiToken: body.nightscoutApiToken || '',
         lowGlucose: body.lowGlucose || 70,
         highGlucose: body.highGlucose || 180
       },
       create: {
         userId: user.id,
         nightscoutUrl: body.nightscoutUrl || '',
+        nightscoutApiToken: body.nightscoutApiToken || '',
         lowGlucose: body.lowGlucose || 70,
         highGlucose: body.highGlucose || 180
       }
