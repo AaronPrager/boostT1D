@@ -6,7 +6,7 @@ import UserProfileHeader from '@/components/UserProfileHeader';
 
 export default function DebugProfilePage() {
   const { data: session } = useSession();
-  const [debugData, setDebugData] = useState<any>(null);
+  const [debugData, setDebugData] = useState<unknown>(null);
 
   useEffect(() => {
     const fetchDebugData = async () => {

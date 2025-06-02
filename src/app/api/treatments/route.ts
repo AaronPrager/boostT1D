@@ -3,16 +3,6 @@ import { getServerSession } from 'next-auth';
 import { prisma } from '@/lib/prisma';
 import { authOptions } from '@/lib/auth';
 
-type TreatmentData = {
-  type: 'bg' | 'bolus' | 'food';
-  glucoseValue?: number;
-  carbsGrams?: number;
-  insulinUnits?: number;
-  insulinType?: string;
-  notes?: string;
-  timestamp: string | Date;
-};
-
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);

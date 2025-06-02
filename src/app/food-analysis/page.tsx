@@ -1,24 +1,13 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { useSession } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
+import React, { useState } from 'react';
+import Image from 'next/image';
 
 type FoodAnalysis = {
   description: string;
   carbs_grams: number;
   confidence: string;
   notes: string;
-};
-
-type FoodAnalysisStats = {
-  currentGlucose: number | null;
-  currentDirection: string | null;
-  timeInRange: number;
-  averageGlucose: number;
-  totalReadings: number;
-  lastReading: string | null;
-  recentTrend: string;
 };
 
 export default function FoodAnalysisPage() {
@@ -92,7 +81,7 @@ export default function FoodAnalysisPage() {
       } else {
         setError(data.error || 'Analysis failed');
       }
-    } catch (err) {
+    } catch {
       setError('Failed to analyze image');
     } finally {
       setLoading(false);
@@ -132,9 +121,11 @@ export default function FoodAnalysisPage() {
                   <div className="space-y-1 text-center">
                     {previewUrl ? (
                       <div className="space-y-4">
-                        <img
+                        <Image
                           src={previewUrl}
                           alt="Food preview"
+                          width={128}
+                          height={128}
                           className="mx-auto h-32 w-auto rounded-lg shadow-sm"
                         />
                         <div className="flex space-x-2 justify-center">

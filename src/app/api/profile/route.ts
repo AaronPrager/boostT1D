@@ -10,16 +10,16 @@ interface SessionUser {
   image?: string | null;
 }
 
-export async function GET(request: Request) {
+export async function GET() {
   try {
     const session = await getServerSession(authOptions);
-    if (!session) {
+    if (!session || !session.user?.email) {
       return new NextResponse('Unauthorized', { status: 401 });
     }
 
     // Get the user's ID from the session
     const user = await prisma.user.findUnique({
-      where: { email: session.user?.email! },
+      where: { email: session.user.email },
     });
 
     if (!user) {
@@ -90,7 +90,7 @@ export async function PUT(req: Request) {
 export async function POST(request: Request) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session) {
+    if (!session || !session.user?.email) {
       return new NextResponse('Unauthorized', { status: 401 });
     }
 
@@ -98,7 +98,7 @@ export async function POST(request: Request) {
 
     // Get the user's ID from the session
     const user = await prisma.user.findUnique({
-      where: { email: session.user?.email! },
+      where: { email: session.user.email },
     });
 
     if (!user) {

@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 
 type BasalRate = {
   id?: string;
@@ -28,8 +27,6 @@ export default function BasalProfilesPage() {
     name: '',
     rates: [{ startTime: '00:00', rate: 0 }]
   });
-
-  const router = useRouter();
 
   useEffect(() => {
     fetchProfiles();

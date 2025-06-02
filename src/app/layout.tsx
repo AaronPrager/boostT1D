@@ -4,7 +4,6 @@ import { Inter } from 'next/font/google';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
 import AuthProvider from '@/components/AuthProvider';
-import { getServerSession } from 'next-auth';
 
 const inter = Inter({ subsets: ['latin'] });
 

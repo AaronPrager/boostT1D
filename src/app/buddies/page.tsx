@@ -33,11 +33,6 @@ interface MatchResult {
   } | null;
 }
 
-interface ConnectionRequestData {
-  targetUserId: string;
-  message?: string;
-}
-
 export default function BuddiesPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -49,19 +44,6 @@ export default function BuddiesPage() {
   const [showMessageModal, setShowMessageModal] = useState(false);
   const [showResponseModal, setShowResponseModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
-
-  const calculateAge = (dateOfBirth: string): number | null => {
-    if (!dateOfBirth) return null;
-    const birth = new Date(dateOfBirth);
-    const today = new Date();
-    const age = today.getFullYear() - birth.getFullYear();
-    const monthDiff = today.getMonth() - birth.getMonth();
-    
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
-      return age - 1;
-    }
-    return age;
-  };
 
   useEffect(() => {
     if (status === 'loading') return;

@@ -12,23 +12,6 @@ type Reading = {
   userId?: string;
 };
 
-type DBTreatment = {
-  id: string;
-  timestamp: Date;
-  glucoseValue: number;
-  type: string;
-  userId: string;
-};
-
-type GlucoseReading = {
-  id: string;
-  date: Date;
-  sgv: number;
-  direction: string | null;
-  source: string;
-  userId: string;
-};
-
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
 
@@ -58,68 +41,67 @@ export async function POST(request: Request) {
     }
 
     // Validate timestamps and convert to Date objects
-    const validReadings = data.readings.filter((r: any) => {
+    const validReadings = data.readings.filter((r: unknown) => {
       try {
         if (!r || typeof r !== 'object') {
           console.warn('Invalid reading object:', r);
           return false;
         }
-
+        // Type assertion for reading
+        const reading = r as Partial<Reading> & { timestamp?: string | number };
         // Handle Nightscout format (has date and dateString fields)
-        if (r.date && !r.timestamp) {
-          const rawDate = r.date;
-          r.date = new Date(r.date); // Use the date field from Nightscout
+        if (reading.date && !reading.timestamp) {
+          reading.date = new Date(reading.date);
           console.log('Processing Nightscout reading:', { 
-            rawData: r,
-            processedDate: r.date,
-            sgv: r.sgv,
-            direction: r.direction
+            rawData: reading,
+            processedDate: reading.date,
+            sgv: reading.sgv,
+            direction: reading.direction
           });
-        } else if (r.timestamp && !r.date) {
-          const rawTimestamp = r.timestamp;
-          r.date = new Date(r.timestamp); // Convert timestamp to date
+        } else if (reading.timestamp && !reading.date) {
+          reading.date = new Date(reading.timestamp);
           console.log('Processing Nightscout reading:', {
-            rawData: r,
-            processedDate: r.date,
-            sgv: r.sgv,
-            direction: r.direction
+            rawData: reading,
+            processedDate: reading.date,
+            sgv: reading.sgv,
+            direction: reading.direction
           });
         }
 
-        if (!r.date) {
-          console.warn('Missing date in reading:', r);
+        if (!reading.date) {
+          console.warn('Missing date in reading:', reading);
           return false;
         }
 
-        if (!r.sgv || typeof r.sgv !== 'number') {
-          console.warn('Invalid or missing sgv value:', r);
+        if (!reading.sgv || typeof reading.sgv !== 'number') {
+          console.warn('Invalid or missing sgv value:', reading);
           return false;
         }
 
         // Convert date to Date object if it's not already
-        if (!(r.date instanceof Date)) {
-          r.date = new Date(r.date);
+        if (!(reading.date instanceof Date)) {
+          reading.date = new Date(reading.date);
         }
 
-        if (isNaN(r.date.getTime())) {
-          console.warn('Invalid date:', r.date, 'Original:', r.timestamp);
+        if (isNaN(reading.date.getTime())) {
+          console.warn('Invalid date:', reading.date, 'Original:', reading.timestamp);
           return false;
         }
 
         // Add source if not present
-        if (!r.source) {
-          r.source = 'nightscout'; // Default to nightscout for Nightscout data
+        if (!reading.source) {
+          reading.source = 'nightscout'; // Default to nightscout for Nightscout data
         }
 
         // Map Nightscout direction to our format
-        if (r.direction === 'FortyFiveDown' || r.direction === 'Slight Fall') r.direction = 'FortyFiveDown';
-        if (r.direction === 'FortyFiveUp' || r.direction === 'Slight Rise') r.direction = 'FortyFiveUp';
-        if (r.direction === 'SingleDown' || r.direction === 'Fall') r.direction = 'SingleDown';
-        if (r.direction === 'SingleUp' || r.direction === 'Rise') r.direction = 'SingleUp';
-        if (r.direction === 'DoubleDown' || r.direction === 'Rapid Fall') r.direction = 'DoubleDown';
-        if (r.direction === 'DoubleUp' || r.direction === 'Rapid Rise') r.direction = 'DoubleUp';
-        if (r.direction === 'Flat') r.direction = 'Flat';
-        if (!r.direction) r.direction = 'NONE';
+        if (reading.direction === 'FortyFiveDown' || reading.direction === 'Slight Fall') reading.direction = 'FortyFiveDown';
+        if (reading.direction === 'FortyFiveUp' || reading.direction === 'Slight Rise') reading.direction = 'FortyFiveUp';
+        if (reading.direction === 'SingleDown' || reading.direction === 'Fall') reading.direction = 'SingleDown';
+        if (reading.direction === 'SingleUp' || reading.direction === 'Rise') reading.direction = 'SingleUp';
+        if (reading.direction === 'DoubleDown' || reading.direction === 'Rapid Fall') reading.direction = 'DoubleDown';
+        if (reading.direction === 'DoubleUp' || reading.direction === 'Rapid Rise') reading.direction = 'DoubleUp';
+        if (reading.direction === 'Flat') reading.direction = 'Flat';
+        if (!reading.direction) reading.direction = 'NONE';
 
         return true;
       } catch (error) {
@@ -142,7 +124,7 @@ export async function POST(request: Request) {
       }
     });
 
-    const existingTimestamps = new Set(existingReadings.map((r: any) => r.date.getTime()));
+    const existingTimestamps = new Set(existingReadings.map((r: { date: Date }) => r.date.getTime()));
 
     // Filter out readings that already exist
     const newReadings = validReadings.filter((reading: Reading) => 
@@ -355,14 +337,12 @@ export async function GET(request: Request) {
 
     // Sort all readings by timestamp, most recent first
     const sortedReadings = allReadings.sort((a, b) => {
-      const timeA = a.date?.getTime() || (a as any).date?.getTime();
-      const timeB = b.date?.getTime() || (b as any).date?.getTime();
-      
+      const timeA = a.date?.getTime();
+      const timeB = b.date?.getTime();
       if (!timeA || !timeB) {
         console.warn('Invalid timestamp in reading:', !timeA ? a : b);
         return 0;
       }
-      
       return timeB - timeA;
     });
 

@@ -2,7 +2,6 @@
 
 import React, { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
 type Reading = {
@@ -32,7 +31,6 @@ type DashboardStats = {
 
 export default function DashboardPage() {
   const { data: session } = useSession();
-  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [refreshMessage, setRefreshMessage] = useState<string | null>(null);
@@ -80,7 +78,7 @@ export default function DashboardPage() {
         clearInterval(autoRefreshTimer);
       }
     };
-  }, [autoRefresh]);
+  }, [autoRefresh, autoRefreshTimer]);
 
   const fetchSettings = async () => {
     try {
@@ -272,7 +270,7 @@ export default function DashboardPage() {
                 Welcome back, {session.user?.email?.split('@')[0] || 'User'}!
               </h1>
               <p className="mt-2 text-gray-600">
-                Here's an overview of your diabetes management
+                Here&apos;s an overview of your diabetes management
               </p>
             </div>
             <div className="flex items-center space-x-4">
