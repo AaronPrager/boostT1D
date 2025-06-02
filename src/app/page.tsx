@@ -7,25 +7,39 @@ export default function Home() {
   const { data: session } = useSession();
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
+    <div className="min-h-screen bg-white">
       {/* Hero Section */}
       <div className="relative overflow-hidden">
-        <div className="max-w-7xl mx-auto">
-          <div className="relative z-10 pb-8 sm:pb-16 md:pb-20 lg:w-full lg:pb-28 xl:pb-32">
-            <main className="mt-10 mx-auto max-w-7xl px-4 sm:mt-12 sm:px-6 md:mt-16 lg:mt-20 lg:px-8 xl:mt-28">
-              <div className="sm:text-center lg:text-left">
-                <h1 className="text-4xl tracking-tight font-extrabold text-gray-900 sm:text-5xl md:text-6xl">
-                  <span className="block">Take control of your</span>
-                  <span className="block text-indigo-600">diabetes management</span>
-                </h1>
-                <p className="mt-3 text-base text-gray-500 sm:mt-5 sm:text-lg sm:max-w-xl sm:mx-auto md:mt-5 md:text-xl lg:mx-0">
-                  BoostT1D helps you track, analyze, and understand your blood glucose patterns with powerful visualization tools and insightful analytics.
-                </p>
-              </div>
-            </main>
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-center min-h-[60vh] gap-8 px-4 sm:px-6 lg:px-8">
+          {/* Left Image */}
+          <img
+            src="/hero1.jpg"
+            alt="Diabetes community"
+            className="w-60 h-60 md:w-72 md:h-72 object-cover rounded-2xl shadow-xl border-4 border-indigo-300 mb-8 md:mb-0"
+            onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
+          />
+          {/* Title Block */}
+          <div className="flex-1 flex flex-col items-center justify-center text-center">
+            <h1 className="text-4xl tracking-tight font-extrabold text-gray-900 sm:text-5xl md:text-6xl drop-shadow-lg">
+              <span className="block">Take control of your</span>
+              <span className="block text-indigo-600">diabetes management</span>
+            </h1>
+            <p className="mt-3 text-base text-gray-600 sm:mt-5 sm:text-lg sm:max-w-xl md:text-xl bg-white rounded-lg px-4 py-2 shadow-md">
+              BoostT1D helps you track, analyze, and understand your blood glucose patterns with powerful visualization tools and insightful analytics.
+            </p>
           </div>
+          {/* Right Image */}
+          <img
+            src="/hero2.jpg"
+            alt="Glucose monitoring"
+            className="w-60 h-60 md:w-72 md:h-72 object-cover rounded-2xl shadow-xl border-4 border-purple-300 mt-8 md:mt-0"
+            onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
+          />
         </div>
       </div>
+
+      {/* Divider between Hero and Features */}
+      <hr className="my-8 border-t-2 border-gray-200 w-3/4 mx-auto" />
 
       {/* Features Section */}
       <div className="py-12 bg-white">
@@ -135,64 +149,53 @@ export default function Home() {
         </div>
       </div>
 
-      {/* CTA Section */}
-      <div className="bg-gradient-to-r from-purple-800 to-indigo-700">
+      {/* CTA Section - replaced with Aaron's info */}
+      <div className="bg-white">
         <div className="max-w-2xl mx-auto text-center py-16 px-4 sm:py-20 sm:px-6 lg:px-8">
-          {!session ? (
-            <>
-              <h2 className="text-3xl font-extrabold text-white sm:text-4xl">
-                <span className="block">Ready to take control?</span>
-                <span className="block">Start managing your diabetes today.</span>
-              </h2>
-              <p className="mt-4 text-lg leading-6 text-indigo-200">
-                Join our community of users who are successfully managing their diabetes with data-driven insights.
-              </p>
-              <div className="mt-8 flex flex-col sm:flex-row justify-center gap-4">
-                <Link
-                  href="/auth/signin"
-                  className="inline-flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-md text-indigo-700 bg-white hover:bg-indigo-50 md:py-4 md:text-lg md:px-10"
-                >
-                  Login
-                </Link>
-                <Link
-                  href="/auth/signin?tab=register"
-                  className="inline-flex items-center justify-center px-8 py-3 border border-white text-base font-medium rounded-md text-white bg-transparent hover:bg-indigo-600 md:py-4 md:text-lg md:px-10"
-                >
-                  Register
-                </Link>
+          <div className="bg-white/90 rounded-xl shadow-lg p-8 flex flex-col items-center">
+            <img
+              src="/aaron-profile.jpg"
+              alt="Aaron's profile photo"
+              className="w-28 h-28 rounded-full object-cover border-4 border-indigo-500 mb-4 shadow-md"
+              onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
+            />
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Meet Aaron</h2>
+            <p className="text-lg text-gray-700 mb-1">Age: <span className="font-semibold">16</span></p>
+            <p className="text-lg text-gray-700 mb-1">School: <span className="font-semibold">British International School of Boston</span></p>
+            <p className="text-lg text-gray-700 mb-1">Diagnosed with T1D at <span className="font-semibold">17 months old</span></p>
+            <p className="mt-4 text-indigo-700 font-semibold text-lg bg-indigo-100 rounded px-3 py-1 shadow-sm">Aaron is the developer of BoostT1D</p>
+            <a
+              href="mailto:arik@pragersfamily.com"
+              className="mt-2 text-blue-600 hover:underline text-base font-medium"
+            >
+              arik@pragersfamily.com
+            </a>
+          </div>
+        </div>
+      </div>
+
+      {/* Divider between Aaron and Gallery */}
+      <hr className="my-8 border-t-2 border-gray-200 w-3/4 mx-auto" />
+
+      {/* Photo Gallery Section */}
+      <div className="py-12 bg-white">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <h3 className="text-2xl font-bold text-gray-900 text-center mb-8">Our Community in Photos</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+            {[1,2,3].map(num => (
+              <div key={num} className="rounded-xl overflow-hidden shadow-lg bg-white flex items-center justify-center aspect-[4/3]">
+                <img
+                  src={`/gallery${num}.jpg`}
+                  alt={`Community photo ${num}`}
+                  className="object-cover w-full h-full transition-transform duration-300 hover:scale-105"
+                  onError={e => {
+                    (e.target as HTMLImageElement).style.display = 'none';
+                    (e.target as HTMLImageElement).parentElement!.innerHTML = `<div class='flex flex-col items-center justify-center w-full h-full text-indigo-400'><svg xmlns='http://www.w3.org/2000/svg' class='h-12 w-12 mb-2' fill='none' viewBox='0 0 24 24' stroke='currentColor'><path stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M3 7v10a4 4 0 004 4h10a4 4 0 004-4V7a4 4 0 00-4-4H7a4 4 0 00-4 4z' /><path stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M8 11l4 4 4-4' /></svg><span class='text-sm'>Photo unavailable</span></div>`;
+                  }}
+                />
               </div>
-              <p className="mt-4 text-sm text-indigo-200">
-                Secure email-based authentication
-              </p>
-            </>
-          ) : (
-            <>
-              <h2 className="text-3xl font-extrabold text-white sm:text-4xl">
-                <span className="block">Welcome back!</span>
-                <span className="block">Continue managing your diabetes</span>
-              </h2>
-              <div className="mt-8 flex flex-col sm:flex-row justify-center gap-4">
-                <Link
-                  href="/readings"
-                  className="inline-flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-md text-indigo-700 bg-white hover:bg-indigo-50 md:py-4 md:text-lg md:px-10"
-                >
-                  View Your Readings
-                </Link>
-                <Link
-                  href="/analysis"
-                  className="inline-flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 md:py-4 md:text-lg md:px-10"
-                >
-                  Pattern Analysis
-                </Link>
-                <Link
-                  href="/profile"
-                  className="inline-flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 md:py-4 md:text-lg md:px-10"
-                >
-                  Manage Profile
-                </Link>
-              </div>
-            </>
-          )}
+            ))}
+          </div>
         </div>
       </div>
     </div>
