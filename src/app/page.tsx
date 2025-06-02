@@ -154,7 +154,7 @@ export default function Home() {
         <div className="max-w-2xl mx-auto text-center py-16 px-4 sm:py-20 sm:px-6 lg:px-8">
           <div className="bg-white/90 rounded-xl shadow-lg p-8 flex flex-col items-center">
             <img
-              src="/aaron-profile.jpg"
+              src="/aaron-profile.JPG"
               alt="Aaron's profile photo"
               className="w-28 h-28 rounded-full object-cover border-4 border-indigo-500 mb-4 shadow-md"
               onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
