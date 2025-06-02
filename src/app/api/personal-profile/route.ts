@@ -27,33 +27,33 @@ interface PersonalProfileData {
 }
 
 // Type guard to check if data is an object
-function isObject(data: any): data is Record<string, any> {
+function isObject(data: unknown): data is Record<string, unknown> {
   return data !== null && typeof data === 'object' && !Array.isArray(data);
 }
 
 // Helper function to safely get string value
-function getStringValue(obj: any, key: string): string {
-  return isObject(obj) && typeof obj[key] === 'string' ? obj[key] : '';
+function getStringValue(obj: Record<string, unknown> | null | undefined, key: string): string {
+  return isObject(obj) && typeof obj[key] === 'string' ? obj[key] as string : '';
 }
 
 // Helper function to safely get number value
-function getNumberValue(obj: any, key: string): number | undefined {
+function getNumberValue(obj: Record<string, unknown> | null | undefined, key: string): number | undefined {
   if (isObject(obj) && typeof obj[key] === 'number') {
-    return obj[key];
+    return obj[key] as number;
   }
   if (isObject(obj) && typeof obj[key] === 'string') {
-    const parsed = parseInt(obj[key], 10);
+    const parsed = parseInt(obj[key] as string, 10);
     return !isNaN(parsed) ? parsed : undefined;
   }
   return undefined;
 }
 
 // Helper function to safely get object value
-function getObjectValue(obj: any, key: string): Record<string, any> {
-  return isObject(obj) && isObject(obj[key]) ? obj[key] : {};
+function getObjectValue(obj: Record<string, unknown> | null | undefined, key: string): Record<string, unknown> {
+  return isObject(obj) && isObject(obj[key]) ? obj[key] as Record<string, unknown> : {};
 }
 
-export async function GET(request: Request) {
+export async function GET() {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
@@ -129,10 +129,10 @@ export async function PUT(request: Request) {
 
     // Get existing profile data to preserve diabetes-related settings
     const existingProfileData = user.profile?.data as Prisma.JsonObject | null;
-    const safeExistingData = isObject(existingProfileData) ? existingProfileData : {};
+    const safeExistingData: Record<string, unknown> = isObject(existingProfileData) ? existingProfileData : {};
 
     // Merge personal profile data with existing profile data
-    const updatedProfileData = {
+    const updatedProfileData: Record<string, unknown> = {
       ...safeExistingData,
       about: personalProfileData.about,
       photo: personalProfileData.photo,
@@ -145,15 +145,15 @@ export async function PUT(request: Request) {
     };
 
     // Upsert the profile
-    const profile = await prisma.profile.upsert({
+    await prisma.profile.upsert({
       where: { userId: user.id },
       update: {
-        data: updatedProfileData,
+        data: updatedProfileData as Prisma.InputJsonValue,
         updatedAt: new Date(),
       },
       create: {
         userId: user.id,
-        data: updatedProfileData,
+        data: updatedProfileData as Prisma.InputJsonValue,
       },
     });
 

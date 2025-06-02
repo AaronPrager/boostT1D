@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if connection already exists
-    // @ts-ignore - BuddyConnection might not be properly generated yet
+    // @ts-expect-error - BuddyConnection might not be properly generated yet
     const existingConnection = await prisma.buddyConnection.findFirst({
       where: {
         OR: [
@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create new buddy connection request
-    // @ts-ignore - BuddyConnection might not be properly generated yet
+    // @ts-expect-error - BuddyConnection might not be properly generated yet
     const connection = await prisma.buddyConnection.create({
       data: {
         requesterId: session.user.id,
@@ -79,7 +79,7 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // @ts-ignore - BuddyConnection might not be properly generated yet
+    // @ts-expect-error - BuddyConnection might not be properly generated yet
     const connections = await prisma.buddyConnection.findMany({
       where: {
         OR: [
@@ -132,7 +132,7 @@ export async function PUT(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // @ts-ignore - BuddyConnection might not be properly generated yet
+    // @ts-expect-error - BuddyConnection might not be properly generated yet
     const connection = await prisma.buddyConnection.findUnique({
       where: { id: connectionId }
     });
@@ -148,7 +148,7 @@ export async function PUT(request: NextRequest) {
       }, { status: 403 });
     }
 
-    // @ts-ignore - BuddyConnection might not be properly generated yet
+    // @ts-expect-error - BuddyConnection might not be properly generated yet
     const updatedConnection = await prisma.buddyConnection.update({
       where: { id: connectionId },
       data: { status }

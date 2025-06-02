@@ -62,7 +62,7 @@ export async function GET(req: Request) {
     const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
 
     try {
-      const headers: any = {
+      const headers: Record<string, string> = {
         'Accept': 'application/json',
         'User-Agent': 'BoostT1D/1.0',
       };
@@ -75,7 +75,7 @@ export async function GET(req: Request) {
       const fetchOptions: RequestInit = {
         headers,
         agent,
-        signal: controller.signal as any, // Type assertion to avoid compatibility issues
+        signal: controller.signal,
         compress: true, // Enable compression
         follow: 5, // Follow up to 5 redirects
       };
@@ -104,12 +104,12 @@ export async function GET(req: Request) {
       }
 
       return NextResponse.json(data);
-    } catch (fetchError: any) {
+    } catch (fetchError: unknown) {
       clearTimeout(timeoutId);
-      if (fetchError.name === 'AbortError') {
+      if (fetchError instanceof Error && fetchError.name === 'AbortError') {
         return new NextResponse("Request timeout while fetching from Nightscout", { status: 504 });
       }
-      if (fetchError.code === 'ECONNRESET' || fetchError.code === 'UND_ERR_SOCKET') {
+      if (fetchError instanceof Error && (fetchError.code === 'ECONNRESET' || fetchError.code === 'UND_ERR_SOCKET')) {
         return new NextResponse("Connection reset by Nightscout server - please try again", { status: 503 });
       }
       throw fetchError; // Re-throw for the outer catch block

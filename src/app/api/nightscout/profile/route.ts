@@ -8,6 +8,12 @@ function sha1(token: string): string {
   return crypto.createHash('sha1').update(token).digest('hex');
 }
 
+// Define a type for profile entries
+interface ProfileEntry {
+  time: string;
+  value: string;
+}
+
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
@@ -45,9 +51,11 @@ export async function GET() {
       'Content-Type': 'application/json'
     };
     
-    if (user.settings.nightscoutApiToken) {
+    // Type guard for possible custom fields on settings
+    const nsApiToken = (user.settings as any).nightscoutApiToken as string | undefined;
+    if (nsApiToken) {
       console.log('Using API token for authentication');
-      const hashedToken = sha1(user.settings.nightscoutApiToken);
+      const hashedToken = sha1(nsApiToken);
       console.log('Using hashed token:', hashedToken);
       headers['api-secret'] = hashedToken;
     }
@@ -120,29 +128,29 @@ export async function GET() {
     const formattedProfile = {
       name: profileName,
       // Basal rates
-      basal: profileData.basal.map((entry: any) => ({
+      basal: profileData.basal.map((entry: ProfileEntry) => ({
         startTime: entry.time || '00:00',
         rate: parseFloat(entry.value)
-      })).sort((a: any, b: any) => a.startTime.localeCompare(b.startTime)),
+      })).sort((a: {startTime: string}, b: {startTime: string}) => a.startTime.localeCompare(b.startTime)),
       
       // Carb ratios
-      carbRatios: profileData.carbratio?.map((entry: any) => ({
+      carbRatios: profileData.carbratio?.map((entry: ProfileEntry) => ({
         startTime: entry.time || '00:00',
         value: parseFloat(entry.value)
-      })).sort((a: any, b: any) => a.startTime.localeCompare(b.startTime)) || [],
+      })).sort((a: {startTime: string}, b: {startTime: string}) => a.startTime.localeCompare(b.startTime)) || [],
       
       // Insulin sensitivity factors
-      sensitivities: profileData.sens?.map((entry: any) => ({
+      sensitivities: profileData.sens?.map((entry: ProfileEntry) => ({
         startTime: entry.time || '00:00',
         value: parseFloat(entry.value)
-      })).sort((a: any, b: any) => a.startTime.localeCompare(b.startTime)) || [],
+      })).sort((a: {startTime: string}, b: {startTime: string}) => a.startTime.localeCompare(b.startTime)) || [],
       
       // Target ranges
-      targetRanges: profileData.target_low?.map((entry: any, index: number) => ({
+      targetRanges: profileData.target_low?.map((entry: ProfileEntry, index: number) => ({
         startTime: entry.time || '00:00',
         low: parseFloat(entry.value),
         high: parseFloat(profileData.target_high[index]?.value || entry.value)
-      })).sort((a: any, b: any) => a.startTime.localeCompare(b.startTime)) || [],
+      })).sort((a: {startTime: string}, b: {startTime: string}) => a.startTime.localeCompare(b.startTime)) || [],
       
       // Other settings
       dia: profileData.dia ? parseFloat(profileData.dia) : null,

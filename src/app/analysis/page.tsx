@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 
 type Reading = {
@@ -73,13 +73,7 @@ export default function AnalysisPage() {
     }
   }, [session]);
 
-  useEffect(() => {
-    if (session && settings) {
-      fetchAndAnalyzeData();
-    }
-  }, [session, settings, analysisDateRange]);
-
-  const fetchAndAnalyzeData = async () => {
+  const fetchAndAnalyzeData = useCallback(async () => {
     setLoading(true);
     setError(null);
 
@@ -124,7 +118,13 @@ export default function AnalysisPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [analysisDateRange, settings]);
+
+  useEffect(() => {
+    if (session && settings) {
+      fetchAndAnalyzeData();
+    }
+  }, [session, settings, analysisDateRange, fetchAndAnalyzeData]);
 
   const analyzePatterns = (readings: Reading[], settings: Settings): PatternAnalysis => {
     const { lowGlucose, highGlucose } = settings;
@@ -159,27 +159,22 @@ export default function AnalysisPage() {
     const variabilityRisk = coefficientOfVariation > 36 ? 'high' : coefficientOfVariation > 33 ? 'moderate' : 'low';
 
     // Generate suggestions
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const suggestions = generateSuggestions({
       overallTimeInRange,
       timeBelowRange,
       timeAboveRange,
       variabilityRisk,
       coefficientOfVariation,
-      timePatterns,
-      hypoRisk,
-      hyperRisk,
-      settings
-    } as any);
+      timePatterns
+    });
 
     // Recommended settings
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const recommendedSettings = generateSettingsRecommendations({
       currentSettings: settings,
       hypoRisk,
       overallTimeInRange,
       timeAboveRange,
-    } as any);
+    });
 
     return {
       overallTimeInRange: Math.round(overallTimeInRange),

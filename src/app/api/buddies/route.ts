@@ -35,6 +35,15 @@ function getObjectValue(obj: any, key: string): Record<string, any> {
   return isObject(obj) && isObject(obj[key]) ? obj[key] : {};
 }
 
+// Add BuddyConnection type for connection status
+// Minimal type for linter compliance
+interface BuddyConnection {
+  id: string;
+  requesterId: string;
+  targetId: string;
+  status: string;
+}
+
 interface UserProfile {
   id: string;
   name: string;
@@ -133,9 +142,9 @@ export async function GET() {
     const matches = findBuddyMatches(currentUserProfile, otherUserProfiles);
 
     // Get existing connections to show status
-    let existingConnections: any[] = [];
+    let existingConnections: BuddyConnection[] = [];
     try {
-      // @ts-ignore - BuddyConnection model may not be properly typed yet
+      // @ts-expect-error - BuddyConnection model may not be properly typed yet
       existingConnections = await prisma.buddyConnection.findMany({
         where: {
           OR: [
@@ -144,14 +153,14 @@ export async function GET() {
           ]
         }
       });
-    } catch (error) {
+    } catch {
       console.log("BuddyConnection operations not available, continuing without connection status");
       existingConnections = [];
     }
 
     // Add connection status to matches
     const matchesWithStatus = matches.map(match => {
-      const connection = existingConnections.find((conn: any) => 
+      const connection = existingConnections.find((conn: BuddyConnection) => 
         (conn.requesterId === session.user.id && conn.targetId === match.user.id) ||
         (conn.targetId === session.user.id && conn.requesterId === match.user.id)
       );

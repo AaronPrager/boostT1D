@@ -65,7 +65,7 @@ export default function ProfilePage() {
     };
 
     if (session) {
-      fetchSettings();
+    fetchSettings();
       // Auto-load profile when page opens
       autoLoadProfile();
     }
@@ -323,13 +323,13 @@ export default function ProfilePage() {
               <label htmlFor="nightscoutUrl" className="block text-sm font-medium text-gray-700">
                 Nightscout URL
               </label>
-              <input
+            <input
                 type="url"
                 id="nightscoutUrl"
                 name="nightscoutUrl"
                 value={settings.nightscoutUrl ?? ''}
                 onChange={(e) => handleSettingsChange('nightscoutUrl', e.target.value)}
-                placeholder="https://your-site.herokuapp.com"
+              placeholder="https://your-site.herokuapp.com"
                 className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
               />
               <p className="mt-1 text-sm text-gray-500">Your Nightscout site URL</p>
@@ -425,8 +425,8 @@ export default function ProfilePage() {
                 <div className="ml-3">
                   <h3 className="text-sm font-medium text-green-800">{settingsSuccess}</h3>
                 </div>
-              </div>
-            </div>
+          </div>
+        </div>
           )}
         </form>
 
@@ -453,100 +453,100 @@ export default function ProfilePage() {
       </div>
 
       {/* Diabetes Profile Data Section */}
-      {profile && (
+        {profile && (
         <div className="bg-white p-6 rounded-lg shadow space-y-6">
           <h2 className="text-2xl font-semibold mb-6">Diabetes Profile Data</h2>
           
-          <div>
+            <div>
             <h3 className="text-xl font-semibold mb-4">General Settings</h3>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">DIA (hours)</label>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">DIA (hours)</label>
                 <p className="mt-1 text-sm text-gray-900 bg-gray-50 p-2 rounded">{profile.dia}</p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Units</label>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Units</label>
                 <p className="mt-1 text-sm text-gray-900 bg-gray-50 p-2 rounded">{profile.units}</p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Timezone</label>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Timezone</label>
                 <p className="mt-1 text-sm text-gray-900 bg-gray-50 p-2 rounded">{profile.timezone}</p>
               </div>
+              </div>
             </div>
-          </div>
 
-          <div>
+            <div>
             <h3 className="text-xl font-semibold mb-4">Insulin Sensitivity Factor (ISF)</h3>
-            <div className="space-y-2">
-              {profile.sens.map((item, index) => (
+              <div className="space-y-2">
+                {profile.sens.map((item, index) => (
                 <div key={index} className="bg-gray-50 p-3 rounded border">
-                  {formatTimeValue(item)}
-                </div>
-              ))}
+                    {formatTimeValue(item)}
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
 
-          <div>
+            <div>
             <h3 className="text-xl font-semibold mb-4">Carb Ratio (IC)</h3>
-            <div className="space-y-2">
-              {profile.carbratio.map((item, index) => (
+              <div className="space-y-2">
+                {profile.carbratio.map((item, index) => (
                 <div key={index} className="bg-gray-50 p-3 rounded border">
-                  {formatTimeValue(item)}
-                </div>
-              ))}
+                    {formatTimeValue(item)}
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
 
-          <div>
+            <div>
             <h3 className="text-xl font-semibold mb-4">Basal Rates</h3>
-            <div className="space-y-2">
-              {profile.basal.map((item, index) => (
+              <div className="space-y-2">
+                {profile.basal.map((item, index) => (
                 <div key={index} className="bg-gray-50 p-3 rounded border">
-                  {formatTimeValue(item)}
-                </div>
-              ))}
+                    {formatTimeValue(item)}
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
 
-          <div>
+            <div>
             <h3 className="text-xl font-semibold mb-4">Target Range</h3>
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-              <div>
+                <div>
                 <h4 className="text-lg font-medium mb-3 text-green-600">Low Targets</h4>
-                <div className="space-y-2">
-                  {profile.target_low.map((item, index) => (
+                  <div className="space-y-2">
+                    {profile.target_low.map((item, index) => (
                     <div key={index} className="bg-green-50 border border-green-200 p-3 rounded">
-                      {formatTimeValue(item)}
-                    </div>
-                  ))}
+                        {formatTimeValue(item)}
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
-              <div>
+                <div>
                 <h4 className="text-lg font-medium mb-3 text-red-600">High Targets</h4>
-                <div className="space-y-2">
-                  {profile.target_high.map((item, index) => (
+                  <div className="space-y-2">
+                    {profile.target_high.map((item, index) => (
                     <div key={index} className="bg-red-50 border border-red-200 p-3 rounded">
-                      {formatTimeValue(item)}
-                    </div>
-                  ))}
+                        {formatTimeValue(item)}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          <div className="flex justify-end">
-            <button
-              onClick={saveProfile}
+            <div className="flex justify-end">
+              <button
+                onClick={saveProfile}
               className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-            >
+              >
               <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3-3m0 0l-3 3m3-3v12" />
               </svg>
-              Save Profile Locally
-            </button>
+                Save Profile Locally
+              </button>
+            </div>
           </div>
-        </div>
-      )}
+        )}
     </div>
   );
 } 

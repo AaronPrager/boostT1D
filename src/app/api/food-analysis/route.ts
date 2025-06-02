@@ -1,7 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
-
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY!);
+import { NextResponse } from 'next/server';
 
 export async function POST() {
   try {
@@ -22,19 +19,4 @@ export async function POST() {
       { status: 500 }
     );
   }
-}
-
-// Helper function to extract numbers from text
-function extractNumber(text: string): number | null {
-  const matches = text.match(/(\d+(?:\.\d+)?)\s*(?:grams?|g\b)/i);
-  if (matches) {
-    return parseFloat(matches[1]);
-  }
-  
-  const numberMatches = text.match(/(\d+(?:\.\d+)?)/);
-  if (numberMatches) {
-    return parseFloat(numberMatches[1]);
-  }
-  
-  return null;
 }
