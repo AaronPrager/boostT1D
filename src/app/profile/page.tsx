@@ -471,40 +471,40 @@ export default function ProfilePage() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Timezone</label>
                 <p className="mt-1 text-sm text-gray-900 bg-gray-50 p-2 rounded">{profile.timezone}</p>
-              </div>
+                </div>
               </div>
             </div>
 
             <div>
             <h3 className="text-xl font-semibold mb-4">Insulin Sensitivity Factor (ISF)</h3>
               <div className="space-y-2">
-                {profile.sens.map((item, index) => (
+                {profile.sens?.map((item, index) => (
                 <div key={index} className="bg-gray-50 p-3 rounded border">
                     {formatTimeValue(item)}
                   </div>
-                ))}
+                )) || <p className="text-gray-500 italic">No ISF data available</p>}
               </div>
             </div>
 
             <div>
             <h3 className="text-xl font-semibold mb-4">Carb Ratio (IC)</h3>
               <div className="space-y-2">
-                {profile.carbratio.map((item, index) => (
+                {profile.carbratio?.map((item, index) => (
                 <div key={index} className="bg-gray-50 p-3 rounded border">
                     {formatTimeValue(item)}
                   </div>
-                ))}
+                )) || <p className="text-gray-500 italic">No carb ratio data available</p>}
               </div>
             </div>
 
             <div>
             <h3 className="text-xl font-semibold mb-4">Basal Rates</h3>
               <div className="space-y-2">
-                {profile.basal.map((item, index) => (
+                {profile.basal?.map((item, index) => (
                 <div key={index} className="bg-gray-50 p-3 rounded border">
                     {formatTimeValue(item)}
                   </div>
-                ))}
+                )) || <p className="text-gray-500 italic">No basal data available</p>}
               </div>
             </div>
 
@@ -514,21 +514,21 @@ export default function ProfilePage() {
                 <div>
                 <h4 className="text-lg font-medium mb-3 text-green-600">Low Targets</h4>
                   <div className="space-y-2">
-                    {profile.target_low.map((item, index) => (
+                    {profile.target_low?.map((item, index) => (
                     <div key={index} className="bg-green-50 border border-green-200 p-3 rounded">
                         {formatTimeValue(item)}
                       </div>
-                    ))}
+                    )) || <p className="text-gray-500 italic">No low target data available</p>}
                   </div>
                 </div>
                 <div>
                 <h4 className="text-lg font-medium mb-3 text-red-600">High Targets</h4>
                   <div className="space-y-2">
-                    {profile.target_high.map((item, index) => (
+                    {profile.target_high?.map((item, index) => (
                     <div key={index} className="bg-red-50 border border-red-200 p-3 rounded">
                         {formatTimeValue(item)}
                       </div>
-                    ))}
+                    )) || <p className="text-gray-500 italic">No high target data available</p>}
                   </div>
                 </div>
               </div>
