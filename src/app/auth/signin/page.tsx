@@ -44,7 +44,7 @@ function SignInForm() {
         if (result?.error) {
           setError('Invalid email or password');
         } else if (result?.ok) {
-          router.push('/readings');
+          router.push('/');
         }
       } else {
         // Register new user
@@ -65,7 +65,7 @@ function SignInForm() {
           });
 
           if (result?.ok) {
-            router.push('/readings');
+            router.push('/');
           }
         } else {
           const data = await response.json();
