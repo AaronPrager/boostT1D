@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import fetch, { RequestInit } from 'node-fetch';
+import fetch, { RequestInit, AbortError } from 'node-fetch';
 import https from 'https';
 
 // Create a custom HTTPS agent with better timeout and connection settings
@@ -58,8 +58,7 @@ export async function GET(req: Request) {
 
     console.log('Fetching from Nightscout:', url);
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+    const timeoutMs = 30000; // 30 second timeout
 
     try {
       const headers: Record<string, string> = {
@@ -75,14 +74,12 @@ export async function GET(req: Request) {
       const fetchOptions: RequestInit = {
         headers,
         agent,
-        signal: controller.signal,
         compress: true, // Enable compression
         follow: 5, // Follow up to 5 redirects
+        timeout: timeoutMs,
       };
 
       const response = await fetch(url, fetchOptions);
-
-      clearTimeout(timeoutId);
 
       if (!response.ok) {
         console.error('Nightscout API error:', {
@@ -105,11 +102,12 @@ export async function GET(req: Request) {
 
       return NextResponse.json(data);
     } catch (fetchError: unknown) {
-      clearTimeout(timeoutId);
       if (fetchError instanceof Error && fetchError.name === 'AbortError') {
         return new NextResponse("Request timeout while fetching from Nightscout", { status: 504 });
       }
-      if (fetchError instanceof Error && (fetchError.code === 'ECONNRESET' || fetchError.code === 'UND_ERR_SOCKET')) {
+      // Type guard for Node.js system errors that have a code property
+      if (fetchError instanceof Error && 'code' in fetchError && 
+          (fetchError.code === 'ECONNRESET' || fetchError.code === 'UND_ERR_SOCKET')) {
         return new NextResponse("Connection reset by Nightscout server - please try again", { status: 503 });
       }
       throw fetchError; // Re-throw for the outer catch block
