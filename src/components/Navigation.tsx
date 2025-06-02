@@ -53,6 +53,9 @@ export default function Navigation() {
                   <Link href="/analysis" className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">
                     Analysis
                   </Link>
+                  <Link href="/buddies" className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">
+                    🤝 Buddies
+                  </Link>
                   <Link href="/personal-profile" className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">
                     Personal Profile
                   </Link>

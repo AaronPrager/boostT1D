@@ -50,6 +50,8 @@ model User {
   readings      Reading[]
   treatments    Treatment[]
   settings      Settings?
+  buddyRequestsSent     BuddyConnection[] @relation("BuddyRequester")
+  buddyRequestsReceived BuddyConnection[] @relation("BuddyTarget")
 }
 
 model VerificationToken {
@@ -110,4 +112,22 @@ model Settings {
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
   user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model BuddyConnection {
+  id            String   @id @default(cuid())
+  requesterId   String   // User who sent the buddy request
+  targetId      String   // User who received the buddy request
+  status        String   // 'pending', 'approved', 'rejected'
+  message       String?  // Optional message with the request
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  requester     User     @relation("BuddyRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  target        User     @relation("BuddyTarget", fields: [targetId], references: [id], onDelete: Cascade)
+
+  @@unique([requesterId, targetId])
+  @@index([requesterId])
+  @@index([targetId])
+  @@index([status])
 }

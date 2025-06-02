@@ -1,13 +1,25 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 
-interface FoodAnalysis {
+type FoodAnalysis = {
   description: string;
   carbs_grams: number;
   confidence: string;
   notes: string;
-}
+};
+
+type FoodAnalysisStats = {
+  currentGlucose: number | null;
+  currentDirection: string | null;
+  timeInRange: number;
+  averageGlucose: number;
+  totalReadings: number;
+  lastReading: string | null;
+  recentTrend: string;
+};
 
 export default function FoodAnalysisPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);

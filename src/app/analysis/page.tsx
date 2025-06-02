@@ -2,7 +2,6 @@
 
 import React, { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
 
 type Reading = {
   sgv: number;
@@ -45,7 +44,6 @@ type PatternAnalysis = {
 
 export default function AnalysisPage() {
   const { data: session } = useSession();
-  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [readings, setReadings] = useState<Reading[]>([]);
@@ -104,12 +102,12 @@ export default function AnalysisPage() {
       const fetchedReadings = await response.json();
       
       // Transform to Reading type
-      const transformedReadings: Reading[] = fetchedReadings.map((r: any) => ({
+      const transformedReadings: Reading[] = fetchedReadings.map((r: {sgv: number, date: string | number, direction?: string, source: string}) => ({
         sgv: r.sgv,
         date: new Date(r.date).getTime(),
         direction: r.direction,
         type: 'sgv',
-        source: r.source
+        source: r.source as 'manual' | 'nightscout'
       }));
 
       setReadings(transformedReadings);
@@ -161,27 +159,27 @@ export default function AnalysisPage() {
     const variabilityRisk = coefficientOfVariation > 36 ? 'high' : coefficientOfVariation > 33 ? 'moderate' : 'low';
 
     // Generate suggestions
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const suggestions = generateSuggestions({
       overallTimeInRange,
-      timeAboveRange,
       timeBelowRange,
+      timeAboveRange,
+      variabilityRisk,
       coefficientOfVariation,
       timePatterns,
       hypoRisk,
       hyperRisk,
-      variabilityRisk,
       settings
-    });
+    } as any);
 
     // Recommended settings
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const recommendedSettings = generateSettingsRecommendations({
+      currentSettings: settings,
+      hypoRisk,
       overallTimeInRange,
       timeAboveRange,
-      timeBelowRange,
-      hypoRisk,
-      hyperRisk,
-      currentSettings: settings
-    });
+    } as any);
 
     return {
       overallTimeInRange: Math.round(overallTimeInRange),
@@ -221,7 +219,14 @@ export default function AnalysisPage() {
     };
   };
 
-  const generateSuggestions = (data: any): string[] => {
+  const generateSuggestions = (data: {
+    overallTimeInRange: number;
+    timeBelowRange: number;
+    timeAboveRange: number;
+    variabilityRisk: string;
+    coefficientOfVariation: number;
+    timePatterns: Record<string, {readings: number, timeInRange: number}>;
+  }): string[] => {
     const suggestions: string[] = [];
 
     // Time in range suggestions
@@ -255,7 +260,7 @@ export default function AnalysisPage() {
     }
 
     // Time-specific suggestions
-    Object.entries(data.timePatterns).forEach(([period, stats]: [string, any]) => {
+    Object.entries(data.timePatterns).forEach(([period, stats]) => {
       if (stats.readings > 10 && stats.timeInRange < 60) {
         const periodName = period.charAt(0).toUpperCase() + period.slice(1);
         suggestions.push(`${periodName} period shows lower control (${stats.timeInRange}% TIR). Consider adjusting ${period} management strategies.`);
@@ -265,7 +270,12 @@ export default function AnalysisPage() {
     return suggestions;
   };
 
-  const generateSettingsRecommendations = (data: any): PatternAnalysis['recommendedSettings'] => {
+  const generateSettingsRecommendations = (data: {
+    currentSettings: Settings;
+    hypoRisk: string;
+    overallTimeInRange: number;
+    timeAboveRange: number;
+  }): PatternAnalysis['recommendedSettings'] => {
     const reasoning: string[] = [];
     let suggestedLowTarget = data.currentSettings.lowGlucose;
     let suggestedHighTarget = data.currentSettings.highGlucose;
