@@ -64,11 +64,13 @@ interface UserProfile {
 
 // Transform Prisma user data to UserProfile
 function transformUserProfile(user: Record<string, unknown>, includeContactInfo = false): UserProfile {
-  const profileData = isObject(user.profile?.data) ? user.profile.data : {};
+  // Safely access profile data with proper type checking
+  const userProfile = isObject(user.profile) ? user.profile : {};
+  const profileData = isObject(userProfile.data) ? userProfile.data : {};
   
   const profile: UserProfile = {
-    id: user.id,
-    name: user.name || 'Anonymous User',
+    id: getStringValue(user, 'id'),
+    name: getStringValue(user, 'name') || 'Anonymous User',
     dateOfBirth: getStringValue(profileData, 'dateOfBirth'),
     diagnosisAge: getNumberValue(profileData, 'diagnosisAge'),
     favoriteActivities: getStringValue(profileData, 'favoriteActivities'),
@@ -83,7 +85,7 @@ function transformUserProfile(user: Record<string, unknown>, includeContactInfo 
 
   // Only include contact information for approved connections
   if (includeContactInfo) {
-    profile.email = user.email || '';
+    profile.email = getStringValue(user, 'email');
     profile.phone = getStringValue(profileData, 'phone');
   }
 
@@ -144,7 +146,6 @@ export async function GET() {
     // Get existing connections to show status
     let existingConnections: BuddyConnection[] = [];
     try {
-      // @ts-expect-error - BuddyConnection model may not be properly typed yet
       existingConnections = await prisma.buddyConnection.findMany({
         where: {
           OR: [
