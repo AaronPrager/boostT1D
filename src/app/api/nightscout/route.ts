@@ -4,6 +4,11 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import fetch, { RequestInit, AbortError } from 'node-fetch';
 import https from 'https';
+import crypto from 'crypto';
+
+function sha1(token: string): string {
+  return crypto.createHash('sha1').update(token).digest('hex');
+}
 
 // Create a custom HTTPS agent with better timeout and connection settings
 const agent = new https.Agent({
@@ -68,7 +73,7 @@ export async function GET(req: Request) {
 
       // Add API token if provided
       if (nightscoutApiToken) {
-        headers['api-secret'] = nightscoutApiToken;
+        headers['api-secret'] = sha1(nightscoutApiToken);
       }
 
       const fetchOptions: RequestInit = {

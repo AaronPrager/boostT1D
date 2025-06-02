@@ -124,40 +124,42 @@ export async function GET() {
 
     console.log('Found profile data:', JSON.stringify(profileData, null, 2));
     
-    // Format all settings for our application
+    // Format all settings for our application to match the frontend Profile type
     const formattedProfile = {
       name: profileName,
-      // Basal rates
-      basal: profileData.basal.map((entry: ProfileEntry) => ({
-        startTime: entry.time || '00:00',
-        rate: parseFloat(entry.value)
-      })).sort((a: {startTime: string}, b: {startTime: string}) => a.startTime.localeCompare(b.startTime)),
+      dia: profileData.dia ? parseFloat(profileData.dia) : 0,
+      timezone: profileData.timezone || 'UTC',
+      units: profileData.units || 'mg/dl',
       
-      // Carb ratios
-      carbRatios: profileData.carbratio?.map((entry: ProfileEntry) => ({
-        startTime: entry.time || '00:00',
+      // Basal rates - convert to expected format
+      basal: profileData.basal?.map((entry: ProfileEntry) => ({
+        time: entry.time || '00:00',
         value: parseFloat(entry.value)
-      })).sort((a: {startTime: string}, b: {startTime: string}) => a.startTime.localeCompare(b.startTime)) || [],
+      })).sort((a: {time: string}, b: {time: string}) => a.time.localeCompare(b.time)) || [],
       
-      // Insulin sensitivity factors
-      sensitivities: profileData.sens?.map((entry: ProfileEntry) => ({
-        startTime: entry.time || '00:00',
+      // Carb ratios - convert to expected format
+      carbratio: profileData.carbratio?.map((entry: ProfileEntry) => ({
+        time: entry.time || '00:00',
         value: parseFloat(entry.value)
-      })).sort((a: {startTime: string}, b: {startTime: string}) => a.startTime.localeCompare(b.startTime)) || [],
+      })).sort((a: {time: string}, b: {time: string}) => a.time.localeCompare(b.time)) || [],
       
-      // Target ranges
-      targetRanges: profileData.target_low?.map((entry: ProfileEntry, index: number) => ({
-        startTime: entry.time || '00:00',
-        low: parseFloat(entry.value),
-        high: parseFloat(profileData.target_high[index]?.value || entry.value)
-      })).sort((a: {startTime: string}, b: {startTime: string}) => a.startTime.localeCompare(b.startTime)) || [],
+      // Insulin sensitivity factors - convert to expected format
+      sens: profileData.sens?.map((entry: ProfileEntry) => ({
+        time: entry.time || '00:00',
+        value: parseFloat(entry.value)
+      })).sort((a: {time: string}, b: {time: string}) => a.time.localeCompare(b.time)) || [],
       
-      // Other settings
-      dia: profileData.dia ? parseFloat(profileData.dia) : null,
-      timezone: profileData.timezone || null,
-      units: profileData.units || null,
-      carbsHr: profileData.carbs_hr ? parseInt(profileData.carbs_hr) : null,
-      delay: profileData.delay ? parseInt(profileData.delay) : null
+      // Target low values
+      target_low: profileData.target_low?.map((entry: ProfileEntry) => ({
+        time: entry.time || '00:00',
+        value: parseFloat(entry.value)
+      })).sort((a: {time: string}, b: {time: string}) => a.time.localeCompare(b.time)) || [],
+      
+      // Target high values
+      target_high: profileData.target_high?.map((entry: ProfileEntry) => ({
+        time: entry.time || '00:00',
+        value: parseFloat(entry.value)
+      })).sort((a: {time: string}, b: {time: string}) => a.time.localeCompare(b.time)) || []
     };
 
     console.log('Formatted profile with all settings:', JSON.stringify(formattedProfile, null, 2));

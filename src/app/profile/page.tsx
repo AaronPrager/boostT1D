@@ -92,51 +92,43 @@ export default function ProfilePage() {
         }
       }
 
-      // If no local profile, try to fetch from Nightscout
+      // If no local profile, try to fetch from Nightscout using stored settings
       console.log('No local profile found, attempting to fetch from Nightscout');
       setLoadingMessage('No local profile found. Checking Nightscout...');
       
-      // Get Nightscout URL from settings
-      const settingsResponse = await fetch('/api/settings');
-      if (settingsResponse.ok) {
-        const settingsData = await settingsResponse.json();
-        const nsUrl = settingsData.nightscoutUrl;
-        
-        if (nsUrl) {
-          console.log('Found Nightscout URL, fetching profile...');
-          setLoadingMessage('Fetching profile from Nightscout...');
-          
-          const nsResponse = await fetch('/api/nightscout/profile', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ url: nsUrl }),
-          });
+      // Use GET endpoint which uses stored settings
+      setLoadingMessage('Fetching profile from Nightscout...');
+      
+      const nsResponse = await fetch('/api/nightscout/profile', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
 
-          if (nsResponse.ok) {
-            const nsProfile = await nsResponse.json();
-            console.log('Successfully fetched profile from Nightscout');
-            setProfile(nsProfile);
-            
-            setLoadingMessage('Saving profile locally...');
-            // Automatically save the fetched profile locally
-            await fetch('/api/profile', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify(nsProfile),
-            });
-            console.log('Profile automatically saved locally');
-            setLoadingMessage('Profile downloaded and saved successfully');
-            setProfileSource('nightscout');
-          } else {
-            throw new Error('Failed to fetch profile from Nightscout');
-          }
-        } else {
+      if (nsResponse.ok) {
+        const nsProfile = await nsResponse.json();
+        console.log('Successfully fetched profile from Nightscout');
+        setProfile(nsProfile);
+        
+        setLoadingMessage('Saving profile locally...');
+        // Automatically save the fetched profile locally
+        await fetch('/api/profile', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(nsProfile),
+        });
+        console.log('Profile automatically saved locally');
+        setLoadingMessage('Profile downloaded and saved successfully');
+        setProfileSource('nightscout');
+      } else {
+        const errorData = await nsResponse.json().catch(() => null);
+        if (nsResponse.status === 400) {
           setError('No Nightscout URL configured. Please update your settings first.');
-          setLoadingMessage('');
+        } else {
+          throw new Error(errorData?.error || 'Failed to fetch profile from Nightscout');
         }
       }
     } catch (err) {
