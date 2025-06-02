@@ -185,7 +185,7 @@ export default function Home() {
             {[1,2,3].map(num => (
               <div key={num} className="rounded-xl overflow-hidden shadow-lg bg-white flex items-center justify-center aspect-[4/3]">
                 <img
-                  src={`/gallery${num}.jpg`}
+                  src={`/gallery${num}.JPG`}
                   alt={`Community photo ${num}`}
                   className="object-cover w-full h-full transition-transform duration-300 hover:scale-105"
                   onError={e => {
