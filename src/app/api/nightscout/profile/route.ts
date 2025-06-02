@@ -52,7 +52,7 @@ export async function GET() {
     };
     
     // Type guard for possible custom fields on settings
-    const nsApiToken = (user.settings as any).nightscoutApiToken as string | undefined;
+    const nsApiToken = (user.settings as Record<string, unknown>).nightscoutApiToken as string | undefined;
     if (nsApiToken) {
       console.log('Using API token for authentication');
       const hashedToken = sha1(nsApiToken);

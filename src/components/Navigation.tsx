@@ -130,13 +130,6 @@ export default function Navigation() {
                             💊 Treatments
                           </Link>
                           <Link 
-                            href="/readings" 
-                            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                            onClick={closeDropdown}
-                          >
-                            📈 Readings
-                          </Link>
-                          <Link 
                             href="/analysis" 
                             className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                             onClick={closeDropdown}
@@ -149,6 +142,13 @@ export default function Navigation() {
                             onClick={closeDropdown}
                           >
                             🩺 Diabetes Profile
+                          </Link>
+                          <Link 
+                            href="/readings" 
+                            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                            onClick={closeDropdown}
+                          >
+                            📈 Readings
                           </Link>
                         </div>
                       </div>

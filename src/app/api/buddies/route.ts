@@ -63,7 +63,7 @@ interface UserProfile {
 }
 
 // Transform Prisma user data to UserProfile
-function transformUserProfile(user: any, includeContactInfo = false): UserProfile {
+function transformUserProfile(user: Record<string, unknown>, includeContactInfo = false): UserProfile {
   const profileData = isObject(user.profile?.data) ? user.profile.data : {};
   
   const profile: UserProfile = {
