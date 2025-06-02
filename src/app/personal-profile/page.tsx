@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
+import { Camera, User, MapPin, Phone, Calendar, Heart, Users, Edit2, Save, X } from 'lucide-react';
 
 interface PersonalProfileData {
   name?: string;
@@ -26,184 +27,49 @@ interface PersonalProfileData {
   };
 }
 
-export default function PersonalProfilePage() {
+export default function PersonalProfile() {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
   const [profile, setProfile] = useState<PersonalProfileData>({});
-  const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState('');
-  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
-  const [errors, setErrors] = useState<Record<string, string>>({});
-
-  const calculateAge = (dateOfBirth: string): number | null => {
-    if (!dateOfBirth) return null;
-    const birth = new Date(dateOfBirth);
-    const today = new Date();
-    const age = today.getFullYear() - birth.getFullYear();
-    const monthDiff = today.getMonth() - birth.getMonth();
-    
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
-      return age - 1;
-    }
-    return age;
-  };
+  const [isEditing, setIsEditing] = useState(false);
+  const [editingProfile, setEditingProfile] = useState<PersonalProfileData>({});
 
   useEffect(() => {
-    if (status === 'loading') return;
-    if (!session) {
+    if (status === 'unauthenticated') {
       router.push('/auth/signin');
       return;
     }
-    loadProfile();
-  }, [session, status, router]);
+    
+    if (status === 'authenticated') {
+      fetchProfile();
+    }
+  }, [status, router]);
 
-  const loadProfile = async () => {
+  const fetchProfile = async () => {
     try {
       const response = await fetch('/api/personal-profile');
       if (response.ok) {
         const data = await response.json();
         setProfile(data);
+        setEditingProfile(data);
       }
     } catch (error) {
-      console.error('Error loading profile:', error);
-    }
-  };
-
-  const validateForm = (): boolean => {
-    const newErrors: Record<string, string> = {};
-
-    // Mandatory fields validation
-    if (!profile.name?.trim()) {
-      newErrors.name = 'Name is required';
-    }
-
-    if (!session?.user?.email) {
-      newErrors.email = 'Email is required';
-    }
-
-    if (!profile.dateOfBirth) {
-      newErrors.dateOfBirth = 'Date of birth is required';
-    }
-
-    if (!profile.diagnosisAge && profile.diagnosisAge !== 0) {
-      newErrors.diagnosisAge = 'Age at diagnosis is required';
-    } else if (profile.diagnosisAge < 0 || profile.diagnosisAge > 120) {
-      newErrors.diagnosisAge = 'Age at diagnosis must be between 0 and 120';
-    }
-
-    if (!profile.address?.country?.trim()) {
-      newErrors.country = 'Country is required';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!validateForm()) {
-      setError('Please fix the errors below');
-      return;
-    }
-
-    setLoading(true);
-    setError('');
-    setSuccess('');
-
-    try {
-      const response = await fetch('/api/personal-profile', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(profile),
-      });
-
-      if (response.ok) {
-        setSuccess('Profile updated successfully!');
-        setTimeout(() => setSuccess(''), 3000);
-      } else {
-        const errorData = await response.json();
-        setError(errorData.error || 'Failed to update profile');
-      }
-    } catch (error) {
-      console.error('Error updating profile:', error);
-      setError('An error occurred while updating your profile');
+      console.error('Error fetching profile:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleInputChange = (field: string, value: string) => {
-    setProfile(prev => ({
-      ...prev,
-      [field]: value
-    }));
-    
-    // Clear specific field error when user starts typing
-    if (errors[field]) {
-      setErrors(prev => {
-        const newErrors = { ...prev };
-        delete newErrors[field];
-        return newErrors;
-      });
-    }
-  };
-
-  const handleNestedInputChange = (section: string, field: string, value: string) => {
-    setProfile(prev => {
-      if (section === 'address') {
-        return {
-          ...prev,
-          address: {
-            ...prev.address,
-            [field]: value
-          }
-        };
-      } else if (section === 'emergencyContact') {
-        return {
-          ...prev,
-          emergencyContact: {
-            ...prev.emergencyContact,
-            [field]: value
-          }
-        };
-      }
-      return prev;
-    });
-
-    // Clear specific field error when user starts typing
-    const errorKey = section === 'address' && field === 'country' ? 'country' : `${section}.${field}`;
-    if (errors[errorKey]) {
-      setErrors(prev => {
-        const newErrors = { ...prev };
-        delete newErrors[errorKey];
-        return newErrors;
-      });
-    }
-  };
-
-  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
     if (!file) return;
 
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
-      setError('Please select an image file');
-      return;
-    }
-
-    // Validate file size (5MB limit)
-    if (file.size > 5 * 1024 * 1024) {
-      setError('Image file size must be less than 5MB');
-      return;
-    }
-
     setUploadingPhoto(true);
-    setError('');
-
     try {
       const formData = new FormData();
       formData.append('photo', file);
@@ -213,399 +79,431 @@ export default function PersonalProfilePage() {
         body: formData,
       });
 
-      const result = await response.json();
-
       if (response.ok) {
-        setProfile(prev => ({ ...prev, photo: result.url }));
-        setSuccess('Photo uploaded successfully!');
-        setTimeout(() => setSuccess(''), 3000);
+        const data = await response.json();
+        const newPhoto = data.photoUrl;
+        
+        // Update the profile with new photo
+        const updatedProfile = { ...profile, photo: newPhoto };
+        setProfile(updatedProfile);
+        setEditingProfile(updatedProfile);
+        
+        // Save to backend
+        await fetch('/api/personal-profile', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updatedProfile),
+        });
+
+        // Dispatch event to update navigation avatar
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new Event('profilePhotoUpdated'));
+        }
       } else {
-        setError(result.error || 'Failed to upload photo');
+        const errorData = await response.text();
+        alert(`Upload failed: ${errorData}`);
       }
     } catch (error) {
       console.error('Error uploading photo:', error);
-      setError('Failed to upload photo');
+      alert('Failed to upload photo');
     } finally {
       setUploadingPhoto(false);
     }
   };
 
-  if (status === 'loading') {
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const response = await fetch('/api/personal-profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editingProfile),
+      });
+
+      if (response.ok) {
+        setProfile(editingProfile);
+        setIsEditing(false);
+      } else {
+        alert('Failed to save profile');
+      }
+    } catch (error) {
+      console.error('Error saving profile:', error);
+      alert('Failed to save profile');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setEditingProfile(profile);
+    setIsEditing(false);
+  };
+
+  const formatAddress = (address?: PersonalProfileData['address']) => {
+    if (!address) return '';
+    const parts = [
+      address.street,
+      address.city,
+      address.state,
+      address.zipCode,
+      address.country
+    ].filter(Boolean);
+    return parts.join(', ');
+  };
+
+  if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-indigo-600"></div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading profile...</p>
+        </div>
       </div>
     );
-  }
-
-  if (!session) {
-    return null;
   }
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="bg-white shadow rounded-lg">
-          <div className="px-6 py-4 border-b border-gray-200">
+        {/* Header */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
+          <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
             <h1 className="text-2xl font-bold text-gray-900">Personal Profile</h1>
-            <p className="mt-1 text-sm text-gray-600">
-              Manage your personal information and preferences
-            </p>
+            {!isEditing ? (
+              <button
+                onClick={() => setIsEditing(true)}
+                className="flex items-center space-x-2 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors"
+              >
+                <Edit2 className="h-4 w-4" />
+                <span>Edit Profile</span>
+              </button>
+            ) : (
+              <div className="flex space-x-2">
+                <button
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors disabled:opacity-50"
+                >
+                  <Save className="h-4 w-4" />
+                  <span>{saving ? 'Saving...' : 'Save'}</span>
+                </button>
+                <button
+                  onClick={handleCancel}
+                  className="flex items-center space-x-2 px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors"
+                >
+                  <X className="h-4 w-4" />
+                  <span>Cancel</span>
+                </button>
+              </div>
+            )}
           </div>
 
-          <form onSubmit={handleSubmit} className="p-6 space-y-8">
-            {/* Success/Error Messages */}
-            {success && (
-              <div className="bg-green-50 border border-green-200 rounded-md p-4">
-                <div className="flex">
-                  <div className="flex-shrink-0">
-                    <svg className="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                    </svg>
-                  </div>
-                  <div className="ml-3">
-                    <p className="text-sm font-medium text-green-800">{success}</p>
-                  </div>
+          {/* Profile Photo Section */}
+          <div className="px-6 py-6">
+            <div className="flex items-center space-x-6">
+              <div className="relative">
+                <div className="w-32 h-32 rounded-full overflow-hidden bg-gray-200 border-4 border-white shadow-lg">
+                  {profile.photo ? (
+                    <img
+                      src={profile.photo}
+                      alt="Profile"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-indigo-100 to-purple-100">
+                      <User className="h-16 w-16 text-indigo-400" />
+                    </div>
+                  )}
                 </div>
+                
+                {isEditing && (
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploadingPhoto}
+                    className="absolute bottom-0 right-0 bg-indigo-600 text-white p-2 rounded-full shadow-lg hover:bg-indigo-700 transition-colors disabled:opacity-50"
+                  >
+                    {uploadingPhoto ? (
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    ) : (
+                      <Camera className="h-4 w-4" />
+                    )}
+                  </button>
+                )}
+                
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handlePhotoUpload}
+                  className="hidden"
+                />
               </div>
-            )}
-
-            {error && (
-              <div className="bg-red-50 border border-red-200 rounded-md p-4">
-                <div className="flex">
-                  <div className="flex-shrink-0">
-                    <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                    </svg>
-                  </div>
-                  <div className="ml-3">
-                    <p className="text-sm font-medium text-red-800">{error}</p>
-                  </div>
-                </div>
+              
+              <div className="flex-1">
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                  {profile.name || session?.user?.name || 'Your Name'}
+                </h2>
+                <p className="text-gray-600 mb-4">
+                  {profile.about || 'Tell us about yourself...'}
+                </p>
+                {isEditing && (
+                  <p className="text-sm text-gray-500">
+                    Click the camera icon to upload a new profile photo
+                  </p>
+                )}
               </div>
-            )}
+            </div>
+          </div>
+        </div>
 
-            {/* Basic Information */}
-            <div>
-              <h2 className="text-lg font-medium text-gray-900 mb-4">Basic Information</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-                    Full Name <span className="text-red-500">*</span>
-                  </label>
+        {/* Profile Details */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Basic Information */}
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+              <User className="h-5 w-5 mr-2 text-indigo-600" />
+              Basic Information
+            </h3>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                {isEditing ? (
                   <input
                     type="text"
-                    id="name"
-                    value={profile.name || ''}
-                    onChange={(e) => handleInputChange('name', e.target.value)}
-                    className={`mt-1 block w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 ${
-                      errors.name ? 'border-red-500' : 'border-gray-300'
-                    }`}
+                    value={editingProfile.name || ''}
+                    onChange={(e) => setEditingProfile({ ...editingProfile, name: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   />
-                  {errors.name && <p className="mt-1 text-sm text-red-600">{errors.name}</p>}
-                </div>
-
-                <div>
-                  <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                    Email <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="email"
-                    id="email"
-                    value={session.user?.email || ''}
-                    disabled
-                    className={`mt-1 block w-full border rounded-md px-3 py-2 bg-gray-50 text-gray-500 ${
-                      errors.email ? 'border-red-500' : 'border-gray-300'
-                    }`}
+                ) : (
+                  <p className="text-gray-900">{profile.name || 'Not provided'}</p>
+                )}
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">About</label>
+                {isEditing ? (
+                  <textarea
+                    value={editingProfile.about || ''}
+                    onChange={(e) => setEditingProfile({ ...editingProfile, about: e.target.value })}
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    placeholder="Tell us about yourself..."
                   />
-                  <p className="mt-1 text-xs text-gray-500">Email cannot be changed here</p>
-                  {errors.email && <p className="mt-1 text-sm text-red-600">{errors.email}</p>}
-                </div>
-
-                <div>
-                  <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
-                    Phone Number
-                  </label>
-                  <input
-                    type="tel"
-                    id="phone"
-                    value={profile.phone || ''}
-                    onChange={(e) => handleInputChange('phone', e.target.value)}
-                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="dateOfBirth" className="block text-sm font-medium text-gray-700">
-                    Date of Birth <span className="text-red-500">*</span>
-                  </label>
+                ) : (
+                  <p className="text-gray-900">{profile.about || 'Not provided'}</p>
+                )}
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
+                {isEditing ? (
                   <input
                     type="date"
-                    id="dateOfBirth"
-                    value={profile.dateOfBirth || ''}
-                    onChange={(e) => handleInputChange('dateOfBirth', e.target.value)}
-                    className={`mt-1 block w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 ${
-                      errors.dateOfBirth ? 'border-red-500' : 'border-gray-300'
-                    }`}
+                    value={editingProfile.dateOfBirth || ''}
+                    onChange={(e) => setEditingProfile({ ...editingProfile, dateOfBirth: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   />
-                  {profile.dateOfBirth && (
-                    <p className="mt-1 text-xs text-gray-500">
-                      Age: {calculateAge(profile.dateOfBirth) || 'Invalid date'}
-                    </p>
-                  )}
-                  {errors.dateOfBirth && <p className="mt-1 text-sm text-red-600">{errors.dateOfBirth}</p>}
-                </div>
-
-                <div>
-                  <label htmlFor="diagnosisAge" className="block text-sm font-medium text-gray-700">
-                    Age at Diabetes Diagnosis <span className="text-red-500">*</span>
-                  </label>
+                ) : (
+                  <p className="text-gray-900 flex items-center">
+                    <Calendar className="h-4 w-4 mr-2 text-indigo-600" />
+                    {profile.dateOfBirth ? new Date(profile.dateOfBirth).toLocaleDateString() : 'Not provided'}
+                  </p>
+                )}
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Diagnosis Age</label>
+                {isEditing ? (
                   <input
                     type="number"
-                    id="diagnosisAge"
-                    min="0"
-                    max="120"
-                    value={profile.diagnosisAge || ''}
-                    onChange={(e) => handleInputChange('diagnosisAge', e.target.value)}
-                    placeholder="e.g., 25"
-                    className={`mt-1 block w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 ${
-                      errors.diagnosisAge ? 'border-red-500' : 'border-gray-300'
-                    }`}
+                    value={editingProfile.diagnosisAge || ''}
+                    onChange={(e) => setEditingProfile({ ...editingProfile, diagnosisAge: parseInt(e.target.value) || undefined })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    placeholder="Age when diagnosed with T1D"
                   />
-                  {errors.diagnosisAge && <p className="mt-1 text-sm text-red-600">{errors.diagnosisAge}</p>}
-                </div>
-              </div>
-
-              {/* Favorite Activities Section */}
-              <div className="mt-6">
-                <label htmlFor="favoriteActivities" className="block text-sm font-medium text-gray-700">
-                  Favorite Activities
-                </label>
-                <textarea
-                  id="favoriteActivities"
-                  rows={3}
-                  value={profile.favoriteActivities || ''}
-                  onChange={(e) => handleInputChange('favoriteActivities', e.target.value)}
-                  placeholder="e.g., hiking, reading, cooking, cycling, photography..."
-                  className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                />
-                <p className="mt-1 text-xs text-gray-500">
-                  Share your hobbies and activities you enjoy
-                </p>
-              </div>
-
-              {/* Photo Section */}
-              <div className="mt-6">
-                <label className="block text-sm font-medium text-gray-700 mb-4">
-                  Profile Photo
-                </label>
-                <div className="flex items-start space-x-6">
-                  {/* Photo Preview */}
-                  <div className="flex-shrink-0">
-                    {uploadingPhoto ? (
-                      <div className="h-24 w-24 rounded-full bg-gray-100 flex items-center justify-center border-2 border-gray-300">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-                      </div>
-                    ) : profile.photo ? (
-                      <img
-                        src={profile.photo}
-                        alt="Profile"
-                        className="h-24 w-24 rounded-full object-cover border-2 border-gray-300"
-                        onError={(e) => {
-                          e.currentTarget.src = `https://via.placeholder.com/96x96?text=${encodeURIComponent(profile.name?.charAt(0) || 'U')}`;
-                        }}
-                      />
-                    ) : (
-                      <div className="h-24 w-24 rounded-full bg-gray-100 flex items-center justify-center border-2 border-gray-300">
-                        <svg className="h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                        </svg>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Upload Button */}
-                  <div className="flex-1 min-w-0">
-                    <label className="block">
-                      <span className="sr-only">Choose profile photo</span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handlePhotoUpload}
-                        disabled={uploadingPhoto}
-                        className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 disabled:opacity-50"
-                      />
-                    </label>
-                    <p className="mt-2 text-xs text-gray-500">
-                      JPG, PNG, GIF up to 5MB
-                    </p>
-                  </div>
-                </div>
+                ) : (
+                  <p className="text-gray-900">{profile.diagnosisAge ? `${profile.diagnosisAge} years old` : 'Not provided'}</p>
+                )}
               </div>
             </div>
+          </div>
 
-            {/* Address Information */}
-            <div>
-              <h2 className="text-lg font-medium text-gray-900 mb-4">Address Information</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="md:col-span-2">
-                  <label htmlFor="street" className="block text-sm font-medium text-gray-700">
-                    Street Address
-                  </label>
-                  <input
-                    type="text"
-                    id="street"
-                    value={profile.address?.street || ''}
-                    onChange={(e) => handleNestedInputChange('address', 'street', e.target.value)}
-                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="city" className="block text-sm font-medium text-gray-700">
-                    City
-                  </label>
-                  <input
-                    type="text"
-                    id="city"
-                    value={profile.address?.city || ''}
-                    onChange={(e) => handleNestedInputChange('address', 'city', e.target.value)}
-                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="state" className="block text-sm font-medium text-gray-700">
-                    State/Province
-                  </label>
-                  <input
-                    type="text"
-                    id="state"
-                    value={profile.address?.state || ''}
-                    onChange={(e) => handleNestedInputChange('address', 'state', e.target.value)}
-                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="zipCode" className="block text-sm font-medium text-gray-700">
-                    ZIP/Postal Code
-                  </label>
-                  <input
-                    type="text"
-                    id="zipCode"
-                    value={profile.address?.zipCode || ''}
-                    onChange={(e) => handleNestedInputChange('address', 'zipCode', e.target.value)}
-                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="country" className="block text-sm font-medium text-gray-700">
-                    Country <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    id="country"
-                    value={profile.address?.country || ''}
-                    onChange={(e) => handleNestedInputChange('address', 'country', e.target.value)}
-                    className={`mt-1 block w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 ${
-                      errors.country ? 'border-red-500' : 'border-gray-300'
-                    }`}
-                  />
-                  {errors.country && <p className="mt-1 text-sm text-red-600">{errors.country}</p>}
-                </div>
-              </div>
-            </div>
-
-            {/* Emergency Contact */}
-            <div>
-              <h2 className="text-lg font-medium text-gray-900 mb-4">Emergency Contact</h2>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div>
-                  <label htmlFor="emergencyName" className="block text-sm font-medium text-gray-700">
-                    Contact Name
-                  </label>
-                  <input
-                    type="text"
-                    id="emergencyName"
-                    value={profile.emergencyContact?.name || ''}
-                    onChange={(e) => handleNestedInputChange('emergencyContact', 'name', e.target.value)}
-                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="emergencyPhone" className="block text-sm font-medium text-gray-700">
-                    Phone Number
-                  </label>
+          {/* Contact Information */}
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+              <Phone className="h-5 w-5 mr-2 text-indigo-600" />
+              Contact Information
+            </h3>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                {isEditing ? (
                   <input
                     type="tel"
-                    id="emergencyPhone"
-                    value={profile.emergencyContact?.phone || ''}
-                    onChange={(e) => handleNestedInputChange('emergencyContact', 'phone', e.target.value)}
-                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                    value={editingProfile.phone || ''}
+                    onChange={(e) => setEditingProfile({ ...editingProfile, phone: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   />
-                </div>
+                ) : (
+                  <p className="text-gray-900">{profile.phone || 'Not provided'}</p>
+                )}
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
+                {isEditing ? (
+                  <div className="space-y-2">
+                    <input
+                      type="text"
+                      value={editingProfile.address?.street || ''}
+                      onChange={(e) => setEditingProfile({
+                        ...editingProfile,
+                        address: { ...editingProfile.address, street: e.target.value }
+                      })}
+                      placeholder="Street"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                    <div className="grid grid-cols-2 gap-2">
+                      <input
+                        type="text"
+                        value={editingProfile.address?.city || ''}
+                        onChange={(e) => setEditingProfile({
+                          ...editingProfile,
+                          address: { ...editingProfile.address, city: e.target.value }
+                        })}
+                        placeholder="City"
+                        className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      />
+                      <input
+                        type="text"
+                        value={editingProfile.address?.state || ''}
+                        onChange={(e) => setEditingProfile({
+                          ...editingProfile,
+                          address: { ...editingProfile.address, state: e.target.value }
+                        })}
+                        placeholder="State"
+                        className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <input
+                        type="text"
+                        value={editingProfile.address?.zipCode || ''}
+                        onChange={(e) => setEditingProfile({
+                          ...editingProfile,
+                          address: { ...editingProfile.address, zipCode: e.target.value }
+                        })}
+                        placeholder="ZIP Code"
+                        className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      />
+                      <input
+                        type="text"
+                        value={editingProfile.address?.country || ''}
+                        onChange={(e) => setEditingProfile({
+                          ...editingProfile,
+                          address: { ...editingProfile.address, country: e.target.value }
+                        })}
+                        placeholder="Country"
+                        className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-gray-900 flex items-start">
+                    <MapPin className="h-4 w-4 mr-2 text-indigo-600 mt-1 flex-shrink-0" />
+                    {formatAddress(profile.address) || 'Not provided'}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
 
-                <div>
-                  <label htmlFor="emergencyRelationship" className="block text-sm font-medium text-gray-700">
-                    Relationship
-                  </label>
+          {/* Activities & Interests */}
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+              <Heart className="h-5 w-5 mr-2 text-indigo-600" />
+              Activities & Interests
+            </h3>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Favorite Activities</label>
+              {isEditing ? (
+                <textarea
+                  value={editingProfile.favoriteActivities || ''}
+                  onChange={(e) => setEditingProfile({ ...editingProfile, favoriteActivities: e.target.value })}
+                  rows={4}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder="What activities do you enjoy?"
+                />
+              ) : (
+                <p className="text-gray-900">{profile.favoriteActivities || 'Not provided'}</p>
+              )}
+            </div>
+          </div>
+
+          {/* Emergency Contact */}
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+              <Users className="h-5 w-5 mr-2 text-indigo-600" />
+              Emergency Contact
+            </h3>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                {isEditing ? (
                   <input
                     type="text"
-                    id="emergencyRelationship"
-                    value={profile.emergencyContact?.relationship || ''}
-                    onChange={(e) => handleNestedInputChange('emergencyContact', 'relationship', e.target.value)}
-                    placeholder="e.g., Spouse, Parent, Sibling"
-                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                    value={editingProfile.emergencyContact?.name || ''}
+                    onChange={(e) => setEditingProfile({
+                      ...editingProfile,
+                      emergencyContact: { ...editingProfile.emergencyContact, name: e.target.value }
+                    })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   />
-                </div>
-              </div>
-            </div>
-
-            {/* About Section */}
-            <div>
-              <h2 className="text-lg font-medium text-gray-900 mb-4">About Me</h2>
-              <div>
-                <label htmlFor="about" className="block text-sm font-medium text-gray-700">
-                  Bio
-                </label>
-                <textarea
-                  id="about"
-                  rows={4}
-                  value={profile.about || ''}
-                  onChange={(e) => handleInputChange('about', e.target.value)}
-                  placeholder="Tell us a little about yourself..."
-                  className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                />
-                <p className="mt-1 text-xs text-gray-500">
-                  Share a brief description about yourself, your interests, or your diabetes journey
-                </p>
-              </div>
-            </div>
-
-            {/* Submit Button */}
-            <div className="flex justify-end">
-              <button
-                type="submit"
-                disabled={loading}
-                className="px-6 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
-              >
-                {loading ? (
-                  <>
-                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Saving...
-                  </>
                 ) : (
-                  'Save Profile'
+                  <p className="text-gray-900">{profile.emergencyContact?.name || 'Not provided'}</p>
                 )}
-              </button>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                {isEditing ? (
+                  <input
+                    type="tel"
+                    value={editingProfile.emergencyContact?.phone || ''}
+                    onChange={(e) => setEditingProfile({
+                      ...editingProfile,
+                      emergencyContact: { ...editingProfile.emergencyContact, phone: e.target.value }
+                    })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                ) : (
+                  <p className="text-gray-900">{profile.emergencyContact?.phone || 'Not provided'}</p>
+                )}
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Relationship</label>
+                {isEditing ? (
+                  <input
+                    type="text"
+                    value={editingProfile.emergencyContact?.relationship || ''}
+                    onChange={(e) => setEditingProfile({
+                      ...editingProfile,
+                      emergencyContact: { ...editingProfile.emergencyContact, relationship: e.target.value }
+                    })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    placeholder="e.g., Spouse, Parent, Sibling"
+                  />
+                ) : (
+                  <p className="text-gray-900">{profile.emergencyContact?.relationship || 'Not provided'}</p>
+                )}
+              </div>
             </div>
-          </form>
+          </div>
         </div>
       </div>
     </div>
