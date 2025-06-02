@@ -226,11 +226,11 @@ export default function AnalysisPage() {
 
     // Time in range suggestions
     if (data.overallTimeInRange < 70) {
-      suggestions.push(`Your time in range is ${data.overallTimeInRange}%. Target goal is 70%+. Focus on reducing both highs and lows.`);
+      suggestions.push(`Your time in range is ${Math.round(data.overallTimeInRange)}%. Target goal is 70%+. Focus on reducing both highs and lows.`);
     } else if (data.overallTimeInRange >= 70 && data.overallTimeInRange < 80) {
-      suggestions.push(`Good progress! Your time in range is ${data.overallTimeInRange}%. Aim for 80%+ for optimal control.`);
+      suggestions.push(`Good progress! Your time in range is ${Math.round(data.overallTimeInRange)}%. Aim for 80%+ for optimal control.`);
     } else {
-      suggestions.push(`Excellent! Your time in range is ${data.overallTimeInRange}%. Maintain current management strategies.`);
+      suggestions.push(`Excellent! Your time in range is ${Math.round(data.overallTimeInRange)}%. Maintain current management strategies.`);
     }
 
     // Hypoglycemia suggestions
@@ -242,14 +242,14 @@ export default function AnalysisPage() {
 
     // Hyperglycemia suggestions
     if (data.timeAboveRange > 25) {
-      suggestions.push('Frequent high glucose levels detected. Review carbohydrate counting, meal timing, and medication adherence.');
+      suggestions.push('Frequent high glucose levels detected. Review carbohydrate counting and meal timing.');
     } else if (data.timeAboveRange > 5) {
       suggestions.push('Some high glucose episodes detected. Focus on post-meal management and portion control.');
     }
 
     // Variability suggestions
     if (data.variabilityRisk === 'high') {
-      suggestions.push('High glucose variability detected. Consider more frequent monitoring and consistent meal timing.');
+      suggestions.push('High glucose variability detected. Consider consistent meal timing.');
     } else if (data.variabilityRisk === 'moderate') {
       suggestions.push('Moderate glucose variability. Focus on consistent carbohydrate intake and regular meal schedules.');
     }

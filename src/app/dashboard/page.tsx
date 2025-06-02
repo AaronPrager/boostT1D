@@ -35,8 +35,6 @@ export default function DashboardPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [refreshMessage, setRefreshMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [autoRefresh, setAutoRefresh] = useState(false);
-  const [autoRefreshTimer, setAutoRefreshTimer] = useState<NodeJS.Timeout | null>(null);
   const [recentReadings, setRecentReadings] = useState<Reading[]>([]);
   const [stats, setStats] = useState<DashboardStats>({
     currentGlucose: null,
@@ -59,26 +57,6 @@ export default function DashboardPage() {
       fetchSettings();
     }
   }, [session]);
-
-  useEffect(() => {
-    if (autoRefresh) {
-      const timer = setInterval(() => {
-        fetchDashboardData(true);
-      }, 5 * 60 * 1000); // 5 minutes
-      setAutoRefreshTimer(timer);
-    } else {
-      if (autoRefreshTimer) {
-        clearInterval(autoRefreshTimer);
-        setAutoRefreshTimer(null);
-      }
-    }
-
-    return () => {
-      if (autoRefreshTimer) {
-        clearInterval(autoRefreshTimer);
-      }
-    };
-  }, [autoRefresh, autoRefreshTimer]);
 
   const fetchSettings = async () => {
     try {
@@ -175,12 +153,52 @@ export default function DashboardPage() {
     }
   };
 
-  const handleRefresh = () => {
-    fetchDashboardData(true);
-  };
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    setRefreshMessage(null);
+    setError(null);
 
-  const toggleAutoRefresh = () => {
-    setAutoRefresh(!autoRefresh);
+    try {
+      // First, sync fresh data from Nightscout
+      console.log('Starting Nightscout sync...');
+      const syncResponse = await fetch('/api/nightscout/sync', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (syncResponse.ok) {
+        const syncResult = await syncResponse.json();
+        console.log('Nightscout sync result:', syncResult);
+        
+        // Show sync status message
+        if (syncResult.storedCount > 0) {
+          setRefreshMessage(`✅ Synced ${syncResult.storedCount} new readings from Nightscout!`);
+        } else {
+          setRefreshMessage(`✅ Nightscout data is up to date (${syncResult.fetchedCount} readings checked)`);
+        }
+      } else {
+        const errorText = await syncResponse.text();
+        console.error('Nightscout sync failed:', errorText);
+        setRefreshMessage(`⚠️ Nightscout sync failed: ${errorText}. Showing existing data.`);
+      }
+
+      // Always fetch and refresh the dashboard data after sync attempt
+      await fetchDashboardData(false); // Don't show additional refresh feedback since we're already showing sync status
+      
+    } catch (error) {
+      console.error('Error during refresh:', error);
+      setError('Failed to refresh data from Nightscout. Showing existing data.');
+      
+      // Still try to refresh local data even if sync fails
+      await fetchDashboardData(false);
+    } finally {
+      setRefreshing(false);
+      
+      // Clear the refresh message after 5 seconds
+      setTimeout(() => setRefreshMessage(null), 5000);
+    }
   };
 
   const getGlucoseStatus = (glucose: number) => {
@@ -291,14 +309,14 @@ export default function DashboardPage() {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    Updating...
+                    Syncing...
                   </div>
                 ) : (
                   <div className="flex items-center">
                     <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                     </svg>
-                    Refresh Data
+                    Sync from Nightscout
                   </div>
                 )}
               </button>
@@ -426,12 +444,12 @@ export default function DashboardPage() {
                     onClick={handleRefresh}
                     disabled={refreshing}
                     className="flex items-center text-sm text-gray-600 hover:text-indigo-600 disabled:text-gray-400"
-                    title="Refresh readings"
+                    title="Sync fresh data from Nightscout"
                   >
                     <svg className={`w-4 h-4 mr-1 ${refreshing ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                     </svg>
-                    {refreshing ? 'Updating...' : 'Refresh'}
+                    {refreshing ? 'Syncing...' : 'Sync'}
                   </button>
                   <Link 
                     href="/readings"
@@ -519,41 +537,6 @@ export default function DashboardPage() {
                   </div>
                 </Link>
               </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Footer Controls */}
-        <div className="mt-8 bg-white rounded-lg shadow-sm border p-6">
-          <div className="flex items-center justify-between">
-            <div className="text-sm text-gray-600">
-              <p>Dashboard showing data from the last 7 days</p>
-              {stats.lastUpdated && (
-                <p className="text-xs text-gray-500 mt-1">
-                  Last updated: {new Date(stats.lastUpdated).toLocaleString()}
-                </p>
-              )}
-            </div>
-            <div className="flex items-center space-x-4">
-              <label className="flex items-center text-sm text-gray-600">
-                <input
-                  type="checkbox"
-                  checked={autoRefresh}
-                  onChange={toggleAutoRefresh}
-                  className="mr-2 h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-                />
-                Auto-refresh (5 min)
-              </label>
-              <button 
-                onClick={handleRefresh}
-                disabled={refreshing}
-                className="flex items-center px-4 py-2 text-sm bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 disabled:bg-gray-50 disabled:text-gray-400 transition-colors"
-              >
-                <svg className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-                {refreshing ? 'Updating...' : 'Refresh Data'}
-              </button>
             </div>
           </div>
         </div>

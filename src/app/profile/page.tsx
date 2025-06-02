@@ -44,6 +44,7 @@ export default function ProfilePage() {
   const [settingsLoading, setSettingsLoading] = useState(false);
   const [settingsError, setSettingsError] = useState('');
   const [settingsSuccess, setSettingsSuccess] = useState('');
+  const [lastSavedTime, setLastSavedTime] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchSettings = async () => {
@@ -65,40 +66,62 @@ export default function ProfilePage() {
     };
 
     if (session) {
-    fetchSettings();
-      // Auto-load profile when page opens
-      autoLoadProfile();
+      fetchSettings();
+      // Always load from DB when page opens first
+      loadFromDatabase();
     }
   }, [session]);
 
-  const autoLoadProfile = async () => {
+  const loadFromDatabase = async () => {
     setLoading(true);
     setError(null);
-    setLoadingMessage('Checking for local profile...');
+    setLoadingMessage('Loading profile from database...');
 
     try {
-      // First, try to load local profile data
+      // Always try to load from database first
       const localResponse = await fetch('/api/profile');
       
       if (localResponse.ok) {
         const localProfile = await localResponse.json();
         if (localProfile && Object.keys(localProfile).length > 0) {
-          console.log('Loaded profile from local storage');
+          console.log('Loaded profile from database');
           setProfile(localProfile);
-          setLoadingMessage('Profile loaded from local storage');
-          setLoading(false);
+          setLoadingMessage('Profile loaded from database');
           setProfileSource('local');
+          
+          // Get the saved timestamp from the API response
+          const profileDetails = await fetch('/api/profile');
+          if (profileDetails.ok) {
+            const profileData = await profileDetails.json();
+            // For now, we'll set a generic saved time since the API doesn't return timestamps
+            setLastSavedTime(new Date().toLocaleString());
+          }
           return;
         }
       }
 
-      // If no local profile, try to fetch from Nightscout using stored settings
-      console.log('No local profile found, attempting to fetch from Nightscout');
-      setLoadingMessage('No local profile found. Checking Nightscout...');
+      // If no profile in database, try to fetch from Nightscout using stored settings
+      console.log('No profile found in database, attempting to fetch from Nightscout');
+      setLoadingMessage('No profile found in database. Checking Nightscout...');
       
+      await refreshProfileFromNightscout();
+      
+    } catch (err) {
+      console.error('Error loading profile:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load profile from database');
+      setLoadingMessage('');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const refreshProfileFromNightscout = async () => {
+    setLoading(true);
+    setError(null);
+    setLoadingMessage('Fetching profile from Nightscout...');
+
+    try {
       // Use GET endpoint which uses stored settings
-      setLoadingMessage('Fetching profile from Nightscout...');
-      
       const nsResponse = await fetch('/api/nightscout/profile', {
         method: 'GET',
         headers: {
@@ -111,18 +134,24 @@ export default function ProfilePage() {
         console.log('Successfully fetched profile from Nightscout');
         setProfile(nsProfile);
         
-        setLoadingMessage('Saving profile locally...');
-        // Automatically save the fetched profile locally
-        await fetch('/api/profile', {
+        setLoadingMessage('Saving profile to database...');
+        // Automatically save the fetched profile to database
+        const saveResponse = await fetch('/api/profile', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify(nsProfile),
         });
-        console.log('Profile automatically saved locally');
-        setLoadingMessage('Profile downloaded and saved successfully');
-        setProfileSource('nightscout');
+
+        if (saveResponse.ok) {
+          console.log('Profile automatically saved to database');
+          setLoadingMessage('Profile downloaded and saved successfully');
+          setProfileSource('nightscout');
+          setLastSavedTime(new Date().toLocaleString());
+        } else {
+          throw new Error('Failed to save profile to database');
+        }
       } else {
         const errorData = await nsResponse.json().catch(() => null);
         if (nsResponse.status === 400) {
@@ -132,8 +161,8 @@ export default function ProfilePage() {
         }
       }
     } catch (err) {
-      console.error('Error loading profile:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load profile automatically');
+      console.error('Error refreshing profile:', err);
+      setError(err instanceof Error ? err.message : 'Failed to refresh profile from Nightscout');
       setLoadingMessage('');
     } finally {
       setLoading(false);
@@ -264,46 +293,26 @@ export default function ProfilePage() {
       {/* User Profile Header with Photo */}
       <UserProfileHeader showDetailed={true} className="mb-8" />
       
-      {/* Quick Link to Personal Profile */}
-      <div className="mb-6">
-        <a
-          href="/personal-profile"
-          className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-        >
-          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-          </svg>
-          Edit Personal Profile & Photo
-        </a>
-      </div>
-      
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold">Diabetes Profile & Settings</h1>
-        <button
-          onClick={autoLoadProfile}
-          disabled={loading}
-          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-          </svg>
-          Refresh Profile
-        </button>
-      </div>
-
-      {profile && profileSource && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-          <div className="flex items-center">
-            <svg className="w-5 h-5 text-blue-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <p className="text-sm text-blue-700">
-              Profile loaded from <strong>{profileSource === 'local' ? 'local storage' : 'Nightscout'}</strong>
-              {profileSource === 'nightscout' && ' and automatically saved locally'}
+        <div className="flex flex-col items-end space-y-2">
+          {lastSavedTime && (
+            <p className="text-sm text-gray-600">
+              Last updated on: {lastSavedTime}
             </p>
-          </div>
+          )}
+          <button
+            onClick={refreshProfileFromNightscout}
+            disabled={loading}
+            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            Refresh Profile
+          </button>
         </div>
-      )}
+      </div>
 
       {/* Nightscout & Glucose Settings Section */}
       <div className="bg-white p-6 rounded-lg shadow mb-8">
@@ -380,18 +389,7 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          <div className="flex items-center justify-between">
-            <button
-              onClick={fetchProfile}
-              type="button"
-              className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-            >
-              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-              </svg>
-              Fetch Profile from Nightscout
-            </button>
-
+          <div className="flex items-center justify-end">
             <button
               type="submit"
               disabled={settingsLoading}
@@ -417,8 +415,8 @@ export default function ProfilePage() {
                 <div className="ml-3">
                   <h3 className="text-sm font-medium text-green-800">{settingsSuccess}</h3>
                 </div>
-          </div>
-        </div>
+              </div>
+            </div>
           )}
         </form>
 
@@ -524,18 +522,6 @@ export default function ProfilePage() {
                   </div>
                 </div>
               </div>
-            </div>
-
-            <div className="flex justify-end">
-              <button
-                onClick={saveProfile}
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-              >
-              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3-3m0 0l-3 3m3-3v12" />
-              </svg>
-                Save Profile Locally
-              </button>
             </div>
           </div>
         )}
