@@ -9,8 +9,8 @@ import { getServerSession } from 'next-auth';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata = {
-  title: 'BoostT1D',
-  description: 'Empowering Type 1 Diabetes Management',
+  title: 'BoostT1D ⚡ - Smart Diabetes Management',
+  description: 'Empowering Type 1 Diabetes Management with Smart Analytics, Community Connection, and Real-time Monitoring',
 };
 
 export default async function RootLayout({

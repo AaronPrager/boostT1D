@@ -28,8 +28,18 @@ export default function Navigation() {
         <div className="flex justify-between h-16">
           <div className="flex">
             <div className="flex-shrink-0 flex items-center">
-              <Link href="/" className="text-xl font-bold text-gray-800">
-                BoostT1D
+              <Link href="/" className="flex items-center space-x-2 text-xl font-bold text-gray-800 hover:text-indigo-600 transition-colors">
+                <div className="flex items-center space-x-1">
+                  <div className="flex flex-col leading-tight">
+                    <span className="text-lg font-extrabold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                      Boost
+                    </span>
+                    <span className="text-xs font-semibold text-red-500 -mt-1">
+                      T1D
+                    </span>
+                  </div>
+                  <span className="text-xl">⚡</span>
+                </div>
               </Link>
             </div>
             <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
