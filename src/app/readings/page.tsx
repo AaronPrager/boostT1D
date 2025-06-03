@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import {
@@ -38,7 +38,7 @@ type Reading = {
   direction?: string;
   type: string;
   source: 'manual' | 'nightscout';
-  originalDate?: number; // For preserving original date in overlay mode
+  originalDate?: number;
 };
 
 type Settings = {
@@ -62,6 +62,31 @@ type Statistics = {
     morning: number;
     afternoon: number;
     evening: number;
+  };
+};
+
+type PatternAnalysis = {
+  overallTimeInRange: number;
+  timeAboveRange: number;
+  timeBelowRange: number;
+  averageGlucose: number;
+  glucoseVariability: number;
+  timePatterns: {
+    overnight: { average: number; timeInRange: number; readings: number };
+    morning: { average: number; timeInRange: number; readings: number };
+    afternoon: { average: number; timeInRange: number; readings: number };
+    evening: { average: number; timeInRange: number; readings: number };
+  };
+  suggestions: string[];
+  riskAssessment: {
+    hypoRisk: 'low' | 'moderate' | 'high';
+    hyperRisk: 'low' | 'moderate' | 'high';
+    variabilityRisk: 'low' | 'moderate' | 'high';
+  };
+  recommendedSettings: {
+    suggestedLowTarget?: number;
+    suggestedHighTarget?: number;
+    reasoning: string[];
   };
 };
 
@@ -102,12 +127,12 @@ export default function ReadingsPage() {
   const [error, setError] = useState<string | null>(null);
   const [nightscoutUrl, setNightscoutUrl] = useState('');
   const [fromDate, setFromDate] = useState<string>(() => {
-    // Default to today
     const today = new Date();
-    return today.toISOString().split('T')[0];
+    const weekAgo = new Date(today);
+    weekAgo.setDate(today.getDate() - 7);
+    return weekAgo.toISOString().split('T')[0];
   });
   const [toDate, setToDate] = useState<string>(() => {
-    // Default to today
     const today = new Date();
     return today.toISOString().split('T')[0];
   });
@@ -115,6 +140,7 @@ export default function ReadingsPage() {
   const [filteredReadings, setFilteredReadings] = useState<Reading[]>([]);
   const [sourceFilter, setSourceFilter] = useState<'all' | 'manual' | 'nightscout'>('all');
   const [showData, setShowData] = useState(false);
+  const [activeTab, setActiveTab] = useState<'chart' | 'analysis' | 'data'>('chart');
   const [statistics, setStatistics] = useState<Statistics>({
     estimatedA1C: 0,
     averageGlucose: 0,
@@ -137,6 +163,8 @@ export default function ReadingsPage() {
     lowGlucose: 70,
     highGlucose: 180,
   });
+  const [analysis, setAnalysis] = useState<PatternAnalysis | null>(null);
+  const [analysisDateRange, setAnalysisDateRange] = useState(30);
 
   useEffect(() => {
     const fetchSettings = async () => {
@@ -166,34 +194,28 @@ export default function ReadingsPage() {
     });
     setFilteredReadings(filtered);
     calculateStatistics(filtered);
-  }, [readings, sourceFilter]);
+    
+    // Generate analysis when we have filtered readings
+    if (filtered.length > 0 && activeTab === 'analysis') {
+      const analysisResult = analyzePatterns(filtered, settings);
+      setAnalysis(analysisResult);
+    }
+  }, [readings, sourceFilter, settings, activeTab]);
 
   const calculateStatistics = (readings: Reading[]) => {
     if (readings.length === 0) return;
 
-    // Calculate average glucose
     const averageGlucose = readings.reduce((sum, reading) => sum + reading.sgv, 0) / readings.length;
-    
-    // Calculate standard deviation
     const squareDiffs = readings.map(reading => Math.pow(reading.sgv - averageGlucose, 2));
     const standardDeviation = Math.sqrt(squareDiffs.reduce((sum, diff) => sum + diff, 0) / readings.length);
-    
-    // Calculate coefficient of variation (CV)
     const coefficientOfVariation = (standardDeviation / averageGlucose) * 100;
-    
-    // Calculate estimated A1C using the formula: A1C = (average glucose + 46.7) / 28.7
     const estimatedA1C = parseFloat(((averageGlucose + 46.7) / 28.7).toFixed(1));
-    
-    // Calculate GMI (Glucose Management Indicator)
-    // Formula: GMI = 3.31 + (0.02392 × mean glucose)
     const gmi = parseFloat((3.31 + (0.02392 * averageGlucose)).toFixed(1));
 
-    // Calculate time in range percentages
     const inRange = readings.filter(r => r.sgv >= settings.lowGlucose && r.sgv <= settings.highGlucose).length;
     const aboveRange = readings.filter(r => r.sgv > settings.highGlucose).length;
     const belowRange = readings.filter(r => r.sgv < settings.lowGlucose).length;
 
-    // Calculate daily patterns
     const dailyPatterns = readings.reduce((acc, reading) => {
       const hour = new Date(reading.date).getHours();
       if (hour >= 0 && hour < 6) acc.overnight += reading.sgv;
@@ -203,8 +225,7 @@ export default function ReadingsPage() {
       return acc;
     }, { overnight: 0, morning: 0, afternoon: 0, evening: 0 });
 
-    // Count readings in each period for averaging
-    const periodCounts = readings.reduce((acc, reading) => {
+    const patternCounts = readings.reduce((acc, reading) => {
       const hour = new Date(reading.date).getHours();
       if (hour >= 0 && hour < 6) acc.overnight++;
       else if (hour >= 6 && hour < 12) acc.morning++;
@@ -212,13 +233,6 @@ export default function ReadingsPage() {
       else acc.evening++;
       return acc;
     }, { overnight: 0, morning: 0, afternoon: 0, evening: 0 });
-
-    // Calculate averages for each period
-    Object.keys(dailyPatterns).forEach(key => {
-      dailyPatterns[key as keyof typeof dailyPatterns] = periodCounts[key as keyof typeof periodCounts] > 0
-        ? Math.round(dailyPatterns[key as keyof typeof dailyPatterns] / periodCounts[key as keyof typeof periodCounts])
-        : 0;
-    });
 
     setStatistics({
       estimatedA1C,
@@ -230,493 +244,406 @@ export default function ReadingsPage() {
       timeInRange: Math.round((inRange / readings.length) * 100),
       timeAboveRange: Math.round((aboveRange / readings.length) * 100),
       timeBelowRange: Math.round((belowRange / readings.length) * 100),
-      dailyPatterns,
+      dailyPatterns: {
+        overnight: Math.round(dailyPatterns.overnight / (patternCounts.overnight || 1)),
+        morning: Math.round(dailyPatterns.morning / (patternCounts.morning || 1)),
+        afternoon: Math.round(dailyPatterns.afternoon / (patternCounts.afternoon || 1)),
+        evening: Math.round(dailyPatterns.evening / (patternCounts.evening || 1))
+      }
     });
   };
 
-  const fetchAllReadings = async (startDate: Date, endDate: Date) => {
-    try {
-      // Fetch readings from our database first
-      const url = new URL('/api/readings', window.location.origin);
-      url.searchParams.set('startDate', startDate.getTime().toString());
-      url.searchParams.set('endDate', endDate.getTime().toString());
-      url.searchParams.set('source', 'combined');
-      
-      const response = await fetch(url);
-      if (!response.ok) {
-        throw new Error('Failed to fetch local readings');
-      }
+  // Analysis functions from analysis page
+  const analyzePatterns = (readings: Reading[], settings: Settings): PatternAnalysis => {
+    const { lowGlucose, highGlucose } = settings;
+    
+    const totalReadings = readings.length;
+    const averageGlucose = readings.reduce((sum, r) => sum + r.sgv, 0) / totalReadings;
+    const variance = readings.reduce((sum, r) => sum + Math.pow(r.sgv - averageGlucose, 2), 0) / totalReadings;
+    const standardDeviation = Math.sqrt(variance);
+    const coefficientOfVariation = (standardDeviation / averageGlucose) * 100;
 
-      const dbReadings = await response.json();
-      
-      // Fetch manual treatments (blood glucose readings)
-      const treatmentsUrl = new URL('/api/treatments', window.location.origin);
-      treatmentsUrl.searchParams.set('startDate', startDate.getTime().toString());
-      treatmentsUrl.searchParams.set('endDate', endDate.getTime().toString());
-      
-      const treatmentsResponse = await fetch(treatmentsUrl);
-      if (!treatmentsResponse.ok) {
-        throw new Error('Failed to fetch treatments');
-      }
+    const inRange = readings.filter(r => r.sgv >= lowGlucose && r.sgv <= highGlucose).length;
+    const aboveRange = readings.filter(r => r.sgv > highGlucose).length;
+    const belowRange = readings.filter(r => r.sgv < lowGlucose).length;
 
-      const treatments = await treatmentsResponse.json();
-      
-      // Filter treatments to include only blood glucose readings and ensure valid dates
-      const bgTreatments = treatments
-        .filter((t: any) => t.type === 'bg' && t.glucoseValue && t.timestamp)
-        .map((t: any) => {
-          const timestamp = new Date(t.timestamp);
-          if (isNaN(timestamp.getTime())) {
-            console.error('Invalid timestamp in treatment:', t);
-            return null;
-          }
-          return {
-            sgv: t.glucoseValue,
-            date: timestamp.getTime(),
-            direction: null,
-            type: 'sgv',
-            source: 'manual'
-          };
-        })
-        .filter((t: any) => t !== null); // Remove any entries with invalid dates
+    const overallTimeInRange = (inRange / totalReadings) * 100;
+    const timeAboveRange = (aboveRange / totalReadings) * 100;
+    const timeBelowRange = (belowRange / totalReadings) * 100;
 
-      // Transform database readings to match our Reading type and ensure valid dates
-      const formattedReadings = dbReadings
-        .filter((reading: any) => reading.date)
-        .map((reading: any) => {
-          const timestamp = new Date(reading.date);
-          if (isNaN(timestamp.getTime())) {
-            console.error('Invalid date in reading:', reading);
-            return null;
-          }
-          return {
-            sgv: reading.sgv,
-            date: timestamp.getTime(),
-            direction: reading.direction,
-            type: 'sgv',
-            source: reading.source
-          };
-        })
-        .filter((r: any) => r !== null); // Remove any entries with invalid dates
+    const timePatterns = {
+      overnight: analyzeTimePeriod(readings, 0, 6, lowGlucose, highGlucose),
+      morning: analyzeTimePeriod(readings, 6, 12, lowGlucose, highGlucose),
+      afternoon: analyzeTimePeriod(readings, 12, 18, lowGlucose, highGlucose),
+      evening: analyzeTimePeriod(readings, 18, 24, lowGlucose, highGlucose),
+    };
 
-      // Combine and sort all readings by date (newest first)
-      const allReadings = [...formattedReadings, ...bgTreatments]
-        .sort((a, b) => b.date - a.date);
+    const hypoRisk = timeBelowRange > 4 ? 'high' : timeBelowRange > 1 ? 'moderate' : 'low';
+    const hyperRisk = timeAboveRange > 25 ? 'high' : timeAboveRange > 5 ? 'moderate' : 'low';
+    const variabilityRisk = coefficientOfVariation > 36 ? 'high' : coefficientOfVariation > 33 ? 'moderate' : 'low';
 
-      return allReadings;
-    } catch (error) {
-      console.error('Error fetching readings:', error);
-      throw error;
+    const suggestions = generateSuggestions({
+      overallTimeInRange,
+      timeBelowRange,
+      timeAboveRange,
+      variabilityRisk,
+      coefficientOfVariation,
+      timePatterns
+    });
+
+    const recommendedSettings = generateSettingsRecommendations({
+      currentSettings: settings,
+      hypoRisk,
+      overallTimeInRange,
+      timeAboveRange,
+    });
+
+    return {
+      overallTimeInRange: Math.round(overallTimeInRange),
+      timeAboveRange: Math.round(timeAboveRange),
+      timeBelowRange: Math.round(timeBelowRange),
+      averageGlucose: Math.round(averageGlucose),
+      glucoseVariability: Math.round(coefficientOfVariation),
+      timePatterns,
+      suggestions,
+      riskAssessment: {
+        hypoRisk,
+        hyperRisk,
+        variabilityRisk
+      },
+      recommendedSettings
+    };
+  };
+
+  const analyzeTimePeriod = (readings: Reading[], startHour: number, endHour: number, lowTarget: number, highTarget: number) => {
+    const periodReadings = readings.filter(r => {
+      const hour = new Date(r.date).getHours();
+      return hour >= startHour && hour < endHour;
+    });
+
+    if (periodReadings.length === 0) {
+      return { average: 0, timeInRange: 0, readings: 0 };
     }
+
+    const average = periodReadings.reduce((sum, r) => sum + r.sgv, 0) / periodReadings.length;
+    const inRange = periodReadings.filter(r => r.sgv >= lowTarget && r.sgv <= highTarget).length;
+    const timeInRange = (inRange / periodReadings.length) * 100;
+
+    return {
+      average: Math.round(average),
+      timeInRange: Math.round(timeInRange),
+      readings: periodReadings.length
+    };
+  };
+
+  const generateSuggestions = (data: {
+    overallTimeInRange: number;
+    timeBelowRange: number;
+    timeAboveRange: number;
+    variabilityRisk: string;
+    coefficientOfVariation: number;
+    timePatterns: Record<string, {readings: number, timeInRange: number}>;
+  }): string[] => {
+    const suggestions: string[] = [];
+
+    if (data.overallTimeInRange < 70) {
+      suggestions.push('Your time in range is below the recommended 70%. Consider reviewing your meal timing and insulin dosing with your healthcare provider.');
+    }
+
+    if (data.timeBelowRange > 4) {
+      suggestions.push('You have frequent low glucose readings. Consider adjusting your insulin doses or eating schedule to reduce hypoglycemia risk.');
+    }
+
+    if (data.timeAboveRange > 25) {
+      suggestions.push('You have frequent high glucose readings. Consider reviewing your carbohydrate counting and insulin timing.');
+    }
+
+    if (data.variabilityRisk === 'high') {
+      suggestions.push(`Your glucose variability is high (${Math.round(data.coefficientOfVariation)}% CV). Focus on consistent meal timing and portion sizes.`);
+    }
+
+    // Time-specific suggestions
+    const worstPeriod = Object.entries(data.timePatterns).reduce((worst, [period, stats]) => 
+      stats.timeInRange < worst.timeInRange ? { period, timeInRange: stats.timeInRange } : worst,
+      { period: '', timeInRange: 100 }
+    );
+
+    if (worstPeriod.timeInRange < 50) {
+      suggestions.push(`Your ${worstPeriod.period} period shows poor glucose control. Consider adjusting your management strategy for this time.`);
+    }
+
+    if (suggestions.length === 0) {
+      suggestions.push('Your glucose patterns look good! Keep up your current management approach.');
+    }
+
+    return suggestions;
+  };
+
+  const generateSettingsRecommendations = (data: {
+    currentSettings: Settings;
+    hypoRisk: string;
+    overallTimeInRange: number;
+    timeAboveRange: number;
+  }): PatternAnalysis['recommendedSettings'] => {
+    const reasoning: string[] = [];
+    let suggestedLowTarget = data.currentSettings.lowGlucose;
+    let suggestedHighTarget = data.currentSettings.highGlucose;
+
+    if (data.hypoRisk === 'high') {
+      suggestedLowTarget = Math.max(80, data.currentSettings.lowGlucose + 10);
+      reasoning.push('Raised low target to reduce hypoglycemia risk');
+    }
+
+    if (data.overallTimeInRange < 50 && data.timeAboveRange > 30) {
+      suggestedHighTarget = Math.min(200, data.currentSettings.highGlucose + 20);
+      reasoning.push('Relaxed high target to improve overall time in range');
+    }
+
+    if (suggestedLowTarget === data.currentSettings.lowGlucose && 
+        suggestedHighTarget === data.currentSettings.highGlucose) {
+      reasoning.push('Current target ranges are appropriate for your glucose patterns');
+    }
+
+    return {
+      ...(suggestedLowTarget !== data.currentSettings.lowGlucose && { suggestedLowTarget }),
+      ...(suggestedHighTarget !== data.currentSettings.highGlucose && { suggestedHighTarget }),
+      reasoning
+    };
+  };
+
+  const getRiskColor = (risk: 'low' | 'moderate' | 'high') => {
+    switch (risk) {
+      case 'low': return 'text-green-600 bg-green-100';
+      case 'moderate': return 'text-yellow-600 bg-yellow-100';
+      case 'high': return 'text-red-600 bg-red-100';
+    }
+  };
+
+  const fetchAllReadings = async (startDate: Date, endDate: Date) => {
+    const readings: any[] = [];
+    
+    // Fetch from API
+    const url = new URL('/api/readings', window.location.origin);
+    url.searchParams.set('startDate', startDate.getTime().toString());
+    url.searchParams.set('endDate', endDate.getTime().toString());
+    url.searchParams.set('source', 'combined');
+
+    const response = await fetch(url);
+    if (response.ok) {
+      const apiReadings = await response.json();
+      readings.push(...apiReadings);
+    }
+
+    return readings;
   };
 
   const fetchReadings = async () => {
     setLoading(true);
-    setError('');
+    setError(null);
 
     try {
-      const now = new Date();
-      let endDate = new Date(now.getTime());
-      let startDate: Date;
-      
-      if (fromDate && toDate) {
-        // Create dates in local timezone for proper inclusive behavior
-        startDate = new Date(fromDate + 'T00:00:00'); // Start of the from date in local time
-        endDate = new Date(toDate + 'T23:59:59.999'); // End of the to date in local time
-      } else if (fromDate) {
-        startDate = new Date(fromDate + 'T00:00:00');
-        endDate = new Date(fromDate + 'T23:59:59.999');
-      } else {
-        // Fallback to today
-        const today = new Date();
-        const todayStr = today.toISOString().split('T')[0];
-        startDate = new Date(todayStr + 'T00:00:00');
-        endDate = new Date(todayStr + 'T23:59:59.999');
+      // Create dates with proper full day boundaries using UTC to avoid timezone issues
+      const startDate = new Date(`${fromDate}T00:00:00.000Z`);
+      const endDate = new Date(`${toDate}T23:59:59.999Z`);
+
+      // Fetch data directly from Nightscout for fresh, real-time data
+      const url = new URL('/api/nightscout', window.location.origin);
+      url.searchParams.set('startDate', startDate.getTime().toString());
+      url.searchParams.set('endDate', endDate.getTime().toString());
+      url.searchParams.set('refresh', Date.now().toString()); // Cache busting
+
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error('Failed to fetch readings from Nightscout');
       }
-
-      console.log(`Date range calculation for ${fromDate} to ${toDate}:`, {
-        startDate: startDate.toISOString(),
-        endDate: endDate.toISOString(),
-        startDateLocal: startDate.toLocaleString(),
-        endDateLocal: endDate.toLocaleString()
-      });
-
-      // Fetch all readings first
-      const allReadings = await fetchAllReadings(startDate, endDate);
       
-      // Apply client-side filtering for exact time windows
+      const nightscoutData = await response.json();
+
+      // Transform Nightscout data to our format
       const filterReadings = (readings: any[]) => {
-        const startTime = startDate.getTime();
-        const endTime = endDate.getTime();
-        return readings.filter(reading => 
-          reading.date >= startTime && reading.date <= endTime
-        );
+        return readings
+          .map((reading: any) => ({
+            sgv: reading.sgv,
+            date: new Date(reading.date || reading.dateString).getTime(),
+            direction: reading.direction,
+            type: reading.type || 'sgv',
+            source: 'nightscout' as const
+          }))
+          .filter((reading: any) => 
+            reading.sgv && 
+            reading.sgv > 0 && 
+            reading.date >= startDate.getTime() && 
+            reading.date <= endDate.getTime()
+          )
+          .sort((a: any, b: any) => a.date - b.date);
       };
-      
-      // If we have a Nightscout URL, fetch and store new readings
-      if (nightscoutUrl) {
-        try {
-          const nsUrl = new URL('/api/nightscout', window.location.origin);
-          nsUrl.searchParams.set('startDate', startDate.getTime().toString());
-          nsUrl.searchParams.set('endDate', endDate.getTime().toString());
-          
-          const nsResponse = await fetch(nsUrl);
-          if (!nsResponse.ok) {
-            const errorText = await nsResponse.text();
-            throw new Error(`Failed to fetch Nightscout readings: ${errorText}`);
-          }
 
-          // Store new Nightscout readings
-          const nsData = await nsResponse.json();
-          if (Array.isArray(nsData) && nsData.length > 0) {
-            await fetch('/api/readings', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ readings: nsData }),
-            });
-            
-            // Fetch updated readings after storing new ones
-            const updatedReadings = await fetchAllReadings(startDate, endDate);
-            setReadings(filterReadings(updatedReadings));
-          } else {
-            setReadings(filterReadings(allReadings));
-          }
-        } catch (nsError) {
-          console.error('Error fetching Nightscout data:', nsError);
-          // Still show local readings even if Nightscout fetch fails
-          setReadings(filterReadings(allReadings));
-        }
-      } else {
-        setReadings(filterReadings(allReadings));
+      const processedReadings = filterReadings(nightscoutData);
+      setReadings(processedReadings);
+
+      console.log(`Fetched ${processedReadings.length} fresh readings from Nightscout`);
+      if (processedReadings.length > 0) {
+        const latestReading = processedReadings[processedReadings.length - 1];
+        const latestTime = new Date(latestReading.date).toLocaleString();
+        console.log(`Latest reading: ${latestReading.sgv} mg/dL at ${latestTime}`);
       }
+
     } catch (error) {
-      setError('Failed to fetch readings');
-      console.error('Error:', error);
+      console.error('Error fetching readings from Nightscout:', error);
+      setError('Failed to fetch readings from Nightscout. Please check your Nightscout settings and try again.');
     } finally {
       setLoading(false);
     }
   };
 
-  // Helper function to group readings by day
+  // Chart data and options
   const groupReadingsByDay = (readings: Reading[], uniqueDays: string[]): { [key: string]: Reading[] } => {
-    const days: { [key: string]: Reading[] } = {};
+    const grouped: { [key: string]: Reading[] } = {};
     
-    readings.forEach(reading => {
-      const date = new Date(reading.date);
-      // Use local timezone date instead of UTC to avoid timezone shifts
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-      const dayKey = `${year}-${month}-${day}`;
-      
-      if (!days[dayKey]) {
-        days[dayKey] = [];
-      }
-
-      // For overlay mode, normalize all readings to the same reference day (2000-01-01)
-      // but add a tiny millisecond offset for each day to keep datasets separate
-      const dayIndex = uniqueDays.indexOf(dayKey);
-      const refDate = new Date(2000, 0, 1); // Always use 2000-01-01 as base
-      refDate.setHours(date.getHours(), date.getMinutes(), date.getSeconds(), dayIndex); // Use dayIndex as milliseconds
-      
-      days[dayKey].push({
-        ...reading,
-        date: refDate.getTime(),
-        originalDate: reading.date // Preserve original date for tooltip
+    uniqueDays.forEach(day => {
+      grouped[day] = readings.filter(reading => {
+        const readingDay = new Date(reading.date).toDateString();
+        return readingDay === new Date(day).toDateString();
       });
     });
-
-    // Sort each day's readings by time and add gaps to prevent day boundary connections
-    Object.keys(days).forEach(dayKey => {
-      days[dayKey] = days[dayKey]
-        .sort((a, b) => a.date - b.date)
-        .map((reading, index, arr) => {
-          // If this is not the first reading, check for large time gaps
-          if (index > 0) {
-            const timeDiff = reading.date - arr[index - 1].date;
-            // If gap is more than 2 hours, insert a null reading to break the line
-            if (timeDiff > 2 * 60 * 60 * 1000) {
-              return [
-                {
-                  ...reading,
-                  sgv: null as any, // null value creates gap in Chart.js
-                  date: arr[index - 1].date + (timeDiff / 2),
-                  originalDate: (arr[index - 1].originalDate || arr[index - 1].date) + (timeDiff / 2)
-                },
-                reading
-              ];
-            }
-          }
-          return reading;
-        })
-        .flat();
-    });
-
-    console.log('Grouped readings by day:', Object.keys(days).map(day => ({
-      day,
-      count: days[day].length
-    })));
-
-    return days;
+    
+    return grouped;
   };
 
-  // Generate different colors for each day
   const generateDayColors = (count: number) => {
-    const colors = [
-      'rgb(75, 192, 192)',   // teal
-      'rgb(255, 99, 132)',   // red
-      'rgb(54, 162, 235)',   // blue
-      'rgb(255, 206, 86)',   // yellow
-      'rgb(153, 102, 255)',  // purple
-      'rgb(255, 159, 64)',   // orange
-      'rgb(75, 192, 100)',   // green
-    ];
-    
-    return Array(count).fill(0).map((_, i) => colors[i % colors.length]);
+    const colors = [];
+    for (let i = 0; i < count; i++) {
+      const hue = (i * 137.508) % 360;
+      colors.push(`hsl(${hue}, 70%, 60%)`);
+    }
+    return colors;
   };
 
-  // Always use overlay mode to show all data on the same 24-hour timeline
-  const useActualTimeline = false; // Always false to force overlay mode
-  
-  // Calculate unique days first for consistent color assignment
-  const uniqueDays = Array.from(new Set(filteredReadings.map(reading => {
-    const date = new Date(reading.date);
-    // Use local timezone date instead of UTC to avoid timezone shifts
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  }))).sort();
-  
-  // Calculate day groups for overlay mode
-  const dayGroups = groupReadingsByDay(filteredReadings, uniqueDays);
-  const dayCount = Object.keys(dayGroups).length;
-  
-  // Debug: Log the grouping results
-  console.log('Day grouping debug:', {
-    dayGroups: Object.keys(dayGroups).map(day => ({
-      day,
-      count: dayGroups[day].length,
-      firstReading: dayGroups[day][0] ? {
-        originalDate: new Date(dayGroups[day][0].originalDate || dayGroups[day][0].date).toISOString(),
-        normalizedDate: new Date(dayGroups[day][0].date).toISOString(),
-        sgv: dayGroups[day][0].sgv
-      } : null,
-      lastReading: dayGroups[day][dayGroups[day].length - 1] ? {
-        originalDate: new Date(dayGroups[day][dayGroups[day].length - 1].originalDate || dayGroups[day][dayGroups[day].length - 1].date).toISOString(),
-        normalizedDate: new Date(dayGroups[day][dayGroups[day].length - 1].date).toISOString(),
-        sgv: dayGroups[day][dayGroups[day].length - 1].sgv
-      } : null
-    }))
-  });
-  
-  // Debug: Log filtered readings to understand what's being charted
-  console.log('Chart data debug:', {
-    fromDate,
-    toDate,
-    useActualTimeline,
-    filteredReadingsCount: filteredReadings.length,
-    dayCount,
-    filteredReadingsSample: filteredReadings.slice(0, 3).map(r => ({
-      sgv: r.sgv,
-      date: new Date(r.date).toISOString(),
-      source: r.source
-    }))
-  });
-  
-  // Generate colors for each day
-  const dayColors = generateDayColors(dayCount);
-  
-  const chartDatasets = (Object.entries(dayGroups) as [string, Reading[]][]).map(([day, dayReadings], index) => {
-    // Use the day's position in the sorted uniqueDays array for consistent coloring
-    const dayIndex = uniqueDays.indexOf(day);
-    const dataset = {
-      label: new Date(day + 'T00:00:00').toLocaleDateString('en-US', { 
-        weekday: 'short', 
-        month: 'short', 
-        day: 'numeric' 
-      }),
-      data: dayReadings.map(reading => ({
-        x: reading.date as number,
-        y: reading.sgv === null ? null : reading.sgv, // Preserve null values for gaps
-        originalDate: reading.originalDate || reading.date, // Include original date for tooltip
-        direction: reading.direction, // Include direction for tooltip
-        dayKey: day // Include day key for tooltip
-      })).sort((a, b) => (a.x as number) - (b.x as number)),
-      borderColor: dayColors[dayIndex], // Use dayIndex from sorted array
-      backgroundColor: dayColors[dayIndex], // Use dayIndex from sorted array
-      tension: 0.1,
-      pointRadius: 2,
-      spanGaps: false, // This is key - don't span gaps created by null values
-      segment: {
-        // Add explicit segment styling to handle gaps better
-        borderColor: (ctx: any) => {
-          return ctx.p0.parsed.y === null || ctx.p1.parsed.y === null ? 'transparent' : undefined;
-        }
-      }
-    };
-    
-    // Debug: Log each dataset
-    console.log(`Dataset ${index} (${day}):`, {
-      label: dataset.label,
-      dayIndex,
-      color: dayColors[dayIndex],
-      dataCount: dataset.data.length,
-      firstPoint: dataset.data[0],
-      lastPoint: dataset.data[dataset.data.length - 1]
+  const uniqueDays = Array.from(new Set(filteredReadings.map(reading => 
+    new Date(reading.date).toDateString()
+  ))).sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
+
+  const groupedReadings = groupReadingsByDay(filteredReadings, uniqueDays);
+  const dayColors = generateDayColors(uniqueDays.length);
+
+  const datasets: ChartDataset<"line", (number | Point | null)[]>[] = uniqueDays.map((day, index) => {
+    const dayReadings = groupedReadings[day] || [];
+    const dayLabel = new Date(day).toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric',
+      year: new Date(day).getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined
     });
-    
-    return dataset;
+
+    return {
+      label: dayLabel,
+      data: dayReadings.map(reading => {
+        const readingDate = new Date(reading.date);
+        const hours = readingDate.getHours();
+        const minutes = readingDate.getMinutes();
+        const timeOfDay = hours + (minutes / 60); // Convert to decimal hours
+        
+        return {
+          x: timeOfDay,
+          y: reading.sgv,
+          direction: reading.direction
+        };
+      }),
+      borderColor: dayColors[index],
+      backgroundColor: dayColors[index] + '20',
+      tension: 0.1,
+      pointRadius: 3,
+      pointHoverRadius: 5,
+    };
   });
 
-  const chartData: ChartData<'line'> = {
-    datasets: [
-      // Range limit lines
-      {
-        label: 'High Limit',
-        data: [
-          { x: new Date(2000, 0, 1, 0, 0, 0, 0).getTime(), y: settings.highGlucose },
-          { x: new Date(2000, 0, 1, 23, 59, 59, 999).getTime(), y: settings.highGlucose }
-        ],
-        borderColor: 'rgba(255, 0, 0, 0.5)',
-        borderWidth: 1,
-        borderDash: [5, 5],
-        pointRadius: 0,
-        fill: false,
-        tension: 0
-      },
-      {
-        label: 'Low Limit',
-        data: [
-          { x: new Date(2000, 0, 1, 0, 0, 0, 0).getTime(), y: settings.lowGlucose },
-          { x: new Date(2000, 0, 1, 23, 59, 59, 999).getTime(), y: settings.lowGlucose }
-        ],
-        borderColor: 'rgba(255, 0, 0, 0.5)',
-        borderWidth: 1,
-        borderDash: [5, 5],
-        pointRadius: 0,
-        fill: false,
-        tension: 0
-      },
-      // Glucose readings
-      ...chartDatasets
-    ] as ChartDataset<'line', Point[]>[]
-  };
+  const chartData: ChartData<"line", (number | Point | null)[], unknown> = { datasets };
 
-  const chartOptions: ChartOptions<'line'> = {
+  const chartOptions: ChartOptions<"line"> = {
     responsive: true,
     maintainAspectRatio: false,
-    scales: {
-      x: {
-        type: 'time',
-        time: {
-          unit: 'hour',
-          displayFormats: {
-            minute: 'HH:mm',
-            hour: 'HH:mm'
-          },
-          tooltipFormat: 'HH:mm'
-        },
-        // Always use 00:00-24:00 range for consistent day view
-        min: new Date(2000, 0, 1, 0, 0, 0, 0).getTime(), // 2000-01-01 00:00:00
-        max: new Date(2000, 0, 1, 23, 59, 59, 999).getTime(), // 2000-01-01 23:59:59
-        title: {
-          display: true,
-          text: useActualTimeline 
-            ? `${new Date(fromDate).toLocaleDateString()} (${Intl.DateTimeFormat().resolvedOptions().timeZone})`
-            : `${new Date(fromDate).toLocaleDateString()} - ${new Date(toDate).toLocaleDateString()} (${Intl.DateTimeFormat().resolvedOptions().timeZone})`
-        },
-        ticks: {
-          source: 'auto',
-          autoSkip: false,
-          maxRotation: 0,
-          maxTicksLimit: 49, // 24 hours * 2 (30-min intervals) + 1
-          callback: function(value) {
-            const date = new Date(value);
-            const hour = date.getHours();
-            const minute = date.getMinutes();
-            // Only show ticks at 30-minute intervals
-            if (minute === 0 || minute === 30) {
-              return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-            }
-            return '';
-          }
-        }
-      },
-      y: {
-        title: {
-          display: true,
-          text: 'Blood Glucose (mg/dL)'
-        },
-        min: 40,
-        max: 400,
-        grid: {
-          color: (context) => {
-            if (context.tick.value === settings.highGlucose) return 'rgba(255, 0, 0, 0.2)';
-            if (context.tick.value === settings.lowGlucose) return 'rgba(255, 0, 0, 0.2)';
-            return '#e5e5e5';
-          }
-        }
-      }
-    },
     plugins: {
       legend: {
         position: 'top' as const,
         labels: {
           usePointStyle: true,
-          pointStyle: 'circle'
+          pointStyle: 'circle',
+          padding: 15,
+          font: {
+            size: 11
+          }
         }
       },
+      title: {
+        display: true,
+        text: 'Blood Glucose Readings Over Time'
+      },
       tooltip: {
+        mode: 'point',
+        intersect: false,
         callbacks: {
           title: (context: any) => {
-            if (!context.length) return '';
-            const dataPoint = context[0].raw;
-            const dayLabel = context[0].dataset.label || '';
-            
-            if (useActualTimeline) {
-              // For timeline view, show full date and time
-              const date = new Date(dataPoint.x as number);
-              const localDate = date.toLocaleDateString();
-              const localTime = date.toLocaleTimeString('en-US', { 
-                hour: '2-digit', 
-                minute: '2-digit',
-                hour12: false 
-              });
-              return `${localDate} ${localTime}`;
-            } else {
-              // For overlay view, show the actual date from the original reading
-              if (dataPoint.originalDate) {
-                const originalDate = new Date(dataPoint.originalDate);
-                const localDate = originalDate.toLocaleDateString();
-                const localTime = originalDate.toLocaleTimeString('en-US', { 
-                  hour: '2-digit', 
-                  minute: '2-digit',
-                  hour12: false 
-                });
-                return `${localDate} ${localTime}`;
-              } else {
-                // Fallback to day label and normalized time
-                const dateForTime = new Date(dataPoint.x as number);
-                const localTime = dateForTime.toLocaleTimeString('en-US', { 
-                  hour: '2-digit', 
-                  minute: '2-digit',
-                  hour12: false 
-                });
-                return `${dayLabel} ${localTime}`;
+            if (context[0]?.raw) {
+              const dataPoint = context[0].raw;
+              const dataset = context[0].dataset;
+              const dayLabel = dataset.label;
+              
+              if (typeof dataPoint.x === 'number') {
+                const hours = Math.floor(dataPoint.x);
+                const minutes = Math.round((dataPoint.x - hours) * 60);
+                const timeString = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+                return `${dayLabel} ${timeString}`;
               }
             }
           },
           label: (context: any) => {
             const value = context.parsed.y;
             const dataPoint = context.raw;
-            // Use direction directly from data point
             const direction = dataPoint.direction;
             const arrow = direction ? DIRECTION_ARROWS[direction] || direction : '';
             return `${value} mg/dL ${arrow}`;
           }
         }
       }
+    },
+    scales: {
+      x: {
+        type: 'linear',
+        min: 0,
+        max: 24,
+        ticks: {
+          stepSize: 0.5, // 30-minute intervals
+          callback: function(value: any) {
+            const hours = Math.floor(value);
+            const minutes = (value - hours) * 60;
+            return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+          }
+        },
+        title: {
+          display: true,
+          text: 'Time of Day'
+        }
+      },
+      y: {
+        beginAtZero: false,
+        min: 50,
+        title: {
+          display: true,
+          text: 'Blood Glucose (mg/dL)'
+        },
+        grid: {
+          color: (context) => {
+            const value = context.tick.value as number;
+            if (value === settings.lowGlucose || value === settings.highGlucose) {
+              return '#ef4444';
+            }
+            return 'rgba(0, 0, 0, 0.1)';
+          }
+        }
+      }
+    },
+    interaction: {
+      mode: 'point',
+      intersect: false,
     }
   };
 
@@ -725,7 +652,7 @@ export default function ReadingsPage() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-gray-900">Access Denied</h1>
-          <p className="mt-2 text-gray-600">Please sign in to view your readings.</p>
+          <p className="mt-2 text-gray-600">Please sign in to view your readings and analysis.</p>
         </div>
       </div>
     );
@@ -736,7 +663,7 @@ export default function ReadingsPage() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-gray-900">Loading...</h1>
-          <p className="mt-2 text-gray-600">Fetching your readings data.</p>
+          <p className="mt-2 text-gray-600">Fetching your data.</p>
         </div>
       </div>
     );
@@ -755,7 +682,7 @@ export default function ReadingsPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-8">Blood Glucose Readings</h1>
+      <h1 className="text-3xl font-bold mb-8">Blood Glucose Data & Analysis</h1>
       
       {/* Data Source Controls */}
       <div className="bg-white p-4 rounded-lg shadow mb-8">
@@ -811,142 +738,243 @@ export default function ReadingsPage() {
           onClick={fetchReadings}
           className="mt-4 w-full bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
         >
-          Fetch Readings
+          🔄 Fetch Fresh Data from Nightscout
         </button>
       </div>
 
-      {/* Statistics Section */}
-      <div className="bg-white p-4 rounded-lg shadow mb-8">
-        <h2 className="text-xl font-semibold mb-4">Statistics</h2>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-          <div>
-            <p className="text-sm text-gray-500">Estimated A1C</p>
-            <p className="text-lg font-semibold">{statistics.estimatedA1C}%</p>
-          </div>
-          <div>
-            <p className="text-sm text-gray-500">GMI</p>
-            <p className="text-lg font-semibold">{statistics.gmi}%</p>
-          </div>
-          <div>
-            <p className="text-sm text-gray-500">Average Glucose</p>
-            <p className="text-lg font-semibold">{statistics.averageGlucose} mg/dL</p>
-          </div>
-          <div>
-            <p className="text-sm text-gray-500">Standard Deviation</p>
-            <p className="text-lg font-semibold">{statistics.standardDeviation} mg/dL</p>
-          </div>
-          <div>
-            <p className="text-sm text-gray-500">Coefficient of Variation</p>
-            <p className="text-lg font-semibold">{statistics.coefficientOfVariation}%</p>
-          </div>
-          <div>
-            <p className="text-sm text-gray-500">Total Readings</p>
-            <p className="text-lg font-semibold">{statistics.totalReadings}</p>
-          </div>
+      {/* Tab Navigation */}
+      <div className="bg-white rounded-lg shadow mb-8">
+        <div className="border-b border-gray-200">
+          <nav className="-mb-px flex space-x-8" aria-label="Tabs">
+            <button
+              onClick={() => setActiveTab('chart')}
+              className={`whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'chart'
+                  ? 'border-indigo-500 text-indigo-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              Chart View
+            </button>
+            <button
+              onClick={() => setActiveTab('analysis')}
+              className={`whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'analysis'
+                  ? 'border-indigo-500 text-indigo-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              Pattern Analysis
+            </button>
+            <button
+              onClick={() => setActiveTab('data')}
+              className={`whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'data'
+                  ? 'border-indigo-500 text-indigo-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              Raw Data
+            </button>
+          </nav>
         </div>
 
-        <div className="mt-6">
-          <h3 className="text-lg font-semibold mb-2">Time in Range</h3>
-          <div className="grid grid-cols-3 gap-2">
-            <div className="text-center p-2 bg-red-100 rounded">
-              <p className="text-sm text-red-800">Below</p>
-              <p className="font-semibold">{statistics.timeBelowRange}%</p>
+        <div className="p-6">
+          {/* Statistics Section - Always visible */}
+          <div className="mb-8">
+            <h2 className="text-xl font-semibold mb-4">Statistics ({filteredReadings.length} readings)</h2>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              <div>
+                <p className="text-sm text-gray-500">Estimated A1C</p>
+                <p className="text-lg font-semibold">{statistics.estimatedA1C}%</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">GMI</p>
+                <p className="text-lg font-semibold">{statistics.gmi}%</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Average Glucose</p>
+                <p className="text-lg font-semibold">{statistics.averageGlucose} mg/dL</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Standard Deviation</p>
+                <p className="text-lg font-semibold">{statistics.standardDeviation} mg/dL</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Coefficient of Variation</p>
+                <p className="text-lg font-semibold">{statistics.coefficientOfVariation}%</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Total Readings</p>
+                <p className="text-lg font-semibold">{statistics.totalReadings}</p>
+              </div>
             </div>
-            <div className="text-center p-2 bg-green-100 rounded">
-              <p className="text-sm text-green-800">In Range</p>
-              <p className="font-semibold">{statistics.timeInRange}%</p>
-            </div>
-            <div className="text-center p-2 bg-yellow-100 rounded">
-              <p className="text-sm text-yellow-800">Above</p>
-              <p className="font-semibold">{statistics.timeAboveRange}%</p>
+
+            <div className="mt-6">
+              <h3 className="text-lg font-semibold mb-2">Time in Range</h3>
+              <div className="grid grid-cols-3 gap-2">
+                <div className="text-center p-2 bg-red-100 rounded">
+                  <p className="text-sm text-red-800">Below</p>
+                  <p className="font-semibold">{statistics.timeBelowRange}%</p>
+                </div>
+                <div className="text-center p-2 bg-green-100 rounded">
+                  <p className="text-sm text-green-800">In Range</p>
+                  <p className="font-semibold">{statistics.timeInRange}%</p>
+                </div>
+                <div className="text-center p-2 bg-yellow-100 rounded">
+                  <p className="text-sm text-yellow-800">Above</p>
+                  <p className="font-semibold">{statistics.timeAboveRange}%</p>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
 
-        <div className="mt-6">
-          <h3 className="text-lg font-semibold mb-2">Daily Patterns</h3>
-          <div className="grid grid-cols-2 gap-2">
+          {/* Tab Content */}
+          {activeTab === 'chart' && (
             <div>
-              <p className="text-sm text-gray-500">Overnight (00:00-06:00)</p>
-              <p className="font-semibold">{statistics.dailyPatterns.overnight} mg/dL</p>
+              <h3 className="text-lg font-semibold mb-4">Glucose Chart</h3>
+              <div className="h-[500px]">
+                <Line options={chartOptions} data={chartData} />
+              </div>
             </div>
-            <div>
-              <p className="text-sm text-gray-500">Morning (06:00-12:00)</p>
-              <p className="font-semibold">{statistics.dailyPatterns.morning} mg/dL</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Afternoon (12:00-18:00)</p>
-              <p className="font-semibold">{statistics.dailyPatterns.afternoon} mg/dL</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Evening (18:00-24:00)</p>
-              <p className="font-semibold">{statistics.dailyPatterns.evening} mg/dL</p>
-            </div>
-          </div>
-        </div>
-      </div>
+          )}
 
-      {/* Chart Section */}
-      <div className="bg-white p-4 rounded-lg shadow mb-8">
-        <div className="h-[500px]">
-          <Line options={chartOptions} data={chartData} />
-        </div>
-      </div>
+          {activeTab === 'analysis' && analysis && (
+            <div className="space-y-8">
+              <h3 className="text-lg font-semibold">Pattern Analysis & Recommendations</h3>
+              
+              {/* Risk Assessment */}
+              <div>
+                <h4 className="text-md font-semibold mb-4">Risk Assessment</h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className={`p-4 rounded ${getRiskColor(analysis.riskAssessment.hypoRisk)}`}>
+                    <h5 className="font-semibold">Hypoglycemia Risk</h5>
+                    <p className="text-lg capitalize">{analysis.riskAssessment.hypoRisk}</p>
+                  </div>
+                  <div className={`p-4 rounded ${getRiskColor(analysis.riskAssessment.hyperRisk)}`}>
+                    <h5 className="font-semibold">Hyperglycemia Risk</h5>
+                    <p className="text-lg capitalize">{analysis.riskAssessment.hyperRisk}</p>
+                  </div>
+                  <div className={`p-4 rounded ${getRiskColor(analysis.riskAssessment.variabilityRisk)}`}>
+                    <h5 className="font-semibold">Variability Risk</h5>
+                    <p className="text-lg capitalize">{analysis.riskAssessment.variabilityRisk}</p>
+                  </div>
+                </div>
+              </div>
 
-      {/* Data Table Section */}
-      <div className="bg-white p-4 rounded-lg shadow">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-semibold">Raw Data</h2>
-          <button
-            onClick={() => setShowData(!showData)}
-            className="bg-gray-100 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
-          >
-            {showData ? 'Hide Data' : 'Show Data'}
-          </button>
-        </div>
-        
-        {showData && (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Glucose</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Direction</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Source</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {filteredReadings.map((reading, index) => (
-                  <tr key={index}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      <div>
-                        <div className="font-medium">{new Date(reading.date).toLocaleDateString()}</div>
-                        <div className="text-xs text-gray-400">
-                          {new Date(reading.date).toLocaleTimeString('en-US', { 
-                            hour: '2-digit', 
-                            minute: '2-digit',
-                            second: '2-digit',
-                            hour12: false 
-                          })}
-                        </div>
+              {/* Time Patterns */}
+              <div>
+                <h4 className="text-md font-semibold mb-4">Daily Time Patterns</h4>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {Object.entries(analysis.timePatterns).map(([period, stats]) => (
+                    <div key={period} className="p-4 border rounded">
+                      <h5 className="font-semibold capitalize">{period}</h5>
+                      <p className="text-sm text-gray-600">{stats.readings} readings</p>
+                      <div className="mt-2">
+                        <p>Avg: {stats.average} mg/dL</p>
+                        <p>TIR: {stats.timeInRange}%</p>
                       </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {reading.sgv} mg/dL
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {reading.direction ? DIRECTION_ARROWS[reading.direction] || reading.direction : '-'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {reading.source}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Recommended Settings */}
+              <div>
+                <h4 className="text-md font-semibold mb-4">Recommended Target Settings</h4>
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center p-4 bg-gray-50 rounded">
+                    <div>
+                      <h5 className="font-semibold">Current Targets</h5>
+                      <p>{settings.lowGlucose} - {settings.highGlucose} mg/dL</p>
+                    </div>
+                    <div>
+                      <h5 className="font-semibold">Recommended Targets</h5>
+                      <p>
+                        {analysis.recommendedSettings.suggestedLowTarget ?? settings.lowGlucose} - {analysis.recommendedSettings.suggestedHighTarget ?? settings.highGlucose} mg/dL
+                      </p>
+                    </div>
+                  </div>
+                  <div>
+                    <h5 className="font-semibold mb-2">Reasoning</h5>
+                    <ul className="list-disc list-inside space-y-1">
+                      {analysis.recommendedSettings.reasoning.map((reason, index) => (
+                        <li key={index} className="text-gray-700">{reason}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              {/* Suggestions */}
+              <div>
+                <h4 className="text-md font-semibold mb-4">Personalized Suggestions</h4>
+                <div className="space-y-3">
+                  {analysis.suggestions.map((suggestion, index) => (
+                    <div key={index} className="p-4 bg-blue-50 border-l-4 border-blue-400">
+                      <p className="text-blue-800">{suggestion}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Disclaimer */}
+              <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-lg">
+                <h5 className="font-semibold text-yellow-800">Important Disclaimer</h5>
+                <p className="text-yellow-700 text-sm mt-2">
+                  This analysis is for informational purposes only and should not replace professional medical advice. 
+                  Always consult with your healthcare provider before making changes to your diabetes management plan.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'data' && (
+            <div>
+              <h3 className="text-lg font-semibold mb-4">Raw Data</h3>
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Glucose</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Direction</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Source</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {[...filteredReadings].sort((a, b) => b.date - a.date).map((reading, index) => (
+                      <tr key={index}>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          <div>
+                            <div className="font-medium">{new Date(reading.date).toLocaleDateString()}</div>
+                            <div className="text-xs text-gray-400">
+                              {new Date(reading.date).toLocaleTimeString('en-US', { 
+                                hour: '2-digit', 
+                                minute: '2-digit',
+                                second: '2-digit',
+                                hour12: false 
+                              })}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {reading.sgv} mg/dL
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {reading.direction ? DIRECTION_ARROWS[reading.direction] || reading.direction : '-'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {reading.source}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

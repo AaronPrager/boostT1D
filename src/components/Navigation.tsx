@@ -137,13 +137,6 @@ export default function Navigation() {
                         Treatments
                       </Link>
                       <Link 
-                        href="/analysis" 
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                        onClick={closeDropdown}
-                      >
-                        Analysis
-                      </Link>
-                      <Link 
                         href="/profile" 
                         className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                         onClick={closeDropdown}
@@ -155,7 +148,14 @@ export default function Navigation() {
                         className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                         onClick={closeDropdown}
                       >
-                        Readings
+                        Data & Analysis
+                      </Link>
+                      <Link 
+                        href="/therapy-adjustment" 
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        onClick={closeDropdown}
+                      >
+                        Therapy Adjustments
                       </Link>
                     </div>
                   </div>
@@ -298,13 +298,6 @@ export default function Navigation() {
                       Treatments
                     </Link>
                     <Link 
-                      href="/analysis" 
-                      className="block px-3 py-2 rounded-md text-base font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100"
-                      onClick={closeMobileMenu}
-                    >
-                      Analysis
-                    </Link>
-                    <Link 
                       href="/profile" 
                       className="block px-3 py-2 rounded-md text-base font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100"
                       onClick={closeMobileMenu}
@@ -316,7 +309,14 @@ export default function Navigation() {
                       className="block px-3 py-2 rounded-md text-base font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100"
                       onClick={closeMobileMenu}
                     >
-                      Readings
+                      Data & Analysis
+                    </Link>
+                    <Link 
+                      href="/therapy-adjustment" 
+                      className="block px-3 py-2 rounded-md text-base font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                      onClick={closeMobileMenu}
+                    >
+                      Therapy Adjustments
                     </Link>
                   </div>
 
