@@ -3,10 +3,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { Camera, User, MapPin, Phone, Calendar, Heart, Users, Edit2, Save, X } from 'lucide-react';
+import { Camera, User, MapPin, Phone, Calendar, Heart, Users, Edit2, Save, X, Mail, Lock, Eye, EyeOff } from 'lucide-react';
 
 interface PersonalProfileData {
   name?: string;
+  email?: string;
   about?: string;
   photo?: string;
   address?: {
@@ -27,6 +28,20 @@ interface PersonalProfileData {
   };
 }
 
+interface PasswordChangeData {
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
+}
+
+interface ValidationErrors {
+  email?: string;
+  dateOfBirth?: string;
+  country?: string;
+  passwordMismatch?: string;
+  currentPassword?: string;
+}
+
 export default function PersonalProfile() {
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -38,6 +53,19 @@ export default function PersonalProfile() {
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editingProfile, setEditingProfile] = useState<PersonalProfileData>({});
+  const [passwordData, setPasswordData] = useState<PasswordChangeData>({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
+  const [showPasswords, setShowPasswords] = useState({
+    current: false,
+    new: false,
+    confirm: false
+  });
+  const [validationErrors, setValidationErrors] = useState<ValidationErrors>({});
+  const [changingPassword, setChangingPassword] = useState(false);
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -55,13 +83,117 @@ export default function PersonalProfile() {
       const response = await fetch('/api/personal-profile');
       if (response.ok) {
         const data = await response.json();
-        setProfile(data);
-        setEditingProfile(data);
+        // Include email from session
+        const profileWithEmail = {
+          ...data,
+          email: session?.user?.email || ''
+        };
+        setProfile(profileWithEmail);
+        setEditingProfile(profileWithEmail);
       }
     } catch (error) {
       console.error('Error fetching profile:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const validateProfile = (profileData: PersonalProfileData): ValidationErrors => {
+    const errors: ValidationErrors = {};
+    
+    // Email validation
+    if (!profileData.email || !profileData.email.trim()) {
+      errors.email = 'Email is required';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(profileData.email)) {
+      errors.email = 'Please enter a valid email address';
+    }
+    
+    // Date of birth validation
+    if (!profileData.dateOfBirth || !profileData.dateOfBirth.trim()) {
+      errors.dateOfBirth = 'Date of birth is required';
+    }
+    
+    // Country validation
+    if (!profileData.address?.country || !profileData.address.country.trim()) {
+      errors.country = 'Country is required';
+    }
+    
+    return errors;
+  };
+
+  const validatePassword = (passwordData: PasswordChangeData): ValidationErrors => {
+    const errors: ValidationErrors = {};
+    
+    if (!passwordData.currentPassword) {
+      errors.currentPassword = 'Current password is required';
+    }
+    
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      errors.passwordMismatch = 'New passwords do not match';
+    }
+    
+    if (passwordData.newPassword.length < 6) {
+      errors.passwordMismatch = 'New password must be at least 6 characters long';
+    }
+    
+    return errors;
+  };
+
+  const handleEmailChange = async (newEmail: string) => {
+    try {
+      const response = await fetch('/api/auth/change-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ newEmail }),
+      });
+
+      if (response.ok) {
+        alert('Email updated successfully. Please sign in again with your new email.');
+        // Force sign out and redirect to login
+        window.location.href = '/auth/signin';
+      } else {
+        const error = await response.text();
+        alert(`Failed to update email: ${error}`);
+      }
+    } catch (error) {
+      console.error('Error updating email:', error);
+      alert('Failed to update email');
+    }
+  };
+
+  const handlePasswordChange = async () => {
+    const passwordErrors = validatePassword(passwordData);
+    setValidationErrors(passwordErrors);
+    
+    if (Object.keys(passwordErrors).length > 0) {
+      return;
+    }
+
+    setChangingPassword(true);
+    try {
+      const response = await fetch('/api/auth/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          currentPassword: passwordData.currentPassword,
+          newPassword: passwordData.newPassword,
+        }),
+      });
+
+      if (response.ok) {
+        alert('Password updated successfully');
+        setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+        setShowPasswordForm(false);
+        setValidationErrors({});
+      } else {
+        const error = await response.text();
+        setValidationErrors({ currentPassword: error });
+      }
+    } catch (error) {
+      console.error('Error updating password:', error);
+      setValidationErrors({ currentPassword: 'Failed to update password' });
+    } finally {
+      setChangingPassword(false);
     }
   };
 
@@ -112,8 +244,26 @@ export default function PersonalProfile() {
   };
 
   const handleSave = async () => {
+    // Validate required fields
+    const errors = validateProfile(editingProfile);
+    setValidationErrors(errors);
+    
+    if (Object.keys(errors).length > 0) {
+      alert('Please fix the validation errors before saving.');
+      return;
+    }
+
     setSaving(true);
     try {
+      // Check if email has changed
+      const emailChanged = editingProfile.email !== profile.email;
+      
+      if (emailChanged) {
+        // Handle email change separately
+        await handleEmailChange(editingProfile.email!);
+        return; // This will redirect to login
+      }
+
       const response = await fetch('/api/personal-profile', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -123,6 +273,7 @@ export default function PersonalProfile() {
       if (response.ok) {
         setProfile(editingProfile);
         setIsEditing(false);
+        setValidationErrors({});
       } else {
         alert('Failed to save profile');
       }
@@ -279,6 +430,33 @@ export default function PersonalProfile() {
                   <p className="text-gray-900">{profile.name || 'Not provided'}</p>
                 )}
               </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Email <span className="text-red-500">*</span>
+                </label>
+                {isEditing ? (
+                  <div>
+                    <input
+                      type="email"
+                      value={editingProfile.email || ''}
+                      onChange={(e) => setEditingProfile({ ...editingProfile, email: e.target.value })}
+                      className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                        validationErrors.email ? 'border-red-500' : 'border-gray-300'
+                      }`}
+                      required
+                    />
+                    {validationErrors.email && (
+                      <p className="mt-1 text-sm text-red-600">{validationErrors.email}</p>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-gray-900 flex items-center">
+                    <Mail className="h-4 w-4 mr-2 text-indigo-600" />
+                    {profile.email || 'Not provided'}
+                  </p>
+                )}
+              </div>
               
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">About</label>
@@ -296,14 +474,24 @@ export default function PersonalProfile() {
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Date of Birth <span className="text-red-500">*</span>
+                </label>
                 {isEditing ? (
-                  <input
-                    type="date"
-                    value={editingProfile.dateOfBirth || ''}
-                    onChange={(e) => setEditingProfile({ ...editingProfile, dateOfBirth: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  />
+                  <div>
+                    <input
+                      type="date"
+                      value={editingProfile.dateOfBirth || ''}
+                      onChange={(e) => setEditingProfile({ ...editingProfile, dateOfBirth: e.target.value })}
+                      className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                        validationErrors.dateOfBirth ? 'border-red-500' : 'border-gray-300'
+                      }`}
+                      required
+                    />
+                    {validationErrors.dateOfBirth && (
+                      <p className="mt-1 text-sm text-red-600">{validationErrors.dateOfBirth}</p>
+                    )}
+                  </div>
                 ) : (
                   <p className="text-gray-900 flex items-center">
                     <Calendar className="h-4 w-4 mr-2 text-indigo-600" />
@@ -405,16 +593,148 @@ export default function PersonalProfile() {
                           ...editingProfile,
                           address: { ...editingProfile.address, country: e.target.value }
                         })}
-                        placeholder="Country"
-                        className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        placeholder="Country *"
+                        className={`px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                          validationErrors.country ? 'border-red-500' : 'border-gray-300'
+                        }`}
+                        required
                       />
                     </div>
+                    {validationErrors.country && (
+                      <p className="mt-1 text-sm text-red-600">{validationErrors.country}</p>
+                    )}
                   </div>
                 ) : (
                   <p className="text-gray-900 flex items-start">
                     <MapPin className="h-4 w-4 mr-2 text-indigo-600 mt-1 flex-shrink-0" />
                     {formatAddress(profile.address) || 'Not provided'}
                   </p>
+                )}
+              </div>
+
+              {/* Password Change Section */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                {!showPasswordForm ? (
+                  <button
+                    onClick={() => setShowPasswordForm(true)}
+                    className="flex items-center text-indigo-600 hover:text-indigo-800 text-sm font-medium"
+                  >
+                    <Lock className="h-4 w-4 mr-2" />
+                    Change Password
+                  </button>
+                ) : (
+                  <div className="space-y-3 p-4 bg-gray-50 rounded-md">
+                    {/* Current Password */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Current Password
+                      </label>
+                      <div className="relative">
+                        <input
+                          type={showPasswords.current ? 'text' : 'password'}
+                          value={passwordData.currentPassword}
+                          onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
+                          className={`w-full px-3 py-2 pr-10 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                            validationErrors.currentPassword ? 'border-red-500' : 'border-gray-300'
+                          }`}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPasswords({ ...showPasswords, current: !showPasswords.current })}
+                          className="absolute inset-y-0 right-0 flex items-center pr-3"
+                        >
+                          {showPasswords.current ? (
+                            <EyeOff className="h-4 w-4 text-gray-400" />
+                          ) : (
+                            <Eye className="h-4 w-4 text-gray-400" />
+                          )}
+                        </button>
+                      </div>
+                      {validationErrors.currentPassword && (
+                        <p className="mt-1 text-sm text-red-600">{validationErrors.currentPassword}</p>
+                      )}
+                    </div>
+
+                    {/* New Password */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        New Password
+                      </label>
+                      <div className="relative">
+                        <input
+                          type={showPasswords.new ? 'text' : 'password'}
+                          value={passwordData.newPassword}
+                          onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
+                          className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          placeholder="At least 6 characters"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPasswords({ ...showPasswords, new: !showPasswords.new })}
+                          className="absolute inset-y-0 right-0 flex items-center pr-3"
+                        >
+                          {showPasswords.new ? (
+                            <EyeOff className="h-4 w-4 text-gray-400" />
+                          ) : (
+                            <Eye className="h-4 w-4 text-gray-400" />
+                          )}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Confirm Password */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Confirm New Password
+                      </label>
+                      <div className="relative">
+                        <input
+                          type={showPasswords.confirm ? 'text' : 'password'}
+                          value={passwordData.confirmPassword}
+                          onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
+                          className={`w-full px-3 py-2 pr-10 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                            validationErrors.passwordMismatch ? 'border-red-500' : 'border-gray-300'
+                          }`}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPasswords({ ...showPasswords, confirm: !showPasswords.confirm })}
+                          className="absolute inset-y-0 right-0 flex items-center pr-3"
+                        >
+                          {showPasswords.confirm ? (
+                            <EyeOff className="h-4 w-4 text-gray-400" />
+                          ) : (
+                            <Eye className="h-4 w-4 text-gray-400" />
+                          )}
+                        </button>
+                      </div>
+                      {validationErrors.passwordMismatch && (
+                        <p className="mt-1 text-sm text-red-600">{validationErrors.passwordMismatch}</p>
+                      )}
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex space-x-2 pt-2">
+                      <button
+                        onClick={handlePasswordChange}
+                        disabled={changingPassword}
+                        className="flex items-center px-3 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors disabled:opacity-50 text-sm"
+                      >
+                        {changingPassword ? 'Updating...' : 'Update Password'}
+                      </button>
+                      <button
+                        onClick={() => {
+                          setShowPasswordForm(false);
+                          setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+                          setValidationErrors({});
+                        }}
+                        className="px-3 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 transition-colors text-sm"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
                 )}
               </div>
             </div>
