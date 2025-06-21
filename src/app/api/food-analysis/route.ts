@@ -1,10 +1,228 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
+import crypto from 'crypto';
 
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY || '');
 
+function sha1(token: string): string {
+  return crypto.createHash('sha1').update(token).digest('hex');
+}
+
+// Helper function to get current carb ratio based on time
+function getCurrentCarbRatio(carbRatios: Array<{time: string, value: number}>) {
+  const now = new Date();
+  const currentTimeMinutes = now.getHours() * 60 + now.getMinutes();
+  
+  // Sort by time and find the applicable ratio
+  const sortedRatios = carbRatios.sort((a, b) => {
+    const aMinutes = timeToMinutes(a.time);
+    const bMinutes = timeToMinutes(b.time);
+    return aMinutes - bMinutes;
+  });
+  
+  let applicableRatio = sortedRatios[0]; // Default to first ratio
+  
+  for (const ratio of sortedRatios) {
+    const ratioMinutes = timeToMinutes(ratio.time);
+    if (currentTimeMinutes >= ratioMinutes) {
+      applicableRatio = ratio;
+    } else {
+      break;
+    }
+  }
+  
+  return applicableRatio;
+}
+
+// Helper function to get current insulin sensitivity
+function getCurrentInsulinSensitivity(sensList: Array<{time: string, value: number}>) {
+  const now = new Date();
+  const currentTimeMinutes = now.getHours() * 60 + now.getMinutes();
+  
+  const sortedSens = sensList.sort((a, b) => {
+    const aMinutes = timeToMinutes(a.time);
+    const bMinutes = timeToMinutes(b.time);
+    return aMinutes - bMinutes;
+  });
+  
+  let applicableSens = sortedSens[0]; // Default to first sensitivity
+  
+  for (const sens of sortedSens) {
+    const sensMinutes = timeToMinutes(sens.time);
+    if (currentTimeMinutes >= sensMinutes) {
+      applicableSens = sens;
+    } else {
+      break;
+    }
+  }
+  
+  return applicableSens;
+}
+
+// Helper function to convert time string to minutes
+function timeToMinutes(timeStr: string): number {
+  const [hours, minutes] = timeStr.split(':').map(Number);
+  return hours * 60 + minutes;
+}
+
+// Helper function to fetch user's Nightscout profile directly
+async function getUserProfile(userEmail: string) {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { email: userEmail },
+      include: { settings: true }
+    });
+
+    if (!user?.settings?.nightscoutUrl) {
+      return null;
+    }
+
+    // Clean and validate the Nightscout URL
+    let baseUrl = user.settings.nightscoutUrl.trim();
+    if (!baseUrl.startsWith('http://') && !baseUrl.startsWith('https://')) {
+      baseUrl = 'https://' + baseUrl;
+    }
+    if (baseUrl.endsWith('/')) {
+      baseUrl = baseUrl.slice(0, -1);
+    }
+
+    // Fetch profile from Nightscout
+    const nsUrl = new URL('/api/v1/profile.json', baseUrl);
+    
+    const headers: HeadersInit = {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json'
+    };
+    
+    const nsApiToken = (user.settings as Record<string, unknown>).nightscoutApiToken as string | undefined;
+    if (nsApiToken) {
+      const hashedToken = sha1(nsApiToken);
+      headers['api-secret'] = hashedToken;
+    }
+
+    const response = await fetch(nsUrl.toString(), { 
+      method: 'GET',
+      headers 
+    });
+    
+    if (!response.ok) {
+      return null;
+    }
+
+    const profiles = await response.json();
+    
+    if (!Array.isArray(profiles) || profiles.length === 0) {
+      return null;
+    }
+
+    // Get the most recent profile
+    const defaultProfile = profiles[0];
+    let profileData;
+
+    if (defaultProfile.store?.Default?.basal) {
+      profileData = defaultProfile.store.Default;
+    } else if (defaultProfile.store?.default?.basal) {
+      profileData = defaultProfile.store.default;
+    } else if (defaultProfile.defaultProfile?.basal) {
+      profileData = defaultProfile.defaultProfile;
+    } else if (defaultProfile.basal) {
+      profileData = defaultProfile;
+    }
+
+    if (!profileData?.basal) {
+      return null;
+    }
+    
+    // Format profile data
+    return {
+      carbratio: profileData.carbratio?.map((entry: any) => ({
+        time: entry.time || '00:00',
+        value: parseFloat(entry.value)
+      })).sort((a: {time: string}, b: {time: string}) => a.time.localeCompare(b.time)) || [],
+      
+      sens: profileData.sens?.map((entry: any) => ({
+        time: entry.time || '00:00',
+        value: parseFloat(entry.value)
+      })).sort((a: {time: string}, b: {time: string}) => a.time.localeCompare(b.time)) || [],
+      
+      target_high: profileData.target_high?.map((entry: any) => ({
+        time: entry.time || '00:00',
+        value: parseFloat(entry.value)
+      })).sort((a: {time: string}, b: {time: string}) => a.time.localeCompare(b.time)) || []
+    };
+  } catch (error) {
+    console.error('Error fetching profile:', error);
+    return null;
+  }
+}
+
+// Helper function to get current glucose from Nightscout directly
+async function getCurrentGlucose(userEmail: string) {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { email: userEmail },
+      include: { settings: true }
+    });
+
+    if (!user?.settings?.nightscoutUrl) {
+      return null;
+    }
+
+    // Clean and validate the Nightscout URL
+    let baseUrl = user.settings.nightscoutUrl.trim();
+    if (!baseUrl.startsWith('http://') && !baseUrl.startsWith('https://')) {
+      baseUrl = 'https://' + baseUrl;
+    }
+    if (baseUrl.endsWith('/')) {
+      baseUrl = baseUrl.slice(0, -1);
+    }
+
+    // Fetch latest glucose entry
+    const nsUrl = new URL('/api/v1/entries/sgv', baseUrl);
+    nsUrl.searchParams.set('count', '1');
+    
+    const headers: HeadersInit = {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json'
+    };
+    
+    const nsApiToken = (user.settings as Record<string, unknown>).nightscoutApiToken as string | undefined;
+    if (nsApiToken) {
+      const hashedToken = sha1(nsApiToken);
+      headers['api-secret'] = hashedToken;
+    }
+
+    const response = await fetch(nsUrl.toString(), { 
+      method: 'GET',
+      headers 
+    });
+    
+    if (!response.ok) {
+      return null;
+    }
+
+    const entries = await response.json();
+    return entries && entries.length > 0 ? entries[0].sgv : null;
+  } catch (error) {
+    console.error('Error fetching glucose:', error);
+    return null;
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
+    // Check authentication
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.email) {
+      return NextResponse.json({
+        success: false,
+        error: "Authentication required"
+      }, { status: 401 });
+    }
+
     // Check if API key is configured
     if (!process.env.GOOGLE_AI_API_KEY) {
       return NextResponse.json({
@@ -75,7 +293,8 @@ Please be as accurate as possible and consider typical serving sizes. Respond in
           description: "Food items detected but couldn't parse detailed analysis",
           carbs_grams: 30,
           confidence: "Low",
-          notes: "Unable to provide detailed analysis. Please try another photo with better lighting."
+          notes: "Unable to provide detailed analysis. Please try another photo with better lighting.",
+          insulin_recommendation: null
         }
       });
     }
@@ -84,6 +303,47 @@ Please be as accurate as possible and consider typical serving sizes. Respond in
     if (!analysis.description || typeof analysis.carbs_grams !== 'number' || !analysis.confidence) {
       throw new Error('Invalid response structure from Google AI');
     }
+
+    // Fetch user profile for insulin calculations
+    const profile = await getUserProfile(session.user.email);
+    const currentGlucose = await getCurrentGlucose(session.user.email);
+    
+    let insulinRecommendation = null;
+    
+    if (profile && profile.carbratio && profile.carbratio.length > 0) {
+      const currentCarbRatio = getCurrentCarbRatio(profile.carbratio);
+      const carbBolusUnits = analysis.carbs_grams / currentCarbRatio.value;
+      
+      let correctionUnits = 0;
+      let correctionNote = "";
+      
+      // Calculate correction bolus if we have glucose and sensitivity data
+      if (currentGlucose && profile.sens && profile.sens.length > 0 && profile.target_high && profile.target_high.length > 0) {
+        const currentSensitivity = getCurrentInsulinSensitivity(profile.sens);
+        const targetGlucose = profile.target_high[0].value; // Use first target high value
+        
+        if (currentGlucose > targetGlucose) {
+          correctionUnits = (currentGlucose - targetGlucose) / currentSensitivity.value;
+          correctionNote = ` (includes ${correctionUnits.toFixed(1)}u correction for glucose ${currentGlucose} mg/dL)`;
+        }
+      }
+      
+      const totalUnits = carbBolusUnits + correctionUnits;
+      
+      insulinRecommendation = {
+        carb_bolus_units: Math.round(carbBolusUnits * 10) / 10, // Round to 1 decimal
+        correction_units: Math.round(correctionUnits * 10) / 10,
+        total_units: Math.round(totalUnits * 10) / 10,
+        carb_ratio: currentCarbRatio.value,
+        carb_ratio_time: currentCarbRatio.time,
+        current_glucose: currentGlucose,
+        calculation_note: `${analysis.carbs_grams}g ÷ ${currentCarbRatio.value} = ${carbBolusUnits.toFixed(1)}u${correctionNote}`,
+        warning: totalUnits > 10 ? "Large bolus calculated - please double-check carb estimate" : null
+      };
+    }
+
+    // Add insulin recommendation to analysis
+    analysis.insulin_recommendation = insulinRecommendation;
 
     return NextResponse.json({
       success: true,

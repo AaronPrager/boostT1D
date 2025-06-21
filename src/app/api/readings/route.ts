@@ -324,13 +324,13 @@ export async function GET(request: Request) {
       const treatmentReadings: Reading[] = treatments
         .filter(t => t.glucoseValue !== null)
         .map((t) => ({
-          id: `t_${t.id}`,
-          date: t.timestamp,
+        id: `t_${t.id}`,
+        date: t.timestamp,
           sgv: t.glucoseValue!,
-          direction: null,
+        direction: null,
           source: 'manual' as const,
-          userId: t.userId,
-        }));
+        userId: t.userId,
+      }));
 
       allReadings = [...allReadings, ...manualReadings as Reading[], ...treatmentReadings];
     }

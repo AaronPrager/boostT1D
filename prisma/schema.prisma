@@ -52,6 +52,9 @@ model User {
   settings      Settings?
   buddyRequestsSent     BuddyConnection[] @relation("BuddyRequester")
   buddyRequestsReceived BuddyConnection[] @relation("BuddyTarget")
+  newsPreference        NewsPreference?
+  newsBookmarks         NewsBookmark[]
+  newsInteractions      NewsInteraction[]
 }
 
 model VerificationToken {
@@ -130,4 +133,99 @@ model BuddyConnection {
   @@index([requesterId])
   @@index([targetId])
   @@index([status])
+}
+
+model NewsSource {
+  id          String      @id @default(cuid())
+  name        String      @unique
+  displayName String
+  description String?
+  website     String
+  rssUrl      String?
+  apiUrl      String?
+  logoUrl     String?
+  isActive    Boolean     @default(true)
+  category    String
+  reliability String      @default("verified")
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  articles    NewsArticle[]
+
+  @@index([category])
+  @@index([isActive])
+}
+
+model NewsArticle {
+  id            String     @id @default(cuid())
+  sourceId      String
+  title         String
+  summary       String?
+  content       String?    @db.Text
+  url           String     @unique
+  imageUrl      String?
+  author        String?
+  publishedAt   DateTime
+  category      String
+  tags          String[]
+  importance    String     @default("medium")
+  readCount     Int        @default(0)
+  isBreaking    Boolean    @default(false)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  
+  source        NewsSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  bookmarks     NewsBookmark[]
+  interactions  NewsInteraction[]
+
+  @@index([category])
+  @@index([publishedAt])
+  @@index([importance])
+  @@index([isBreaking])
+  @@index([sourceId])
+}
+
+model NewsPreference {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  categories  String[]
+  sources     String[]
+  keywords    String[]
+  importance  String   @default("medium")
+  notifications Boolean @default(true)
+  emailDigest   Boolean @default(false)
+  digestFreq    String  @default("weekly")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model NewsBookmark {
+  id        String      @id @default(cuid())
+  userId    String
+  articleId String
+  createdAt DateTime    @default(now())
+  
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  article   NewsArticle @relation(fields: [articleId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, articleId])
+  @@index([userId])
+}
+
+model NewsInteraction {
+  id         String      @id @default(cuid())
+  userId     String?
+  articleId  String
+  type       String
+  metadata   Json?
+  createdAt  DateTime    @default(now())
+  
+  user       User?       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  article    NewsArticle @relation(fields: [articleId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([articleId])
+  @@index([type])
+  @@index([createdAt])
 }

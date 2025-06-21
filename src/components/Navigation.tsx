@@ -186,6 +186,11 @@ export default function Navigation() {
                 )}
               </div>
 
+              {/* News - Standalone */}
+              <Link href="/news" className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">
+                News
+              </Link>
+
               {/* Buddies - Standalone */}
               <Link href="/buddies" className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">
                 Buddies
@@ -331,6 +336,17 @@ export default function Navigation() {
                       onClick={closeMobileMenu}
                     >
                       Food Analysis
+                    </Link>
+                  </div>
+
+                  {/* News */}
+                  <div className="border-t border-gray-200 pt-2">
+                    <Link 
+                      href="/news" 
+                      className="block px-3 py-2 rounded-md text-base font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                      onClick={closeMobileMenu}
+                    >
+                      News
                     </Link>
                   </div>
 

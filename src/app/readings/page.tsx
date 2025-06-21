@@ -404,7 +404,7 @@ export default function ReadingsPage() {
       reasoning.push('Current target ranges are appropriate for your glucose patterns');
     }
 
-    return {
+          return {
       ...(suggestedLowTarget !== data.currentSettings.lowGlucose && { suggestedLowTarget }),
       ...(suggestedHighTarget !== data.currentSettings.highGlucose && { suggestedHighTarget }),
       reasoning
@@ -707,7 +707,7 @@ export default function ReadingsPage() {
                   type="date"
                   value={fromDate}
                   onChange={(e) => setFromDate(e.target.value)}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                 />
               </div>
               <div>
@@ -783,51 +783,51 @@ export default function ReadingsPage() {
           {/* Statistics Section - Always visible */}
           <div className="mb-8">
             <h2 className="text-xl font-semibold mb-4">Statistics ({filteredReadings.length} readings)</h2>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              <div>
-                <p className="text-sm text-gray-500">Estimated A1C</p>
-                <p className="text-lg font-semibold">{statistics.estimatedA1C}%</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">GMI</p>
-                <p className="text-lg font-semibold">{statistics.gmi}%</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Average Glucose</p>
-                <p className="text-lg font-semibold">{statistics.averageGlucose} mg/dL</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Standard Deviation</p>
-                <p className="text-lg font-semibold">{statistics.standardDeviation} mg/dL</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Coefficient of Variation</p>
-                <p className="text-lg font-semibold">{statistics.coefficientOfVariation}%</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Total Readings</p>
-                <p className="text-lg font-semibold">{statistics.totalReadings}</p>
-              </div>
-            </div>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          <div>
+            <p className="text-sm text-gray-500">Estimated A1C</p>
+            <p className="text-lg font-semibold">{statistics.estimatedA1C}%</p>
+          </div>
+          <div>
+            <p className="text-sm text-gray-500">GMI</p>
+            <p className="text-lg font-semibold">{statistics.gmi}%</p>
+          </div>
+          <div>
+            <p className="text-sm text-gray-500">Average Glucose</p>
+            <p className="text-lg font-semibold">{statistics.averageGlucose} mg/dL</p>
+          </div>
+          <div>
+            <p className="text-sm text-gray-500">Standard Deviation</p>
+            <p className="text-lg font-semibold">{statistics.standardDeviation} mg/dL</p>
+          </div>
+          <div>
+            <p className="text-sm text-gray-500">Coefficient of Variation</p>
+            <p className="text-lg font-semibold">{statistics.coefficientOfVariation}%</p>
+          </div>
+          <div>
+            <p className="text-sm text-gray-500">Total Readings</p>
+            <p className="text-lg font-semibold">{statistics.totalReadings}</p>
+          </div>
+        </div>
 
-            <div className="mt-6">
-              <h3 className="text-lg font-semibold mb-2">Time in Range</h3>
-              <div className="grid grid-cols-3 gap-2">
-                <div className="text-center p-2 bg-red-100 rounded">
-                  <p className="text-sm text-red-800">Below</p>
-                  <p className="font-semibold">{statistics.timeBelowRange}%</p>
+        <div className="mt-6">
+          <h3 className="text-lg font-semibold mb-2">Time in Range</h3>
+          <div className="grid grid-cols-3 gap-2">
+            <div className="text-center p-2 bg-red-100 rounded">
+              <p className="text-sm text-red-800">Below</p>
+              <p className="font-semibold">{statistics.timeBelowRange}%</p>
+            </div>
+            <div className="text-center p-2 bg-green-100 rounded">
+              <p className="text-sm text-green-800">In Range</p>
+              <p className="font-semibold">{statistics.timeInRange}%</p>
+            </div>
+            <div className="text-center p-2 bg-yellow-100 rounded">
+              <p className="text-sm text-yellow-800">Above</p>
+              <p className="font-semibold">{statistics.timeAboveRange}%</p>
                 </div>
-                <div className="text-center p-2 bg-green-100 rounded">
-                  <p className="text-sm text-green-800">In Range</p>
-                  <p className="font-semibold">{statistics.timeInRange}%</p>
-                </div>
-                <div className="text-center p-2 bg-yellow-100 rounded">
-                  <p className="text-sm text-yellow-800">Above</p>
-                  <p className="font-semibold">{statistics.timeAboveRange}%</p>
-                </div>
-              </div>
             </div>
           </div>
+        </div>
 
           {/* Tab Content */}
           {activeTab === 'chart' && (
@@ -835,7 +835,7 @@ export default function ReadingsPage() {
               <h3 className="text-lg font-semibold mb-4">Glucose Chart</h3>
               <div className="h-[500px]">
                 <Line options={chartOptions} data={chartData} />
-              </div>
+            </div>
             </div>
           )}
 
@@ -844,13 +844,13 @@ export default function ReadingsPage() {
               <h3 className="text-lg font-semibold">Pattern Analysis & Recommendations</h3>
               
               {/* Risk Assessment */}
-              <div>
+            <div>
                 <h4 className="text-md font-semibold mb-4">Risk Assessment</h4>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className={`p-4 rounded ${getRiskColor(analysis.riskAssessment.hypoRisk)}`}>
                     <h5 className="font-semibold">Hypoglycemia Risk</h5>
                     <p className="text-lg capitalize">{analysis.riskAssessment.hypoRisk}</p>
-                  </div>
+            </div>
                   <div className={`p-4 rounded ${getRiskColor(analysis.riskAssessment.hyperRisk)}`}>
                     <h5 className="font-semibold">Hyperglycemia Risk</h5>
                     <p className="text-lg capitalize">{analysis.riskAssessment.hyperRisk}</p>
@@ -863,7 +863,7 @@ export default function ReadingsPage() {
               </div>
 
               {/* Time Patterns */}
-              <div>
+            <div>
                 <h4 className="text-md font-semibold mb-4">Daily Time Patterns</h4>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   {Object.entries(analysis.timePatterns).map(([period, stats]) => (
@@ -873,21 +873,21 @@ export default function ReadingsPage() {
                       <div className="mt-2">
                         <p>Avg: {stats.average} mg/dL</p>
                         <p>TIR: {stats.timeInRange}%</p>
-                      </div>
+            </div>
                     </div>
                   ))}
                 </div>
               </div>
 
               {/* Recommended Settings */}
-              <div>
+            <div>
                 <h4 className="text-md font-semibold mb-4">Recommended Target Settings</h4>
                 <div className="space-y-4">
                   <div className="flex justify-between items-center p-4 bg-gray-50 rounded">
                     <div>
                       <h5 className="font-semibold">Current Targets</h5>
                       <p>{settings.lowGlucose} - {settings.highGlucose} mg/dL</p>
-                    </div>
+            </div>
                     <div>
                       <h5 className="font-semibold">Recommended Targets</h5>
                       <p>
@@ -902,9 +902,9 @@ export default function ReadingsPage() {
                         <li key={index} className="text-gray-700">{reason}</li>
                       ))}
                     </ul>
-                  </div>
-                </div>
-              </div>
+          </div>
+        </div>
+      </div>
 
               {/* Suggestions */}
               <div>
@@ -915,8 +915,8 @@ export default function ReadingsPage() {
                       <p className="text-blue-800">{suggestion}</p>
                     </div>
                   ))}
-                </div>
-              </div>
+        </div>
+      </div>
 
               {/* Disclaimer */}
               <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-lg">
@@ -925,27 +925,27 @@ export default function ReadingsPage() {
                   This analysis is for informational purposes only and should not replace professional medical advice. 
                   Always consult with your healthcare provider before making changes to your diabetes management plan.
                 </p>
-              </div>
+        </div>
             </div>
           )}
-
+        
           {activeTab === 'data' && (
             <div>
               <h3 className="text-lg font-semibold mb-4">Raw Data</h3>
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Glucose</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Direction</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Source</th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Glucose</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Direction</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Source</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
                     {[...filteredReadings].sort((a, b) => b.date - a.date).map((reading, index) => (
-                      <tr key={index}>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <tr key={index}>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           <div>
                             <div className="font-medium">{new Date(reading.date).toLocaleDateString()}</div>
                             <div className="text-xs text-gray-400">
@@ -957,23 +957,23 @@ export default function ReadingsPage() {
                               })}
                             </div>
                           </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {reading.sgv} mg/dL
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {reading.direction ? DIRECTION_ARROWS[reading.direction] || reading.direction : '-'}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {reading.source}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {reading.sgv} mg/dL
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {reading.direction ? DIRECTION_ARROWS[reading.direction] || reading.direction : '-'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {reading.source}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
               </div>
-            </div>
-          )}
+          </div>
+        )}
         </div>
       </div>
     </div>

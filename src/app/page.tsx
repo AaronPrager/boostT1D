@@ -21,12 +21,12 @@ export default function Home() {
           {/* Title Block */}
           <div className="flex-1 flex flex-col items-center justify-center text-center">
             <h1 className="text-4xl tracking-tight font-extrabold text-gray-900 sm:text-5xl md:text-6xl drop-shadow-lg">
-              <span className="block">Take control of your</span>
-              <span className="block text-indigo-600">diabetes management</span>
-            </h1>
+                  <span className="block">Take control of your</span>
+                  <span className="block text-indigo-600">diabetes management</span>
+                </h1>
             <p className="mt-3 text-base text-gray-600 sm:mt-5 sm:text-lg sm:max-w-xl md:text-xl bg-white rounded-lg px-4 py-2 shadow-md">
-              BoostT1D helps you track, analyze, and understand your blood glucose patterns with powerful visualization tools and insightful analytics.
-            </p>
+                  BoostT1D helps you track, analyze, and understand your blood glucose patterns with powerful visualization tools and insightful analytics.
+                </p>
           </div>
           {/* Right Image */}
           <img
@@ -195,7 +195,7 @@ export default function Home() {
                 />
               </div>
             ))}
-          </div>
+              </div>
         </div>
       </div>
     </div>
