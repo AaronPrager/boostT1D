@@ -53,8 +53,18 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (session) {
-      fetchDashboardData();
-      fetchSettings();
+      fetchSettings().then(() => {
+        // After settings are loaded, fetch dashboard data
+        fetchDashboardData();
+        
+        // If Nightscout is configured, also trigger a sync to get latest data
+        if (settings.nightscoutUrl) {
+          // Small delay to ensure settings are updated
+          setTimeout(() => {
+            handleRefresh();
+          }, 500);
+        }
+      });
     }
   }, [session]);
 
@@ -80,73 +90,120 @@ export default function DashboardPage() {
     setError(null);
 
     try {
-      // Fetch last 7 days of data for statistics
-      const endDate = new Date();
-      const startDate = new Date();
-      startDate.setDate(startDate.getDate() - 7);
+      // Check if Nightscout is configured
+      if (!settings.nightscoutUrl) {
+        // Only fetch manual data if Nightscout is not configured
+        const endDate = new Date();
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - 7);
 
-      const url = new URL('/api/readings', window.location.origin);
-      url.searchParams.set('startDate', startDate.getTime().toString());
-      url.searchParams.set('endDate', endDate.getTime().toString());
-      url.searchParams.set('source', 'combined');
+        const url = new URL('/api/readings', window.location.origin);
+        url.searchParams.set('startDate', startDate.getTime().toString());
+        url.searchParams.set('endDate', endDate.getTime().toString());
+        url.searchParams.set('source', 'manual'); // Only manual readings
 
-      const response = await fetch(url);
-      if (!response.ok) {
-        throw new Error('Failed to fetch readings');
-      }
-
-      const readings: Reading[] = await response.json();
-      
-      // Sort by date (most recent first)
-      const sortedReadings = readings.sort((a, b) => 
-        new Date(b.date).getTime() - new Date(a.date).getTime()
-      );
-
-      // Get recent readings (last 10)
-      setRecentReadings(sortedReadings.slice(0, 10));
-
-      // Calculate statistics
-      if (sortedReadings.length > 0) {
-        const currentReading = sortedReadings[0];
-        const validReadings = sortedReadings.filter(r => r.sgv !== null && r.sgv > 0);
-        
-        // Time in range calculation (default 70-180)
-        const inRange = validReadings.filter(r => r.sgv >= 70 && r.sgv <= 180).length;
-        const timeInRange = validReadings.length > 0 ? (inRange / validReadings.length) * 100 : 0;
-        
-        // Average glucose
-        const avgGlucose = validReadings.length > 0 
-          ? validReadings.reduce((sum, r) => sum + r.sgv, 0) / validReadings.length 
-          : 0;
-
-        // Trend calculation (compare first half vs second half of readings)
-        const halfPoint = Math.floor(validReadings.length / 2);
-        const recentAvg = validReadings.slice(0, halfPoint).reduce((sum, r) => sum + r.sgv, 0) / halfPoint;
-        const olderAvg = validReadings.slice(halfPoint).reduce((sum, r) => sum + r.sgv, 0) / (validReadings.length - halfPoint);
-        
-        let trend: 'improving' | 'stable' | 'declining' = 'stable';
-        if (Math.abs(recentAvg - olderAvg) > 10) {
-          trend = recentAvg < olderAvg ? 'improving' : 'declining';
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error('Failed to fetch manual readings');
         }
 
-        setStats({
-          currentGlucose: currentReading.sgv,
-          currentDirection: currentReading.direction || null,
-          timeInRange: Math.round(timeInRange),
-          averageGlucose: Math.round(avgGlucose),
-          totalReadings: validReadings.length,
-          lastUpdated: currentReading.date,
-          trend
-        });
-      }
+        const readings: Reading[] = await response.json();
+        
+        // Sort by date (most recent first)
+        const sortedReadings = readings.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        setRecentReadings(sortedReadings);
 
-      if (showRefreshFeedback) {
-        setRefreshMessage('Dashboard data updated successfully!');
-        setTimeout(() => setRefreshMessage(null), 3000);
+        // Calculate stats from manual readings only
+        if (sortedReadings.length > 0) {
+          const currentReading = sortedReadings[0];
+          const inRangeReadings = sortedReadings.filter(r => 
+            r.sgv >= settings.lowGlucose && r.sgv <= settings.highGlucose
+          );
+          const averageGlucose = sortedReadings.reduce((sum, r) => sum + r.sgv, 0) / sortedReadings.length;
+
+          setStats({
+            currentGlucose: currentReading.sgv,
+            currentDirection: currentReading.direction || null,
+            timeInRange: Math.round((inRangeReadings.length / sortedReadings.length) * 100),
+            averageGlucose: Math.round(averageGlucose),
+            totalReadings: sortedReadings.length,
+            lastUpdated: currentReading.date,
+            trend: 'stable' // Default trend for manual data
+          });
+        } else {
+          setStats({
+            currentGlucose: null,
+            currentDirection: null,
+            timeInRange: 0,
+            averageGlucose: 0,
+            totalReadings: 0,
+            lastUpdated: null,
+            trend: 'stable'
+          });
+        }
+      } else {
+        // Fetch combined data (Nightscout + manual) if Nightscout is configured
+        const endDate = new Date();
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - 7);
+
+        const url = new URL('/api/readings', window.location.origin);
+        url.searchParams.set('startDate', startDate.getTime().toString());
+        url.searchParams.set('endDate', endDate.getTime().toString());
+        url.searchParams.set('source', 'combined');
+
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error('Failed to fetch readings');
+        }
+
+        const readings: Reading[] = await response.json();
+        
+        // Sort by date (most recent first)
+        const sortedReadings = readings.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        setRecentReadings(sortedReadings);
+
+        // Calculate stats
+        if (sortedReadings.length > 0) {
+          const currentReading = sortedReadings[0];
+          const inRangeReadings = sortedReadings.filter(r => 
+            r.sgv >= settings.lowGlucose && r.sgv <= settings.highGlucose
+          );
+          const averageGlucose = sortedReadings.reduce((sum, r) => sum + r.sgv, 0) / sortedReadings.length;
+
+          // Calculate trend (simple comparison with previous period)
+          const midPoint = Math.floor(sortedReadings.length / 2);
+          const recentAvg = sortedReadings.slice(0, midPoint).reduce((sum, r) => sum + r.sgv, 0) / midPoint;
+          const olderAvg = sortedReadings.slice(midPoint).reduce((sum, r) => sum + r.sgv, 0) / (sortedReadings.length - midPoint);
+          
+          let trend: 'improving' | 'stable' | 'declining' = 'stable';
+          if (recentAvg < olderAvg - 10) trend = 'improving';
+          else if (recentAvg > olderAvg + 10) trend = 'declining';
+
+          setStats({
+            currentGlucose: currentReading.sgv,
+            currentDirection: currentReading.direction || null,
+            timeInRange: Math.round((inRangeReadings.length / sortedReadings.length) * 100),
+            averageGlucose: Math.round(averageGlucose),
+            totalReadings: sortedReadings.length,
+            lastUpdated: currentReading.date,
+            trend
+          });
+        } else {
+          setStats({
+            currentGlucose: null,
+            currentDirection: null,
+            timeInRange: 0,
+            averageGlucose: 0,
+            totalReadings: 0,
+            lastUpdated: null,
+            trend: 'stable'
+          });
+        }
       }
-    } catch (error) {
-      setError('Failed to load dashboard data');
-      console.error('Error:', error);
+    } catch (err) {
+      console.error('Error fetching dashboard data:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load dashboard data');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -298,31 +355,55 @@ export default function DashboardPage() {
                   <p>{formatRelativeTime(stats.lastUpdated)}</p>
                 </div>
               )}
-              <button
-                onClick={handleRefresh}
-                disabled={refreshing}
-                className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-indigo-400 disabled:cursor-not-allowed transition-colors"
-              >
-                {refreshing ? (
-                  <div className="flex items-center">
-                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Syncing...
-                  </div>
-                ) : (
-                  <div className="flex items-center">
-                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                    </svg>
-                    Sync from Nightscout
-                  </div>
-                )}
-              </button>
+              {settings.nightscoutUrl ? (
+                <button
+                  onClick={handleRefresh}
+                  disabled={refreshing}
+                  className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-indigo-400 disabled:cursor-not-allowed transition-colors"
+                >
+                  {refreshing ? (
+                    <div className="flex items-center">
+                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Syncing...
+                    </div>
+                  ) : (
+                    <div className="flex items-center">
+                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                      Sync from Nightscout
+                    </div>
+                  )}
+                </button>
+              ) : (
+                <div className="text-right text-sm text-gray-500">
+                  <p>Manual mode</p>
+                  <p>No Nightscout</p>
+                </div>
+              )}
             </div>
           </div>
         </div>
+
+        {/* Nightscout Not Configured Message */}
+        {!settings.nightscoutUrl && (
+          <div className="mb-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+            <div className="flex items-center">
+              <svg className="w-5 h-5 text-yellow-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+              </svg>
+              <div>
+                <p className="text-yellow-800 font-medium">Nightscout not configured</p>
+                <p className="text-yellow-700 text-sm mt-1">
+                  Only manually entered data is displayed. Configure Nightscout in your profile settings to sync real-time data.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Success Message */}
         {refreshMessage && (

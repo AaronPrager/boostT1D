@@ -165,23 +165,25 @@ export default function ReadingsPage() {
   });
   const [analysis, setAnalysis] = useState<PatternAnalysis | null>(null);
   const [analysisDateRange, setAnalysisDateRange] = useState(30);
+  const [lastFetchTime, setLastFetchTime] = useState<Date | null>(null);
+
+  // Add the missing fetchSettings function
+  const fetchSettings = async () => {
+    try {
+      const res = await fetch('/api/settings');
+      if (res.ok) {
+        const data = await res.json();
+        setSettings(data);
+        setNightscoutUrl(data.nightscoutUrl || '');
+      }
+    } catch (error) {
+      console.error('Error fetching settings:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchSettings = async () => {
-      try {
-        const res = await fetch('/api/settings');
-        if (res.ok) {
-          const data = await res.json();
-          setSettings(data);
-          setNightscoutUrl(data.nightscoutUrl || '');
-        }
-      } catch (error) {
-        console.error('Error fetching settings:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     if (session) {
       fetchSettings();
     }
@@ -446,20 +448,24 @@ export default function ReadingsPage() {
       const startDate = new Date(`${fromDate}T00:00:00.000Z`);
       const endDate = new Date(`${toDate}T23:59:59.999Z`);
 
-      // Fetch data directly from Nightscout for fresh, real-time data
-      const url = new URL('/api/nightscout', window.location.origin);
+      // Determine the source based on Nightscout settings
+      const source = settings.nightscoutUrl ? 'combined' : 'manual';
+      
+      // Fetch data from the appropriate source
+      const url = new URL('/api/readings', window.location.origin);
       url.searchParams.set('startDate', startDate.getTime().toString());
       url.searchParams.set('endDate', endDate.getTime().toString());
+      url.searchParams.set('source', source);
       url.searchParams.set('refresh', Date.now().toString()); // Cache busting
 
       const response = await fetch(url);
       if (!response.ok) {
-        throw new Error('Failed to fetch readings from Nightscout');
+        throw new Error(`Failed to fetch readings from ${source} source`);
       }
       
-      const nightscoutData = await response.json();
+      const data = await response.json();
 
-      // Transform Nightscout data to our format
+      // Transform data to our format
       const filterReadings = (readings: any[]) => {
         return readings
           .map((reading: any) => ({
@@ -467,7 +473,7 @@ export default function ReadingsPage() {
             date: new Date(reading.date || reading.dateString).getTime(),
             direction: reading.direction,
             type: reading.type || 'sgv',
-            source: 'nightscout' as const
+            source: reading.source || 'manual' as const
           }))
           .filter((reading: any) => 
             reading.sgv && 
@@ -478,10 +484,11 @@ export default function ReadingsPage() {
           .sort((a: any, b: any) => a.date - b.date);
       };
 
-      const processedReadings = filterReadings(nightscoutData);
+      const processedReadings = filterReadings(data);
       setReadings(processedReadings);
+      setLastFetchTime(new Date());
 
-      console.log(`Fetched ${processedReadings.length} fresh readings from Nightscout`);
+      console.log(`Fetched ${processedReadings.length} readings from ${source} source`);
       if (processedReadings.length > 0) {
         const latestReading = processedReadings[processedReadings.length - 1];
         const latestTime = new Date(latestReading.date).toLocaleString();
@@ -489,10 +496,66 @@ export default function ReadingsPage() {
       }
 
     } catch (error) {
-      console.error('Error fetching readings from Nightscout:', error);
-      setError('Failed to fetch readings from Nightscout. Please check your Nightscout settings and try again.');
+      console.error('Error fetching readings:', error);
+      setError('Failed to fetch readings. Please check your settings and try again.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Add a function to sync from Nightscout when page loads
+  const syncFromNightscout = async () => {
+    if (settings.nightscoutUrl) {
+      try {
+        const response = await fetch('/api/nightscout/readings', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ url: settings.nightscoutUrl }),
+        });
+        
+        if (response.ok) {
+          // After syncing, fetch the updated readings
+          await fetchReadings();
+        }
+      } catch (error) {
+        console.error('Error syncing from Nightscout:', error);
+      }
+    }
+  };
+
+  // Update useEffect to automatically sync when page loads if Nightscout is configured
+  useEffect(() => {
+    if (session) {
+      fetchSettings().then(() => {
+        // If Nightscout is configured, sync first then fetch readings
+        if (settings.nightscoutUrl) {
+          syncFromNightscout();
+        } else {
+          fetchReadings();
+        }
+      });
+    }
+  }, [session]);
+
+  // Add the missing formatRelativeTime function
+  const formatRelativeTime = (dateString: string) => {
+    const now = new Date();
+    const date = new Date(dateString);
+    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+    if (diffInSeconds < 60) {
+      return 'Just now';
+    } else if (diffInSeconds < 3600) {
+      const minutes = Math.floor(diffInSeconds / 60);
+      return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
+    } else if (diffInSeconds < 86400) {
+      const hours = Math.floor(diffInSeconds / 3600);
+      return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+    } else {
+      const days = Math.floor(diffInSeconds / 86400);
+      return `${days} day${days > 1 ? 's' : ''} ago`;
     }
   };
 
@@ -682,22 +745,61 @@ export default function ReadingsPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-8">Blood Glucose Data & Analysis</h1>
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-3xl font-bold">Blood Glucose Data & Analysis</h1>
+        <div className="flex items-center space-x-4">
+          {readings.length > 0 && (
+            <div className="text-right text-sm text-gray-500">
+              <p>Last updated</p>
+              <p>{lastFetchTime ? formatRelativeTime(lastFetchTime.toISOString()) : 'Never'}</p>
+            </div>
+          )}
+          <button
+            onClick={fetchReadings}
+            disabled={loading}
+            className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-indigo-400 disabled:cursor-not-allowed transition-colors"
+          >
+            {loading ? (
+              <div className="flex items-center">
+                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Updating...
+              </div>
+            ) : (
+              <div className="flex items-center">
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Update
+              </div>
+            )}
+          </button>
+        </div>
+      </div>
       
-      {/* Data Source Controls */}
-      <div className="bg-white p-4 rounded-lg shadow mb-8">
-        <h2 className="text-xl font-semibold mb-4">Data Source</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Nightscout URL</label>
-            <input
-              type="text"
-              value={nightscoutUrl}
-              onChange={(e) => setNightscoutUrl(e.target.value)}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-              placeholder="https://your-site.herokuapp.com"
-            />
+      {/* Nightscout Status Message */}
+      {!settings.nightscoutUrl && (
+        <div className="mb-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+          <div className="flex items-center">
+            <svg className="w-5 h-5 text-yellow-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
+            <div>
+              <p className="text-yellow-800 font-medium">Manual mode</p>
+              <p className="text-yellow-700 text-sm mt-1">
+                Only manually entered data is displayed. Configure Nightscout in your profile settings to sync real-time data.
+              </p>
+            </div>
           </div>
+        </div>
+      )}
+
+      {/* Date Range Controls */}
+      <div className="bg-white p-4 rounded-lg shadow mb-8">
+        <h2 className="text-xl font-semibold mb-4">Date Range</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700">Date Range</label>
             <div className="mt-1 flex space-x-4">
@@ -721,25 +823,7 @@ export default function ReadingsPage() {
               </div>
             </div>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Filter Source</label>
-            <select
-              value={sourceFilter}
-              onChange={(e) => setSourceFilter(e.target.value as 'all' | 'manual' | 'nightscout')}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-            >
-              <option value="all">All Sources</option>
-              <option value="manual">Manual Entries</option>
-              <option value="nightscout">Nightscout</option>
-            </select>
-          </div>
         </div>
-        <button
-          onClick={fetchReadings}
-          className="mt-4 w-full bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-        >
-          🔄 Fetch Fresh Data from Nightscout
-        </button>
       </div>
 
       {/* Tab Navigation */}
