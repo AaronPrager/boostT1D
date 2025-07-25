@@ -90,15 +90,15 @@ export async function POST(request: Request) {
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - analysisDateRange);
 
-    const readings = await prisma.reading.findMany({
+    const readings = await prisma.glucoseReading.findMany({
       where: {
         userId: user.id,
-        date: {
+        timestamp: {
           gte: startDate,
           lte: endDate,
         },
       },
-      orderBy: { date: 'asc' },
+      orderBy: { timestamp: 'asc' },
     });
 
     if (readings.length < 50) {
@@ -110,12 +110,14 @@ export async function POST(request: Request) {
     }
 
     // Transform readings to match interface
-    const transformedReadings: Reading[] = readings.map(r => ({
+    const transformedReadings: Reading[] = readings.map((r: any) => ({
       sgv: r.sgv,
-      date: r.date,
+      date: r.timestamp, // Map timestamp to date for the interface
       direction: r.direction || undefined,
       source: r.source,
     }));
+
+
 
     // Analyze patterns and generate suggestions
     const suggestions = analyzeAndSuggestAdjustments(
@@ -225,6 +227,27 @@ function analyzeBasalNeeds(
   highTarget: number
 ): TherapyAdjustment[] {
   const adjustments: TherapyAdjustment[] = [];
+  const adjustmentsByTimeSlot = new Map<string, TherapyAdjustment>();
+  
+  // Ensure we have a basal rate starting at midnight (00:00)
+  let normalizedBasal = [...currentBasal];
+  
+  // Sort by time first
+  normalizedBasal.sort((a, b) => {
+    const hourA = parseInt(a.time.split(':')[0]);
+    const hourB = parseInt(b.time.split(':')[0]);
+    return hourA - hourB;
+  });
+  
+  const hasMidnightRate = normalizedBasal.some(b => b.time === '00:00');
+  
+  if (!hasMidnightRate && normalizedBasal.length > 0) {
+    // Add a midnight rate using the first available rate
+    normalizedBasal.unshift({
+      time: '00:00',
+      value: normalizedBasal[0].value
+    });
+  }
   
   // Define time periods for analysis
   const timePeriods = [
@@ -251,7 +274,7 @@ function analyzeBasalNeeds(
     const periodHighPercent = (periodHighs / periodReadings.length) * 100;
 
     // Find relevant basal rates for this period
-    const relevantBasalRates = currentBasal.filter(b => {
+    const relevantBasalRates = normalizedBasal.filter(b => {
       const hour = parseInt(b.time.split(':')[0]);
       return period.hours.includes(hour);
     });
@@ -261,13 +284,21 @@ function analyzeBasalNeeds(
     
     period.hours.forEach(hour => {
       // Find the basal rate that would be active at this hour
-      let activeBasal = currentBasal[0]; // Default to first rate
+      let activeBasal = normalizedBasal[0]; // Default to first rate
       
-      for (const basal of currentBasal) {
+      // Sort basal rates by time to ensure proper order
+      const sortedBasal = [...normalizedBasal].sort((a, b) => {
+        const hourA = parseInt(a.time.split(':')[0]);
+        const hourB = parseInt(b.time.split(':')[0]);
+        return hourA - hourB;
+      });
+      
+      // Find the most recent basal rate that starts at or before this hour
+      for (let i = sortedBasal.length - 1; i >= 0; i--) {
+        const basal = sortedBasal[i];
         const basalHour = parseInt(basal.time.split(':')[0]);
         if (basalHour <= hour) {
           activeBasal = basal;
-        } else {
           break;
         }
       }
@@ -324,7 +355,7 @@ function analyzeBasalNeeds(
       if (adjustmentPercentage !== 0) {
         const suggestedValue = Math.round((basalRate.value * (1 + adjustmentPercentage / 100)) * 100) / 100;
         
-        adjustments.push({
+        const adjustment: TherapyAdjustment = {
           type: 'basal',
           timeSlot: basalRate.time,
           currentValue: basalRate.value,
@@ -333,12 +364,56 @@ function analyzeBasalNeeds(
           reasoning,
           confidence,
           priority,
-        });
+        };
+
+        // Check if we already have an adjustment for this time slot
+        const existingAdjustment = adjustmentsByTimeSlot.get(basalRate.time);
+        
+        if (!existingAdjustment) {
+          // No existing adjustment, add this one
+          adjustmentsByTimeSlot.set(basalRate.time, adjustment);
+        } else {
+          // We have an existing adjustment, keep the one with higher priority
+          if (getPriorityLevel(priority) > getPriorityLevel(existingAdjustment.priority)) {
+            adjustmentsByTimeSlot.set(basalRate.time, adjustment);
+          } else if (getPriorityLevel(priority) === getPriorityLevel(existingAdjustment.priority)) {
+            // Same priority, keep the one with higher confidence
+            if (getConfidenceLevel(confidence) > getConfidenceLevel(existingAdjustment.confidence)) {
+              adjustmentsByTimeSlot.set(basalRate.time, adjustment);
+            }
+          }
+        }
       }
     });
   });
 
-  return adjustments;
+  // Convert map back to array and sort by time slot
+  const finalAdjustments = Array.from(adjustmentsByTimeSlot.values()).sort((a, b) => {
+    const hourA = parseInt(a.timeSlot.split(':')[0]);
+    const hourB = parseInt(b.timeSlot.split(':')[0]);
+    return hourA - hourB;
+  });
+  return finalAdjustments;
+}
+
+// Helper function to get priority level for comparison
+function getPriorityLevel(priority: 'low' | 'medium' | 'high'): number {
+  switch (priority) {
+    case 'high': return 3;
+    case 'medium': return 2;
+    case 'low': return 1;
+    default: return 0;
+  }
+}
+
+// Helper function to get confidence level for comparison
+function getConfidenceLevel(confidence: 'low' | 'medium' | 'high'): number {
+  switch (confidence) {
+    case 'high': return 3;
+    case 'medium': return 2;
+    case 'low': return 1;
+    default: return 0;
+  }
 }
 
 function analyzeCarbRatios(
@@ -545,12 +620,8 @@ function generateOverallRecommendations(
     recommendations.push(`Document all changes and monitor glucose patterns for 3-5 days after each adjustment.`);
   }
 
-  recommendations.push('Always consult with your healthcare provider before making therapy adjustments.');
-  
   if (timeInRange < 50) {
     recommendations.push('⚠️ With very poor glucose control, consider scheduling an urgent appointment with your endocrinologist.');
-  } else {
-    recommendations.push('Make only one change at a time and monitor for 3-5 days before making additional adjustments.');
   }
 
   return recommendations;
@@ -593,6 +664,10 @@ function generateSafetyWarnings(
   if (totalHighPriorityChanges > 3) {
     warnings.push('⚠️ MULTIPLE HIGH-PRIORITY CHANGES: Several urgent adjustments suggested. Consider professional guidance for systematic implementation.');
   }
+
+  // Always include these critical safety warnings
+  warnings.push('Always consult with your healthcare provider before making therapy adjustments.');
+  warnings.push('Make only one change at a time and monitor for 3-5 days before making additional adjustments.');
 
   if (warnings.length === 0) {
     warnings.push('✅ No major safety concerns identified with suggested adjustments.');

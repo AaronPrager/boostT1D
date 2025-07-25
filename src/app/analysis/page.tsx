@@ -1,325 +1,140 @@
 'use client';
 
-import React, { useEffect, useState, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 
-type Reading = {
-  sgv: number;
-  date: number;
-  direction?: string;
-  type: string;
-  source: 'manual' | 'nightscout';
-};
+interface TherapyAdjustment {
+  type: 'basal' | 'carbratio' | 'sens' | 'target';
+  timeSlot: string;
+  currentValue: number;
+  suggestedValue: number;
+  adjustmentPercentage: number;
+  reasoning: string;
+  confidence: 'low' | 'medium' | 'high';
+  priority: 'low' | 'medium' | 'high';
+}
 
-type Settings = {
-  nightscoutUrl: string;
-  lowGlucose: number;
-  highGlucose: number;
-};
-
-type PatternAnalysis = {
-  overallTimeInRange: number;
-  timeAboveRange: number;
-  timeBelowRange: number;
-  averageGlucose: number;
-  glucoseVariability: number;
-  timePatterns: {
-    overnight: { average: number; timeInRange: number; readings: number };
-    morning: { average: number; timeInRange: number; readings: number };
-    afternoon: { average: number; timeInRange: number; readings: number };
-    evening: { average: number; timeInRange: number; readings: number };
+interface AdjustmentSuggestions {
+  basalAdjustments: TherapyAdjustment[];
+  carbRatioAdjustments: TherapyAdjustment[];
+  sensitivityAdjustments: TherapyAdjustment[];
+  targetAdjustments: TherapyAdjustment[];
+  overallRecommendations: string[];
+  safetyWarnings: string[];
+  analysisMetrics: {
+    timeInRange: number;
+    timeAboveRange: number;
+    timeBelowRange: number;
+    averageGlucose: number;
+    glucoseVariability: number;
+    dataQuality: 'poor' | 'fair' | 'good' | 'excellent';
   };
-  suggestions: string[];
-  riskAssessment: {
-    hypoRisk: 'low' | 'moderate' | 'high';
-    hyperRisk: 'low' | 'moderate' | 'high';
-    variabilityRisk: 'low' | 'moderate' | 'high';
-  };
-  recommendedSettings: {
-    suggestedLowTarget?: number;
-    suggestedHighTarget?: number;
-    reasoning: string[];
-  };
-};
+}
 
 export default function AnalysisPage() {
   const { data: session } = useSession();
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [readings, setReadings] = useState<Reading[]>([]);
-  const [settings, setSettings] = useState<Settings>({
-    nightscoutUrl: '',
-    lowGlucose: 70,
-    highGlucose: 180,
+  const [suggestions, setSuggestions] = useState<AdjustmentSuggestions | null>(null);
+  const [fromDate, setFromDate] = useState(() => {
+    const date = new Date();
+    date.setDate(date.getDate() - 14);
+    return date.toISOString().split('T')[0];
   });
-  const [analysis, setAnalysis] = useState<PatternAnalysis | null>(null);
-  const [analysisDateRange, setAnalysisDateRange] = useState(30); // days
+  const [toDate, setToDate] = useState(() => new Date().toISOString().split('T')[0]);
 
-  useEffect(() => {
-    const fetchSettings = async () => {
-      try {
-        const res = await fetch('/api/settings');
-        if (res.ok) {
-          const data = await res.json();
-          setSettings(data);
-        }
-      } catch (error) {
-        console.error('Error fetching settings:', error);
-      }
-    };
-
-    if (session) {
-      fetchSettings();
-    }
-  }, [session]);
-
-  const fetchAndAnalyzeData = useCallback(async () => {
+  const fetchAdjustmentSuggestions = async () => {
     setLoading(true);
     setError(null);
 
     try {
-      // Fetch readings for the last N days
-      const endDate = new Date();
-      const startDate = new Date();
-      startDate.setDate(startDate.getDate() - analysisDateRange);
+      const analysisDateRange = Math.ceil((new Date(toDate).getTime() - new Date(fromDate).getTime()) / (1000 * 60 * 60 * 24));
+      
+      const response = await fetch('/api/therapy-adjustment', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ analysisDateRange }),
+      });
 
-      const url = new URL('/api/readings', window.location.origin);
-      url.searchParams.set('startDate', startDate.getTime().toString());
-      url.searchParams.set('endDate', endDate.getTime().toString());
-      url.searchParams.set('source', 'combined');
-
-      const response = await fetch(url);
       if (!response.ok) {
-        throw new Error('Failed to fetch readings');
+        throw new Error('Failed to fetch therapy adjustments');
       }
 
-      const fetchedReadings = await response.json();
+      const data = await response.json();
       
-      // Transform to Reading type
-      const transformedReadings: Reading[] = fetchedReadings.map((r: {sgv: number, date: string | number, direction?: string, source: string}) => ({
-        sgv: r.sgv,
-        date: new Date(r.date).getTime(),
-        direction: r.direction,
-        type: 'sgv',
-        source: r.source as 'manual' | 'nightscout'
-      }));
-
-      setReadings(transformedReadings);
-      
-      if (transformedReadings.length > 0) {
-        const analysisResult = analyzePatterns(transformedReadings, settings);
-        setAnalysis(analysisResult);
+      if (data.error) {
+        setError(data.message || data.error);
+        setSuggestions(null);
       } else {
-        setError('No readings found for analysis');
+        setSuggestions(data);
       }
     } catch (error) {
-      setError('Failed to analyze patterns');
+      setError('Failed to analyze therapy adjustments');
       console.error('Error:', error);
     } finally {
       setLoading(false);
     }
-  }, [analysisDateRange, settings]);
+  };
+
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case 'high': return 'text-red-600 bg-red-50 border-red-200';
+      case 'medium': return 'text-yellow-600 bg-yellow-50 border-yellow-200';
+      case 'low': return 'text-green-600 bg-green-50 border-green-200';
+      default: return 'text-gray-600 bg-gray-50 border-gray-200';
+    }
+  };
+
+  const formatAdjustmentType = (type: string) => {
+    switch (type) {
+      case 'basal': return 'Basal Rate';
+      case 'carbratio': return 'Carb Ratio';
+      case 'sens': return 'Insulin Sensitivity';
+      case 'target': return 'Target Range';
+      default: return type;
+    }
+  };
+
+  const renderAdjustmentCard = (adjustment: TherapyAdjustment, index: number) => (
+    <div key={`${adjustment.type}-${adjustment.timeSlot}-${index}`} 
+         className={`p-4 border rounded-lg ${getPriorityColor(adjustment.priority)}`}>
+      <div className="flex justify-between items-start mb-2">
+        <div>
+          <h4 className="font-semibold">{formatAdjustmentType(adjustment.type)} - {adjustment.timeSlot}</h4>
+          <div className="text-sm mt-1">
+            <span className="font-medium">Current:</span> {adjustment.currentValue} →{' '}
+            <span className="font-medium">Suggested:</span> {adjustment.suggestedValue}
+            {adjustment.adjustmentPercentage !== 0 && (
+              <span className={`ml-2 ${adjustment.adjustmentPercentage > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                ({adjustment.adjustmentPercentage > 0 ? '+' : ''}{adjustment.adjustmentPercentage.toFixed(1)}%)
+              </span>
+            )}
+          </div>
+        </div>
+        <div className="text-right text-xs">
+          <div className="font-medium">
+            {adjustment.priority.toUpperCase()} priority
+          </div>
+        </div>
+      </div>
+      <p className="text-sm text-gray-700">{adjustment.reasoning}</p>
+    </div>
+  );
 
   useEffect(() => {
-    if (session && settings) {
-      fetchAndAnalyzeData();
+    if (session) {
+      fetchAdjustmentSuggestions();
     }
-  }, [session, settings, analysisDateRange, fetchAndAnalyzeData]);
-
-  const analyzePatterns = (readings: Reading[], settings: Settings): PatternAnalysis => {
-    const { lowGlucose, highGlucose } = settings;
-    
-    // Basic statistics
-    const totalReadings = readings.length;
-    const averageGlucose = readings.reduce((sum, r) => sum + r.sgv, 0) / totalReadings;
-    const variance = readings.reduce((sum, r) => sum + Math.pow(r.sgv - averageGlucose, 2), 0) / totalReadings;
-    const standardDeviation = Math.sqrt(variance);
-    const coefficientOfVariation = (standardDeviation / averageGlucose) * 100;
-
-    // Time in range calculations
-    const inRange = readings.filter(r => r.sgv >= lowGlucose && r.sgv <= highGlucose).length;
-    const aboveRange = readings.filter(r => r.sgv > highGlucose).length;
-    const belowRange = readings.filter(r => r.sgv < lowGlucose).length;
-
-    const overallTimeInRange = (inRange / totalReadings) * 100;
-    const timeAboveRange = (aboveRange / totalReadings) * 100;
-    const timeBelowRange = (belowRange / totalReadings) * 100;
-
-    // Time pattern analysis
-    const timePatterns = {
-      overnight: analyzeTimePeriod(readings, 0, 6, lowGlucose, highGlucose),
-      morning: analyzeTimePeriod(readings, 6, 12, lowGlucose, highGlucose),
-      afternoon: analyzeTimePeriod(readings, 12, 18, lowGlucose, highGlucose),
-      evening: analyzeTimePeriod(readings, 18, 24, lowGlucose, highGlucose),
-    };
-
-    // Risk assessment
-    const hypoRisk = timeBelowRange > 4 ? 'high' : timeBelowRange > 1 ? 'moderate' : 'low';
-    const hyperRisk = timeAboveRange > 25 ? 'high' : timeAboveRange > 5 ? 'moderate' : 'low';
-    const variabilityRisk = coefficientOfVariation > 36 ? 'high' : coefficientOfVariation > 33 ? 'moderate' : 'low';
-
-    // Generate suggestions
-    const suggestions = generateSuggestions({
-      overallTimeInRange,
-      timeBelowRange,
-      timeAboveRange,
-      variabilityRisk,
-      coefficientOfVariation,
-      timePatterns
-    });
-
-    // Recommended settings
-    const recommendedSettings = generateSettingsRecommendations({
-      currentSettings: settings,
-      hypoRisk,
-      overallTimeInRange,
-      timeAboveRange,
-    });
-
-    return {
-      overallTimeInRange: Math.round(overallTimeInRange),
-      timeAboveRange: Math.round(timeAboveRange),
-      timeBelowRange: Math.round(timeBelowRange),
-      averageGlucose: Math.round(averageGlucose),
-      glucoseVariability: Math.round(coefficientOfVariation),
-      timePatterns,
-      suggestions,
-      riskAssessment: {
-        hypoRisk,
-        hyperRisk,
-        variabilityRisk
-      },
-      recommendedSettings
-    };
-  };
-
-  const analyzeTimePeriod = (readings: Reading[], startHour: number, endHour: number, lowTarget: number, highTarget: number) => {
-    const periodReadings = readings.filter(r => {
-      const hour = new Date(r.date).getHours();
-      return hour >= startHour && hour < endHour;
-    });
-
-    if (periodReadings.length === 0) {
-      return { average: 0, timeInRange: 0, readings: 0 };
-    }
-
-    const average = periodReadings.reduce((sum, r) => sum + r.sgv, 0) / periodReadings.length;
-    const inRange = periodReadings.filter(r => r.sgv >= lowTarget && r.sgv <= highTarget).length;
-    const timeInRange = (inRange / periodReadings.length) * 100;
-
-    return {
-      average: Math.round(average),
-      timeInRange: Math.round(timeInRange),
-      readings: periodReadings.length
-    };
-  };
-
-  const generateSuggestions = (data: {
-    overallTimeInRange: number;
-    timeBelowRange: number;
-    timeAboveRange: number;
-    variabilityRisk: string;
-    coefficientOfVariation: number;
-    timePatterns: Record<string, {readings: number, timeInRange: number}>;
-  }): string[] => {
-    const suggestions: string[] = [];
-
-    // Time in range suggestions
-    if (data.overallTimeInRange < 70) {
-      suggestions.push(`Your time in range is ${Math.round(data.overallTimeInRange)}%. Target goal is 70%+. Focus on reducing both highs and lows.`);
-    } else if (data.overallTimeInRange >= 70 && data.overallTimeInRange < 80) {
-      suggestions.push(`Good progress! Your time in range is ${Math.round(data.overallTimeInRange)}%. Aim for 80%+ for optimal control.`);
-    } else {
-      suggestions.push(`Excellent! Your time in range is ${Math.round(data.overallTimeInRange)}%. Maintain current management strategies.`);
-    }
-
-    // Hypoglycemia suggestions
-    if (data.timeBelowRange > 4) {
-      suggestions.push('High risk of hypoglycemia detected. Consider discussing with your healthcare provider about adjusting insulin or medication doses.');
-    } else if (data.timeBelowRange > 1) {
-      suggestions.push('Moderate hypoglycemia risk. Monitor for patterns and consider snacks before common low times.');
-    }
-
-    // Hyperglycemia suggestions
-    if (data.timeAboveRange > 25) {
-      suggestions.push('Frequent high glucose levels detected. Review carbohydrate counting and meal timing.');
-    } else if (data.timeAboveRange > 5) {
-      suggestions.push('Some high glucose episodes detected. Focus on post-meal management and portion control.');
-    }
-
-    // Variability suggestions
-    if (data.variabilityRisk === 'high') {
-      suggestions.push('High glucose variability detected. Consider consistent meal timing.');
-    } else if (data.variabilityRisk === 'moderate') {
-      suggestions.push('Moderate glucose variability. Focus on consistent carbohydrate intake and regular meal schedules.');
-    }
-
-    // Time-specific suggestions
-    Object.entries(data.timePatterns).forEach(([period, stats]) => {
-      if (stats.readings > 10 && stats.timeInRange < 60) {
-        const periodName = period.charAt(0).toUpperCase() + period.slice(1);
-        suggestions.push(`${periodName} period shows lower control (${stats.timeInRange}% TIR). Consider adjusting ${period} management strategies.`);
-      }
-    });
-
-    return suggestions;
-  };
-
-  const generateSettingsRecommendations = (data: {
-    currentSettings: Settings;
-    hypoRisk: string;
-    overallTimeInRange: number;
-    timeAboveRange: number;
-  }): PatternAnalysis['recommendedSettings'] => {
-    const reasoning: string[] = [];
-    let suggestedLowTarget = data.currentSettings.lowGlucose;
-    let suggestedHighTarget = data.currentSettings.highGlucose;
-
-    // Adjust targets based on hypoglycemia risk
-    if (data.hypoRisk === 'high') {
-      suggestedLowTarget = Math.max(70, data.currentSettings.lowGlucose + 10);
-      reasoning.push('Increased low target due to high hypoglycemia risk');
-    } else if (data.hypoRisk === 'moderate') {
-      suggestedLowTarget = Math.max(70, data.currentSettings.lowGlucose + 5);
-      reasoning.push('Slightly increased low target due to moderate hypoglycemia risk');
-    }
-
-    // Adjust targets based on overall control
-    if (data.overallTimeInRange > 80 && data.hypoRisk === 'low') {
-      suggestedHighTarget = Math.max(140, data.currentSettings.highGlucose - 10);
-      reasoning.push('Tightened high target due to excellent overall control and low hypoglycemia risk');
-    } else if (data.overallTimeInRange < 50) {
-      suggestedHighTarget = Math.min(200, data.currentSettings.highGlucose + 10);
-      reasoning.push('Relaxed high target to improve overall time in range');
-    }
-
-    // Only suggest changes if they're different from current settings
-    if (suggestedLowTarget === data.currentSettings.lowGlucose && 
-        suggestedHighTarget === data.currentSettings.highGlucose) {
-      reasoning.push('Current target ranges are appropriate for your glucose patterns');
-    }
-
-    return {
-      ...(suggestedLowTarget !== data.currentSettings.lowGlucose && { suggestedLowTarget }),
-      ...(suggestedHighTarget !== data.currentSettings.highGlucose && { suggestedHighTarget }),
-      reasoning
-    };
-  };
-
-  const getRiskColor = (risk: 'low' | 'moderate' | 'high') => {
-    switch (risk) {
-      case 'low': return 'text-green-600 bg-green-100';
-      case 'moderate': return 'text-yellow-600 bg-yellow-100';
-      case 'high': return 'text-red-600 bg-red-100';
-    }
-  };
+  }, [session, fromDate, toDate]);
 
   if (!session) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900">Access Denied</h1>
-          <p className="mt-2 text-gray-600">Please sign in to view pattern analysis.</p>
+          <h1 className="text-2xl font-bold text-gray-900">Please sign in</h1>
+          <p className="mt-2 text-gray-600">You need to be signed in to view this page.</p>
         </div>
       </div>
     );
@@ -329,164 +144,196 @@ export default function AnalysisPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900">Analyzing Patterns...</h1>
-          <p className="mt-2 text-gray-600">Processing your glucose data.</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-red-600">Analysis Error</h1>
-          <p className="mt-2 text-gray-600">{error}</p>
-          <button 
-            onClick={fetchAndAnalyzeData}
-            className="mt-4 bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700"
-          >
-            Retry Analysis
-          </button>
+          <h1 className="text-2xl font-bold text-gray-900">Loading...</h1>
+          <p className="mt-2 text-gray-600">Analyzing your therapy adjustments.</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold">Pattern Analysis & Recommendations</h1>
-        <div className="flex items-center space-x-4">
-          <select
-            value={analysisDateRange}
-            onChange={(e) => setAnalysisDateRange(Number(e.target.value))}
-            className="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-          >
-            <option value={7}>Last 7 days</option>
-            <option value={14}>Last 14 days</option>
-            <option value={30}>Last 30 days</option>
-            <option value={90}>Last 90 days</option>
-          </select>
-          <button
-            onClick={fetchAndAnalyzeData}
-            className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-          >
-            Refresh Analysis
-          </button>
-        </div>
-      </div>
-
-      {analysis && (
-        <div className="space-y-8">
-          {/* Overview Stats */}
-          <div className="bg-white p-6 rounded-lg shadow">
-            <h2 className="text-xl font-semibold mb-4">Overview ({analysisDateRange} days, {readings.length} readings)</h2>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="text-center p-4 bg-gray-50 rounded">
-                <p className="text-2xl font-bold text-green-600">{analysis.overallTimeInRange}%</p>
-                <p className="text-sm text-gray-600">Time in Range</p>
+    <div className="min-h-screen bg-gray-50 py-8">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+          <div className="flex justify-between items-center mb-6">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">Therapy Dose Adjustments</h1>
+              <p className="text-gray-600 mt-2">
+                AI-powered suggestions based on your glucose patterns and current therapy settings
+              </p>
+            </div>
+            <div className="flex items-center space-x-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Analysis Period
+                </label>
+                <div className="flex space-x-2">
+                  <input
+                    type="date"
+                    value={fromDate}
+                    onChange={(e) => setFromDate(e.target.value)}
+                    className="border border-gray-300 rounded-md px-3 py-2 text-sm"
+                  />
+                  <span className="flex items-center text-gray-500">to</span>
+                  <input
+                    type="date"
+                    value={toDate}
+                    onChange={(e) => setToDate(e.target.value)}
+                    className="border border-gray-300 rounded-md px-3 py-2 text-sm"
+                  />
+                </div>
               </div>
-              <div className="text-center p-4 bg-gray-50 rounded">
-                <p className="text-2xl font-bold text-red-600">{analysis.timeAboveRange}%</p>
-                <p className="text-sm text-gray-600">Above Range</p>
-              </div>
-              <div className="text-center p-4 bg-gray-50 rounded">
-                <p className="text-2xl font-bold text-orange-600">{analysis.timeBelowRange}%</p>
-                <p className="text-sm text-gray-600">Below Range</p>
-              </div>
-              <div className="text-center p-4 bg-gray-50 rounded">
-                <p className="text-2xl font-bold text-blue-600">{analysis.glucoseVariability}%</p>
-                <p className="text-sm text-gray-600">Variability (CV)</p>
-              </div>
+              <button
+                onClick={fetchAdjustmentSuggestions}
+                disabled={loading}
+                className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loading ? 'Analyzing...' : 'Refresh Analysis'}
+              </button>
             </div>
           </div>
 
-          {/* Risk Assessment */}
-          <div className="bg-white p-6 rounded-lg shadow">
-            <h2 className="text-xl font-semibold mb-4">Risk Assessment</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className={`p-4 rounded ${getRiskColor(analysis.riskAssessment.hypoRisk)}`}>
-                <h3 className="font-semibold">Hypoglycemia Risk</h3>
-                <p className="text-lg capitalize">{analysis.riskAssessment.hypoRisk}</p>
-              </div>
-              <div className={`p-4 rounded ${getRiskColor(analysis.riskAssessment.hyperRisk)}`}>
-                <h3 className="font-semibold">Hyperglycemia Risk</h3>
-                <p className="text-lg capitalize">{analysis.riskAssessment.hyperRisk}</p>
-              </div>
-              <div className={`p-4 rounded ${getRiskColor(analysis.riskAssessment.variabilityRisk)}`}>
-                <h3 className="font-semibold">Variability Risk</h3>
-                <p className="text-lg capitalize">{analysis.riskAssessment.variabilityRisk}</p>
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-6">
+              <div className="flex">
+                <div className="text-red-400">⚠️</div>
+                <div className="ml-3">
+                  <h3 className="text-sm font-medium text-red-800">Analysis Error</h3>
+                  <p className="text-sm text-red-700 mt-1">{error}</p>
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
-          {/* Time Patterns */}
-          <div className="bg-white p-6 rounded-lg shadow">
-            <h2 className="text-xl font-semibold mb-4">Daily Time Patterns</h2>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {Object.entries(analysis.timePatterns).map(([period, stats]) => (
-                <div key={period} className="p-4 border rounded">
-                  <h3 className="font-semibold capitalize">{period}</h3>
-                  <p className="text-sm text-gray-600">{stats.readings} readings</p>
-                  <div className="mt-2">
-                    <p>Avg: {stats.average} mg/dL</p>
-                    <p>TIR: {stats.timeInRange}%</p>
+          {suggestions && (
+            <>
+              {/* Analysis Metrics */}
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
+                <div className="bg-blue-50 p-4 rounded-lg text-center">
+                  <div className="text-2xl font-bold text-blue-600">
+                    {suggestions.analysisMetrics.timeInRange}%
+                  </div>
+                  <div className="text-sm text-gray-600">Time in Range</div>
+                </div>
+                <div className="bg-red-50 p-4 rounded-lg text-center">
+                  <div className="text-2xl font-bold text-red-600">
+                    {suggestions.analysisMetrics.timeAboveRange}%
+                  </div>
+                  <div className="text-sm text-gray-600">Time Above</div>
+                </div>
+                <div className="bg-yellow-50 p-4 rounded-lg text-center">
+                  <div className="text-2xl font-bold text-yellow-600">
+                    {suggestions.analysisMetrics.timeBelowRange}%
+                  </div>
+                  <div className="text-sm text-gray-600">Time Below</div>
+                </div>
+                <div className="bg-green-50 p-4 rounded-lg text-center">
+                  <div className="text-2xl font-bold text-green-600">
+                    {suggestions.analysisMetrics.averageGlucose}
+                  </div>
+                  <div className="text-sm text-gray-600">Avg Glucose</div>
+                </div>
+                <div className="bg-purple-50 p-4 rounded-lg text-center">
+                  <div className="text-2xl font-bold text-purple-600">
+                    {((suggestions.analysisMetrics.averageGlucose + 46.7) / 28.7).toFixed(1)}%
+                  </div>
+                  <div className="text-sm text-gray-600">Est. A1C</div>
+                </div>
+              </div>
+
+              {/* Important Disclaimer */}
+              <div className="mb-8 bg-yellow-50 border border-yellow-200 rounded-md p-4">
+                <div className="flex">
+                  <div className="text-yellow-400">⚠️</div>
+                  <div className="ml-3">
+                    <h2 className="text-xl font-semibold text-yellow-800 mb-2">Important Disclaimer</h2>
+                    <p className="text-yellow-700">
+                      These suggestions are for educational purposes only and should not replace professional medical advice. 
+                      Always consult with your healthcare provider before making any changes to your diabetes therapy. 
+                      Make only one adjustment at a time and monitor carefully for 3-5 days before making additional changes.
+                    </p>
                   </div>
                 </div>
-              ))}
-            </div>
-          </div>
+              </div>
 
-          {/* Recommended Settings */}
-          <div className="bg-white p-6 rounded-lg shadow">
-            <h2 className="text-xl font-semibold mb-4">Recommended Target Settings</h2>
-            <div className="space-y-4">
-              <div className="flex justify-between items-center p-4 bg-gray-50 rounded">
-                <div>
-                  <h3 className="font-semibold">Current Targets</h3>
-                  <p>{settings.lowGlucose} - {settings.highGlucose} mg/dL</p>
+              {/* Overall Recommendations */}
+              {suggestions.overallRecommendations.length > 0 && (
+                <div className="mb-8">
+                  <h2 className="text-xl font-semibold text-gray-900 mb-4">📋 Overall Recommendations</h2>
+                  <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
+                    <ul className="space-y-2">
+                      {suggestions.overallRecommendations.map((rec, index) => (
+                        <li key={index} className="text-blue-800 flex items-start">
+                          <span className="text-blue-600 mr-2">•</span>
+                          {rec}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="font-semibold">Recommended Targets</h3>
-                  <p>
-                    {analysis.recommendedSettings.suggestedLowTarget ?? settings.lowGlucose} - {analysis.recommendedSettings.suggestedHighTarget ?? settings.highGlucose} mg/dL
+              )}
+
+              {/* Basal Adjustments */}
+              {suggestions.basalAdjustments.length > 0 && (
+                <div className="mb-8">
+                  <h2 className="text-xl font-semibold text-gray-900 mb-4">🕐 Basal Rate Adjustments</h2>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {suggestions.basalAdjustments.map((adjustment, index) => renderAdjustmentCard(adjustment, index))}
+                  </div>
+                </div>
+              )}
+
+              {/* Carb Ratio Adjustments */}
+              {suggestions.carbRatioAdjustments.length > 0 && (
+                <div className="mb-8">
+                  <h2 className="text-xl font-semibold text-gray-900 mb-4">🍽️ Carb Ratio Adjustments</h2>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {suggestions.carbRatioAdjustments.map((adjustment, index) => renderAdjustmentCard(adjustment, index))}
+                  </div>
+                </div>
+              )}
+
+              {/* Sensitivity Adjustments */}
+              {suggestions.sensitivityAdjustments.length > 0 && (
+                <div className="mb-8">
+                  <h2 className="text-xl font-semibold text-gray-900 mb-4">💉 Insulin Sensitivity Adjustments</h2>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {suggestions.sensitivityAdjustments.map((adjustment, index) => renderAdjustmentCard(adjustment, index))}
+                  </div>
+                </div>
+              )}
+
+              {/* Target Adjustments */}
+              {suggestions.targetAdjustments.length > 0 && (
+                <div className="mb-8">
+                  <h2 className="text-xl font-semibold text-gray-900 mb-4">🎯 Target Range Adjustments</h2>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {suggestions.targetAdjustments.map((adjustment, index) => renderAdjustmentCard(adjustment, index))}
+                  </div>
+                </div>
+              )}
+
+              {/* No Adjustments Message */}
+              {suggestions.basalAdjustments.length === 0 && 
+               suggestions.carbRatioAdjustments.length === 0 && 
+               suggestions.sensitivityAdjustments.length === 0 && 
+               suggestions.targetAdjustments.length === 0 && (
+                <div className="text-center py-8">
+                  <div className="text-6xl mb-4">✅</div>
+                  <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                    No Adjustments Needed
+                  </h3>
+                  <p className="text-gray-600">
+                    Your current therapy settings appear to be working well based on recent glucose patterns.
                   </p>
                 </div>
-              </div>
-              <div>
-                <h3 className="font-semibold mb-2">Reasoning</h3>
-                <ul className="list-disc list-inside space-y-1">
-                  {analysis.recommendedSettings.reasoning.map((reason, index) => (
-                    <li key={index} className="text-gray-700">{reason}</li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-          </div>
+              )}
 
-          {/* Suggestions */}
-          <div className="bg-white p-6 rounded-lg shadow">
-            <h2 className="text-xl font-semibold mb-4">Personalized Suggestions</h2>
-            <div className="space-y-3">
-              {analysis.suggestions.map((suggestion, index) => (
-                <div key={index} className="p-4 bg-blue-50 border-l-4 border-blue-400">
-                  <p className="text-blue-800">{suggestion}</p>
-                </div>
-              ))}
-            </div>
-          </div>
 
-          {/* Disclaimer */}
-          <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-lg">
-            <h3 className="font-semibold text-yellow-800">Important Disclaimer</h3>
-            <p className="text-yellow-700 text-sm mt-2">
-              This analysis is for informational purposes only and should not replace professional medical advice. 
-              Always consult with your healthcare provider before making changes to your diabetes management plan.
-            </p>
-          </div>
+            </>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 } 

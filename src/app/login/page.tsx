@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { signIn } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import Link from 'next/link';
 
@@ -13,8 +13,18 @@ type FormData = {
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
   const { register, handleSubmit, formState: { errors } } = useForm<FormData>();
+
+  useEffect(() => {
+    const registered = searchParams.get('registered');
+    
+    if (registered === 'true') {
+      setSuccessMessage('Account created successfully! You can now sign in with your credentials.');
+    }
+  }, [searchParams]);
 
   const onSubmit = async (data: FormData) => {
     try {
@@ -27,7 +37,7 @@ export default function LoginPage() {
       if (result?.error) {
         setError('Invalid email or password');
       } else {
-        router.push('/profile');
+        router.push('/dashboard');
         router.refresh();
       }
     } catch (error) {
@@ -44,6 +54,11 @@ export default function LoginPage() {
           </h2>
         </div>
         <form className="mt-8 space-y-6" onSubmit={handleSubmit(onSubmit)}>
+          {successMessage && (
+            <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative" role="alert">
+              <span className="block sm:inline">{successMessage}</span>
+            </div>
+          )}
           {error && (
             <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
               <span className="block sm:inline">{error}</span>

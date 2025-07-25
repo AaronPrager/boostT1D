@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 
 type Reading = {
   id: string;
@@ -23,7 +24,10 @@ type DashboardStats = {
   currentGlucose: number | null;
   currentDirection: string | null;
   timeInRange: number;
+  timeAboveRange: number;
+  timeBelowRange: number;
   averageGlucose: number;
+  glucoseVariability: number;
   totalReadings: number;
   lastUpdated: string | null;
   trend: 'improving' | 'stable' | 'declining';
@@ -40,7 +44,10 @@ export default function DashboardPage() {
     currentGlucose: null,
     currentDirection: null,
     timeInRange: 0,
+    timeAboveRange: 0,
+    timeBelowRange: 0,
     averageGlucose: 0,
+    glucoseVariability: 0,
     totalReadings: 0,
     lastUpdated: null,
     trend: 'stable'
@@ -50,23 +57,56 @@ export default function DashboardPage() {
     lowGlucose: 70,
     highGlucose: 180,
   });
+  // Track the date range for the dashboard (last 7 days)
+  const [startDate, setStartDate] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 7);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  });
+  const [endDate, setEndDate] = useState(() => {
+    const d = new Date();
+    d.setHours(23, 59, 59, 999);
+    return d;
+  });
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
+  const pathname = usePathname();
+
+  // Increment refreshTrigger every time we navigate to /dashboard
   useEffect(() => {
-    if (session) {
-      fetchSettings().then(() => {
-        // After settings are loaded, fetch dashboard data
-        fetchDashboardData();
-        
-        // If Nightscout is configured, also trigger a sync to get latest data
-        if (settings.nightscoutUrl) {
-          // Small delay to ensure settings are updated
-          setTimeout(() => {
-            handleRefresh();
-          }, 500);
+    if (pathname === '/dashboard') {
+      setRefreshTrigger((t) => t + 1);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname]);
+
+  // On every dashboard visit, set date range to last week and fetch data
+  useEffect(() => {
+    if (session && pathname === '/dashboard') {
+      setLoading(true);
+      setError(null);
+      const newEnd = new Date();
+      newEnd.setHours(23, 59, 59, 999);
+      const newStart = new Date();
+      newStart.setDate(newStart.getDate() - 7);
+      newStart.setHours(0, 0, 0, 0);
+      setStartDate(newStart);
+      setEndDate(newEnd);
+      // Always fetch settings fresh, then decide to sync/fetch
+      fetch('/api/settings').then(async (res) => {
+        if (res.ok) {
+          const data = await res.json();
+          setSettings(data);
+          if (data.nightscoutUrl) {
+            await fetch('/api/nightscout/sync', { method: 'POST' });
+          }
         }
+        await fetchDashboardData(newStart, newEnd);
       });
     }
-  }, [session]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session, refreshTrigger]);
 
   const fetchSettings = async () => {
     try {
@@ -80,7 +120,7 @@ export default function DashboardPage() {
     }
   };
 
-  const fetchDashboardData = async (showRefreshFeedback = false) => {
+  const fetchDashboardData = async (customStart?: Date, customEnd?: Date, showRefreshFeedback = false) => {
     if (showRefreshFeedback) {
       setRefreshing(true);
       setRefreshMessage(null);
@@ -91,119 +131,90 @@ export default function DashboardPage() {
 
     try {
       // Check if Nightscout is configured
-      if (!settings.nightscoutUrl) {
-        // Only fetch manual data if Nightscout is not configured
-        const endDate = new Date();
-        const startDate = new Date();
-        startDate.setDate(startDate.getDate() - 7);
+      const source = settings.nightscoutUrl ? 'combined' : 'manual';
+      const useStart = customStart || startDate;
+      const useEnd = customEnd || endDate;
 
-        const url = new URL('/api/readings', window.location.origin);
-        url.searchParams.set('startDate', startDate.getTime().toString());
-        url.searchParams.set('endDate', endDate.getTime().toString());
-        url.searchParams.set('source', 'manual'); // Only manual readings
+      const url = new URL('/api/readings', window.location.origin);
+      url.searchParams.set('startDate', useStart.getTime().toString());
+      url.searchParams.set('endDate', useEnd.getTime().toString());
+      url.searchParams.set('source', source);
 
-        const response = await fetch(url);
-        if (!response.ok) {
-          throw new Error('Failed to fetch manual readings');
-        }
-
-        const readings: Reading[] = await response.json();
-        
-        // Sort by date (most recent first)
-        const sortedReadings = readings.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-        setRecentReadings(sortedReadings);
-
-        // Calculate stats from manual readings only
-        if (sortedReadings.length > 0) {
-          const currentReading = sortedReadings[0];
-          const inRangeReadings = sortedReadings.filter(r => 
-            r.sgv >= settings.lowGlucose && r.sgv <= settings.highGlucose
-          );
-          const averageGlucose = sortedReadings.reduce((sum, r) => sum + r.sgv, 0) / sortedReadings.length;
-
-          setStats({
-            currentGlucose: currentReading.sgv,
-            currentDirection: currentReading.direction || null,
-            timeInRange: Math.round((inRangeReadings.length / sortedReadings.length) * 100),
-            averageGlucose: Math.round(averageGlucose),
-            totalReadings: sortedReadings.length,
-            lastUpdated: currentReading.date,
-            trend: 'stable' // Default trend for manual data
-          });
-        } else {
-          setStats({
-            currentGlucose: null,
-            currentDirection: null,
-            timeInRange: 0,
-            averageGlucose: 0,
-            totalReadings: 0,
-            lastUpdated: null,
-            trend: 'stable'
-          });
-        }
-      } else {
-        // Fetch combined data (Nightscout + manual) if Nightscout is configured
-        const endDate = new Date();
-        const startDate = new Date();
-        startDate.setDate(startDate.getDate() - 7);
-
-        const url = new URL('/api/readings', window.location.origin);
-        url.searchParams.set('startDate', startDate.getTime().toString());
-        url.searchParams.set('endDate', endDate.getTime().toString());
-        url.searchParams.set('source', 'combined');
-
-        const response = await fetch(url);
-        if (!response.ok) {
-          throw new Error('Failed to fetch readings');
-        }
-
-        const readings: Reading[] = await response.json();
-        
-        // Sort by date (most recent first)
-        const sortedReadings = readings.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-        setRecentReadings(sortedReadings);
-
-        // Calculate stats
-        if (sortedReadings.length > 0) {
-          const currentReading = sortedReadings[0];
-          const inRangeReadings = sortedReadings.filter(r => 
-            r.sgv >= settings.lowGlucose && r.sgv <= settings.highGlucose
-          );
-          const averageGlucose = sortedReadings.reduce((sum, r) => sum + r.sgv, 0) / sortedReadings.length;
-
-          // Calculate trend (simple comparison with previous period)
-          const midPoint = Math.floor(sortedReadings.length / 2);
-          const recentAvg = sortedReadings.slice(0, midPoint).reduce((sum, r) => sum + r.sgv, 0) / midPoint;
-          const olderAvg = sortedReadings.slice(midPoint).reduce((sum, r) => sum + r.sgv, 0) / (sortedReadings.length - midPoint);
-          
-          let trend: 'improving' | 'stable' | 'declining' = 'stable';
-          if (recentAvg < olderAvg - 10) trend = 'improving';
-          else if (recentAvg > olderAvg + 10) trend = 'declining';
-
-          setStats({
-            currentGlucose: currentReading.sgv,
-            currentDirection: currentReading.direction || null,
-            timeInRange: Math.round((inRangeReadings.length / sortedReadings.length) * 100),
-            averageGlucose: Math.round(averageGlucose),
-            totalReadings: sortedReadings.length,
-            lastUpdated: currentReading.date,
-            trend
-          });
-        } else {
-          setStats({
-            currentGlucose: null,
-            currentDirection: null,
-            timeInRange: 0,
-            averageGlucose: 0,
-            totalReadings: 0,
-            lastUpdated: null,
-            trend: 'stable'
-          });
-        }
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch readings from ${source} source`);
       }
-    } catch (err) {
-      console.error('Error fetching dashboard data:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load dashboard data');
+
+      const data = await response.json();
+      const readings = data.filter((r: any) => r.sgv && r.sgv > 0);
+
+      if (readings.length === 0) {
+        // If still loading, show a waiting message instead of an error
+        if (loading || refreshing) {
+          setError('Please wait, loading your data...');
+        } else {
+          setError('No readings found for the selected period');
+        }
+        setLoading(false);
+        setRefreshing(false);
+        return;
+      }
+
+      // Calculate statistics
+      const totalReadings = readings.length;
+      const averageGlucose = readings.reduce((sum: number, r: any) => sum + r.sgv, 0) / totalReadings;
+      
+      const inRange = readings.filter((r: any) => r.sgv >= settings.lowGlucose && r.sgv <= settings.highGlucose).length;
+      const aboveRange = readings.filter((r: any) => r.sgv > settings.highGlucose).length;
+      const belowRange = readings.filter((r: any) => r.sgv < settings.lowGlucose).length;
+      
+      const timeInRange = (inRange / totalReadings) * 100;
+      const timeAboveRange = (aboveRange / totalReadings) * 100;
+      const timeBelowRange = (belowRange / totalReadings) * 100;
+
+      // Calculate glucose variability (coefficient of variation)
+      const variance = readings.reduce((sum: number, r: any) => sum + Math.pow(r.sgv - averageGlucose, 2), 0) / totalReadings;
+      const glucoseVariability = (Math.sqrt(variance) / averageGlucose) * 100;
+
+      // Get current glucose and direction
+      const sortedReadings = readings.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      const currentReading = sortedReadings[0];
+      
+      // Determine trend (simplified - could be enhanced with more sophisticated analysis)
+      const recentReadings = sortedReadings.slice(0, Math.min(20, sortedReadings.length));
+      const olderReadings = sortedReadings.slice(20, Math.min(40, sortedReadings.length));
+      
+      let trend: 'improving' | 'stable' | 'declining' = 'stable';
+      if (recentReadings.length > 0 && olderReadings.length > 0) {
+        const recentAvg = recentReadings.reduce((sum: number, r: any) => sum + r.sgv, 0) / recentReadings.length;
+        const olderAvg = olderReadings.reduce((sum: number, r: any) => sum + r.sgv, 0) / olderReadings.length;
+        
+        if (recentAvg < olderAvg - 10) trend = 'improving';
+        else if (recentAvg > olderAvg + 10) trend = 'declining';
+      }
+
+      setStats({
+        currentGlucose: currentReading?.sgv || null,
+        currentDirection: currentReading?.direction || null,
+        timeInRange: Math.round(timeInRange),
+        timeAboveRange: Math.round(timeAboveRange),
+        timeBelowRange: Math.round(timeBelowRange),
+        averageGlucose: Math.round(averageGlucose),
+        glucoseVariability: Math.round(glucoseVariability),
+        totalReadings,
+        lastUpdated: currentReading?.date || null,
+        trend
+      });
+
+      setRecentReadings(sortedReadings.slice(0, 6));
+
+      if (showRefreshFeedback) {
+        setRefreshMessage(`Successfully synced ${totalReadings} readings from ${source === 'combined' ? 'Nightscout' : 'manual data'}`);
+        setTimeout(() => setRefreshMessage(null), 3000);
+      }
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+      setError('Failed to load dashboard data. Please check your settings and try again.');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -211,69 +222,25 @@ export default function DashboardPage() {
   };
 
   const handleRefresh = async () => {
-    setRefreshing(true);
-    setRefreshMessage(null);
-    setError(null);
-
-    try {
-      // First, sync fresh data from Nightscout
-      console.log('Starting Nightscout sync...');
-      const syncResponse = await fetch('/api/nightscout/sync', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (syncResponse.ok) {
-        const syncResult = await syncResponse.json();
-        console.log('Nightscout sync result:', syncResult);
-        
-        // Show sync status message
-        if (syncResult.storedCount > 0) {
-          setRefreshMessage(`✅ Synced ${syncResult.storedCount} new readings from Nightscout!`);
-        } else {
-          setRefreshMessage(`✅ Nightscout data is up to date (${syncResult.fetchedCount} readings checked)`);
-        }
-      } else {
-        const errorText = await syncResponse.text();
-        console.error('Nightscout sync failed:', errorText);
-        setRefreshMessage(`⚠️ Nightscout sync failed: ${errorText}. Showing existing data.`);
-      }
-
-      // Always fetch and refresh the dashboard data after sync attempt
-      await fetchDashboardData(false); // Don't show additional refresh feedback since we're already showing sync status
-      
-    } catch (error) {
-      console.error('Error during refresh:', error);
-      setError('Failed to refresh data from Nightscout. Showing existing data.');
-      
-      // Still try to refresh local data even if sync fails
-      await fetchDashboardData(false);
-    } finally {
-      setRefreshing(false);
-      
-      // Clear the refresh message after 5 seconds
-      setTimeout(() => setRefreshMessage(null), 5000);
-    }
+    await fetchDashboardData(startDate, endDate, true);
   };
 
   const getGlucoseStatus = (glucose: number) => {
-    if (glucose < settings.lowGlucose) return { status: 'low', color: 'text-red-600 bg-red-100' };
-    if (glucose > settings.highGlucose) return { status: 'high', color: 'text-orange-600 bg-orange-100' };
-    return { status: 'normal', color: 'text-green-600 bg-green-100' };
+    if (glucose < settings.lowGlucose) return { color: 'bg-red-100 text-red-800', status: 'Low' };
+    if (glucose > settings.highGlucose) return { color: 'bg-yellow-100 text-yellow-800', status: 'High' };
+    return { color: 'bg-green-100 text-green-800', status: 'In Range' };
   };
 
   const getDirectionIcon = (direction: string | null) => {
     switch (direction) {
-      case 'DoubleUp': return '⬆⬆';
-      case 'SingleUp': return '⬆';
-      case 'FortyFiveUp': return '↗';
+      case 'DoubleUp': return '↗️↗️';
+      case 'SingleUp': return '↗️';
+      case 'FortyFiveUp': return '↗️';
       case 'Flat': return '→';
-      case 'FortyFiveDown': return '↘';
-      case 'SingleDown': return '⬇';
-      case 'DoubleDown': return '⬇⬇';
-      default: return '•';
+      case 'FortyFiveDown': return '↘️';
+      case 'SingleDown': return '↘️';
+      case 'DoubleDown': return '↘️↘️';
+      default: return '→';
     }
   };
 
@@ -281,14 +248,15 @@ export default function DashboardPage() {
     switch (trend) {
       case 'improving': return '📈';
       case 'declining': return '📉';
-      default: return '📊';
+      default: return '➡️';
     }
   };
 
   const formatTime = (dateString: string) => {
-    return new Date(dateString).toLocaleTimeString([], { 
-      hour: '2-digit', 
-      minute: '2-digit' 
+    return new Date(dateString).toLocaleTimeString('en-US', { 
+      hour: 'numeric', 
+      minute: '2-digit',
+      hour12: true 
     });
   };
 
@@ -304,6 +272,12 @@ export default function DashboardPage() {
     } else {
       return `${Math.floor(diffInMinutes / 1440)}d ago`;
     }
+  };
+
+  const getVariabilityColor = (variability: number) => {
+    if (variability < 20) return 'text-green-600';
+    if (variability < 30) return 'text-yellow-600';
+    return 'text-red-600';
   };
 
   if (!session) {
@@ -347,6 +321,9 @@ export default function DashboardPage() {
               <p className="mt-2 text-gray-600">
                 Here&apos;s an overview of your diabetes management
               </p>
+              <p className="mt-1 text-sm text-gray-500">
+                Showing data from {startDate.toLocaleDateString()} to {endDate.toLocaleDateString()}
+              </p>
             </div>
             <div className="flex items-center space-x-4">
               {stats.lastUpdated && (
@@ -381,25 +358,66 @@ export default function DashboardPage() {
               ) : (
                 <div className="text-right text-sm text-gray-500">
                   <p>Manual mode</p>
-                  <p>No Nightscout</p>
+                  <p>Ready to use</p>
                 </div>
               )}
             </div>
           </div>
         </div>
 
-        {/* Nightscout Not Configured Message */}
+        {/* Nightscout Information Message */}
         {!settings.nightscoutUrl && (
-          <div className="mb-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-            <div className="flex items-center">
-              <svg className="w-5 h-5 text-yellow-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+          <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-6">
+            <div className="flex items-start">
+              <svg className="w-6 h-6 text-blue-600 mr-4 mt-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <div>
-                <p className="text-yellow-800 font-medium">Nightscout not configured</p>
-                <p className="text-yellow-700 text-sm mt-1">
-                  Only manually entered data is displayed. Configure Nightscout in your profile settings to sync real-time data.
+              <div className="flex-1">
+                <h3 className="text-blue-900 font-semibold text-lg mb-2">Welcome to BoostT1D! 🎉</h3>
+                <p className="text-blue-800 mb-3">
+                  You're currently in <strong>manual mode</strong>, which means you can manually enter your glucose readings and treatments. 
+                  This is perfect for getting started and testing the system.
                 </p>
+                <div className="bg-blue-100 rounded-lg p-4 mb-3">
+                  <h4 className="text-blue-900 font-medium mb-2">To unlock full features, you can:</h4>
+                  <ul className="text-blue-800 text-sm space-y-1">
+                    <li>• <strong>Set up Nightscout</strong> for real-time data sync from your CGM/pump</li>
+                    <li>• <strong>Use manual entry</strong> for glucose readings and treatments</li>
+                    <li>• <strong>Explore the dashboard</strong> with sample data to see how it works</li>
+                  </ul>
+                </div>
+                <div className="flex flex-wrap gap-3">
+                  <Link 
+                    href="/diabetes-profile" 
+                    className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors"
+                  >
+                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    Configure Settings
+                  </Link>
+                  <Link 
+                    href="/readings" 
+                    className="inline-flex items-center px-4 py-2 bg-white text-blue-600 text-sm font-medium rounded-md border border-blue-300 hover:bg-blue-50 transition-colors"
+                  >
+                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                    </svg>
+                    Add Manual Readings
+                  </Link>
+                  <a 
+                    href="https://nightscout.github.io/" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center px-4 py-2 bg-white text-blue-600 text-sm font-medium rounded-md border border-blue-300 hover:bg-blue-50 transition-colors"
+                  >
+                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                    </svg>
+                    Learn About Nightscout
+                  </a>
+                </div>
               </div>
             </div>
           </div>
@@ -418,17 +436,19 @@ export default function DashboardPage() {
         )}
 
         {error && (
-          <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
+          <div className={`mb-6 rounded-lg p-4 ${error === 'Please wait, loading your data...' ? 'bg-blue-50 border border-blue-200' : 'bg-red-50 border border-red-200'}`}>
             <div className="flex">
-              <div className="text-red-800">
-                <h3 className="font-medium">Error Loading Data</h3>
+              <div className={error === 'Please wait, loading your data...' ? 'text-blue-800' : 'text-red-800'}>
+                <h3 className="font-medium">{error === 'Please wait, loading your data...' ? 'Loading Data' : 'Error Loading Data'}</h3>
                 <p className="text-sm mt-1">{error}</p>
-                <button 
-                  onClick={handleRefresh}
-                  className="mt-2 text-sm text-red-600 hover:text-red-800 underline"
-                >
-                  Try Again
-                </button>
+                {error !== 'Please wait, loading your data...' && (
+                  <button 
+                    onClick={handleRefresh}
+                    className="mt-2 text-sm text-red-600 hover:text-red-800 underline"
+                  >
+                    Try Again
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -466,50 +486,43 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white rounded-lg shadow-sm border p-6">
-            <div className="flex items-center">
-              <div className="text-2xl mr-3">🎯</div>
-              <div>
-                <p className="text-2xl font-bold text-green-600">{stats.timeInRange}%</p>
-                <p className="text-sm text-gray-600">Time in Range</p>
-                <p className="text-xs text-gray-500">Last 7 days</p>
-              </div>
+        {/* Enhanced Stats Grid */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
+          <div className="bg-blue-50 p-4 rounded-lg text-center">
+            <div className="text-2xl font-bold text-blue-600">
+              {stats.timeInRange}%
             </div>
+            <div className="text-sm text-gray-600">Time in Range</div>
           </div>
-
-          <div className="bg-white rounded-lg shadow-sm border p-6">
-            <div className="flex items-center">
-              <div className="text-2xl mr-3">📊</div>
-              <div>
-                <p className="text-2xl font-bold text-blue-600">{stats.averageGlucose}</p>
-                <p className="text-sm text-gray-600">Average Glucose</p>
-                <p className="text-xs text-gray-500">mg/dL</p>
-              </div>
+          <div className="bg-red-50 p-4 rounded-lg text-center">
+            <div className="text-2xl font-bold text-red-600">
+              {stats.timeAboveRange}%
             </div>
+            <div className="text-sm text-gray-600">Time Above</div>
           </div>
-
-          <div className="bg-white rounded-lg shadow-sm border p-6">
-            <div className="flex items-center">
-              <div className="text-2xl mr-3">{getTrendIcon(stats.trend)}</div>
-              <div>
-                <p className="text-2xl font-bold text-gray-700 capitalize">{stats.trend}</p>
-                <p className="text-sm text-gray-600">7-Day Trend</p>
-                <p className="text-xs text-gray-500">vs previous period</p>
-              </div>
+          <div className="bg-yellow-50 p-4 rounded-lg text-center">
+            <div className="text-2xl font-bold text-yellow-600">
+              {stats.timeBelowRange}%
             </div>
+            <div className="text-sm text-gray-600">Time Below</div>
           </div>
-
-          <div className="bg-white rounded-lg shadow-sm border p-6">
-            <div className="flex items-center">
-              <div className="text-2xl mr-3">📈</div>
-              <div>
-                <p className="text-2xl font-bold text-purple-600">{stats.totalReadings}</p>
-                <p className="text-sm text-gray-600">Total Readings</p>
-                <p className="text-xs text-gray-500">Last 7 days</p>
-              </div>
+          <div className="bg-green-50 p-4 rounded-lg text-center">
+            <div className="text-2xl font-bold text-green-600">
+              {stats.averageGlucose}
             </div>
+            <div className="text-sm text-gray-600">Avg Glucose</div>
+          </div>
+          <div className="bg-purple-50 p-4 rounded-lg text-center">
+            <div className="text-2xl font-bold text-purple-600">
+              {((stats.averageGlucose + 46.7) / 28.7).toFixed(1)}%
+            </div>
+            <div className="text-sm text-gray-600">Est. A1C</div>
+          </div>
+          <div className="bg-gray-50 p-4 rounded-lg text-center">
+            <div className={`text-2xl font-bold ${getVariabilityColor(stats.glucoseVariability)}`}>
+              {stats.glucoseVariability}%
+            </div>
+            <div className="text-sm text-gray-600">Variability</div>
           </div>
         </div>
 
@@ -575,24 +588,13 @@ export default function DashboardPage() {
             <div className="p-6">
               <div className="grid grid-cols-1 gap-4">
                 <Link 
-                  href="/analysis"
-                  className="flex items-center p-4 rounded-lg border border-gray-200 hover:border-indigo-300 hover:bg-indigo-50 transition-colors"
+                  href="/diabetes-profile"
+                  className="flex items-center p-4 rounded-lg border border-gray-200 hover:border-purple-300 hover:bg-purple-50 transition-colors"
                 >
-                  <div className="text-2xl mr-4">🔍</div>
+                  <div className="text-2xl mr-4">⚙️</div>
                   <div>
-                    <h4 className="font-medium text-gray-900">Pattern Analysis</h4>
-                    <p className="text-sm text-gray-600">Get insights and recommendations</p>
-                  </div>
-                </Link>
-
-                <Link 
-                  href="/readings"
-                  className="flex items-center p-4 rounded-lg border border-gray-200 hover:border-green-300 hover:bg-green-50 transition-colors"
-                >
-                  <div className="text-2xl mr-4">📊</div>
-                  <div>
-                    <h4 className="font-medium text-gray-900">View Readings</h4>
-                    <p className="text-sm text-gray-600">Browse your glucose data</p>
+                    <h4 className="font-medium text-gray-900">Profile & Settings</h4>
+                    <p className="text-sm text-gray-600">Configure targets and Nightscout</p>
                   </div>
                 </Link>
 
@@ -608,13 +610,24 @@ export default function DashboardPage() {
                 </Link>
 
                 <Link 
-                  href="/settings"
-                  className="flex items-center p-4 rounded-lg border border-gray-200 hover:border-purple-300 hover:bg-purple-50 transition-colors"
+                  href="/readings"
+                  className="flex items-center p-4 rounded-lg border border-gray-200 hover:border-green-300 hover:bg-green-50 transition-colors"
                 >
-                  <div className="text-2xl mr-4">⚙️</div>
+                  <div className="text-2xl mr-4">📊</div>
                   <div>
-                    <h4 className="font-medium text-gray-900">Settings</h4>
-                    <p className="text-sm text-gray-600">Configure targets and Nightscout</p>
+                    <h4 className="font-medium text-gray-900">View Readings</h4>
+                    <p className="text-sm text-gray-600">Browse your glucose data</p>
+                  </div>
+                </Link>
+
+                <Link 
+                  href="/analysis"
+                  className="flex items-center p-4 rounded-lg border border-gray-200 hover:border-indigo-300 hover:bg-indigo-50 transition-colors"
+                >
+                  <div className="text-2xl mr-4">🔍</div>
+                  <div>
+                    <h4 className="font-medium text-gray-900">Therapy Adjustments</h4>
+                    <p className="text-sm text-gray-600">Get AI-powered recommendations</p>
                   </div>
                 </Link>
               </div>

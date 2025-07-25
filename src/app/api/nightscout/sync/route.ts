@@ -134,16 +134,16 @@ export async function POST(req: Request) {
       }
 
       // Check if readings already exist for these dates
-      const existingReadings = await prisma.reading.findMany({
+      const existingReadings = await prisma.glucoseReading.findMany({
         where: {
           userId: user.id,
-          date: {
+          timestamp: {
             in: readings.map((r: any) => r.date)
           }
         }
       });
 
-      const existingTimestamps = new Set(existingReadings.map(r => r.date.getTime()));
+      const existingTimestamps = new Set(existingReadings.map(r => r.timestamp.getTime()));
 
       // Filter out readings that already exist
       const newReadings = readings.filter((reading: any) => 
@@ -161,13 +161,13 @@ export async function POST(req: Request) {
       }
 
       // Create new readings in the database
-      const createdReadings = await prisma.reading.createMany({
-        data: newReadings.map((reading: any) => ({
+      const createdReadings = await prisma.glucoseReading.createMany({
+        data: newReadings.map((reading: any, index: number) => ({
+          id: `ns_${reading.date.getTime()}_${reading.sgv}_${index}`,
           userId: user.id,
-          date: reading.date,
+          timestamp: reading.date,
           sgv: reading.sgv,
           direction: reading.direction,
-          type: reading.type,
           source: reading.source
         }))
       });

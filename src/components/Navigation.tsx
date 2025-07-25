@@ -130,28 +130,30 @@ export default function Navigation() {
                         Dashboard
                       </Link>
                       <Link 
+                        href="/diabetes-profile" 
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        onClick={closeDropdown}
+                      >
+                        Diabetes Profile
+                      </Link>
+                      <hr className="my-2 border-gray-200" />
+                      <Link 
+                        href="/readings" 
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        onClick={closeDropdown}
+                      >
+                        Blood Glucose Data
+                      </Link>
+                      <Link 
                         href="/treatments" 
                         className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                         onClick={closeDropdown}
                       >
                         Treatments
                       </Link>
+                      <hr className="my-2 border-gray-200" />
                       <Link 
-                        href="/profile" 
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                        onClick={closeDropdown}
-                      >
-                        Diabetes Profile
-                      </Link>
-                      <Link 
-                        href="/readings" 
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                        onClick={closeDropdown}
-                      >
-                        Data & Analysis
-                      </Link>
-                      <Link 
-                        href="/therapy-adjustment" 
+                        href="/analysis" 
                         className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                         onClick={closeDropdown}
                       >
@@ -245,7 +247,7 @@ export default function Navigation() {
                 <Link href="/auth/signin" className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">
                   Sign In
                 </Link>
-                <Link href="/auth/signin?tab=register" className="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-md text-sm font-medium">
+                <Link href="/register" className="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-md text-sm font-medium">
                   Register
                 </Link>
               </div>
@@ -296,28 +298,30 @@ export default function Navigation() {
                       Dashboard
                     </Link>
                     <Link 
+                      href="/diabetes-profile" 
+                      className="block px-3 py-2 rounded-md text-base font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                      onClick={closeMobileMenu}
+                    >
+                      Diabetes Profile
+                    </Link>
+                    <hr className="my-2 border-gray-200" />
+                    <Link 
+                      href="/readings" 
+                      className="block px-3 py-2 rounded-md text-base font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                      onClick={closeMobileMenu}
+                    >
+                      Blood Glucose Data
+                    </Link>
+                    <Link 
                       href="/treatments" 
                       className="block px-3 py-2 rounded-md text-base font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100"
                       onClick={closeMobileMenu}
                     >
                       Treatments
                     </Link>
+                    <hr className="my-2 border-gray-200" />
                     <Link 
-                      href="/profile" 
-                      className="block px-3 py-2 rounded-md text-base font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100"
-                      onClick={closeMobileMenu}
-                    >
-                      Diabetes Profile
-                    </Link>
-                    <Link 
-                      href="/readings" 
-                      className="block px-3 py-2 rounded-md text-base font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100"
-                      onClick={closeMobileMenu}
-                    >
-                      Data & Analysis
-                    </Link>
-                    <Link 
-                      href="/therapy-adjustment" 
+                      href="/analysis" 
                       className="block px-3 py-2 rounded-md text-base font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100"
                       onClick={closeMobileMenu}
                     >
@@ -399,7 +403,7 @@ export default function Navigation() {
                       Sign In
                     </Link>
                     <Link 
-                      href="/auth/signin?tab=register" 
+                      href="/register" 
                       className="block px-3 py-2 rounded-md text-base font-medium bg-indigo-600 text-white hover:bg-indigo-700"
                       onClick={closeMobileMenu}
                     >

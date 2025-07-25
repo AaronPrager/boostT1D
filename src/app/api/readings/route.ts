@@ -115,16 +115,16 @@ export async function POST(request: Request) {
     }
 
     // Check if readings already exist for these dates
-    const existingReadings = await prisma.reading.findMany({
+    const existingReadings = await prisma.glucoseReading.findMany({
       where: {
         userId: user.id,
-        date: {
+        timestamp: {
           in: validReadings.map((r: Reading) => r.date)
         }
       }
     });
 
-    const existingTimestamps = new Set(existingReadings.map((r: { date: Date }) => r.date.getTime()));
+    const existingTimestamps = new Set(existingReadings.map((r: { timestamp: Date }) => r.timestamp.getTime()));
 
     // Filter out readings that already exist
     const newReadings = validReadings.filter((reading: Reading) => 
@@ -136,7 +136,7 @@ export async function POST(request: Request) {
     }
 
     // Create new readings
-    const createdReadings = await prisma.reading.createMany({
+    const createdReadings = await prisma.glucoseReading.createMany({
       data: newReadings.map((reading: Reading) => {
         // Ensure source is set correctly
         const source = reading.source || 'nightscout';
@@ -150,11 +150,11 @@ export async function POST(request: Request) {
         });
 
         return {
+          id: `manual_${reading.date.getTime()}_${reading.sgv}`,
           userId: user.id,
-          date: reading.date,
+          timestamp: reading.date,
           sgv: reading.sgv,
           direction: reading.direction || null,
-          type: 'sgv',
           source: source
         };
       })
@@ -255,14 +255,14 @@ export async function GET(request: Request) {
         queryLimit
       });
 
-      const nightscoutReadings = await prisma.reading.findMany({
+      const nightscoutReadings = await prisma.glucoseReading.findMany({
         where: {
           userId: user.id,
           source: 'nightscout',
-          ...(Object.keys(timeFilter).length > 0 && { date: timeFilter }),
+          ...(Object.keys(timeFilter).length > 0 && { timestamp: timeFilter }),
         },
         orderBy: {
-          date: 'desc',
+          timestamp: 'desc',
         },
         take: queryLimit,
       });
@@ -272,7 +272,18 @@ export async function GET(request: Request) {
         sample: nightscoutReadings[0],
         timeRange: timeFilter
       });
-      allReadings = [...allReadings, ...nightscoutReadings as Reading[]];
+      
+      // Map database readings to frontend format (timestamp -> date)
+      const mappedNightscoutReadings: Reading[] = nightscoutReadings.map(reading => ({
+        id: reading.id,
+        date: reading.timestamp, // Map timestamp to date
+        sgv: reading.sgv,
+        direction: reading.direction,
+        source: reading.source as 'manual' | 'nightscout',
+        userId: reading.userId
+      }));
+      
+      allReadings = [...allReadings, ...mappedNightscoutReadings];
     }
 
     // Fetch Manual readings if source is 'manual' or 'combined'
@@ -284,19 +295,29 @@ export async function GET(request: Request) {
       });
 
       // Get manual glucose readings
-      const manualReadings = await prisma.reading.findMany({
+      const manualReadings = await prisma.glucoseReading.findMany({
         where: {
           userId: user.id,
           source: 'manual',
-          ...(Object.keys(timeFilter).length > 0 && { date: timeFilter }),
+          ...(Object.keys(timeFilter).length > 0 && { timestamp: timeFilter }),
         },
         orderBy: {
-          date: 'desc',
+          timestamp: 'desc',
         },
         take: queryLimit,
       });
 
       console.log('Found manual readings:', manualReadings.length);
+
+      // Map database readings to frontend format (timestamp -> date)
+      const mappedManualReadings: Reading[] = manualReadings.map(reading => ({
+        id: reading.id,
+        date: reading.timestamp, // Map timestamp to date
+        sgv: reading.sgv,
+        direction: reading.direction,
+        source: reading.source as 'manual' | 'nightscout',
+        userId: reading.userId
+      }));
 
       // Get BG treatments
       const treatments = await prisma.treatment.findMany({
@@ -332,7 +353,7 @@ export async function GET(request: Request) {
         userId: t.userId,
       }));
 
-      allReadings = [...allReadings, ...manualReadings as Reading[], ...treatmentReadings];
+      allReadings = [...allReadings, ...mappedManualReadings, ...treatmentReadings];
     }
 
     // Sort all readings by timestamp, most recent first

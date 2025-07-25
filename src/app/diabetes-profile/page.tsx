@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
-import UserProfileHeader from '@/components/UserProfileHeader';
+import { useRouter } from 'next/navigation';
 
 type TimeValue = {
   time: string;
@@ -28,8 +28,9 @@ type Settings = {
   highGlucose: number;
 };
 
-export default function ProfilePage() {
+export default function DiabetesProfilePage() {
   const { data: session } = useSession();
+  const router = useRouter();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -45,29 +46,30 @@ export default function ProfilePage() {
   const [settingsError, setSettingsError] = useState('');
   const [settingsSuccess, setSettingsSuccess] = useState('');
   const [lastSavedTime, setLastSavedTime] = useState<string | null>(null);
-  // Remove manual entry toggle, manualProfile state, and all related handlers and UI. Only show Nightscout settings and profile display.
-  // Add state for manual mode toggle
   const [manualMode, setManualMode] = useState(false);
-  // Add state for manual profile entry
   const [manualProfile, setManualProfile] = useState<Profile>({
-    dia: 0, // required by type, but not shown in manual form
+    dia: 0,
     carbratio: [{ time: '', value: 0 }],
     sens: [{ time: '', value: 0 }],
     basal: [{ time: '', value: 0 }],
     target_low: [{ time: '00:00', value: 70 }],
     target_high: [{ time: '00:00', value: 180 }],
-    timezone: '', // required by type, but not shown in manual form
+    timezone: '',
     units: 'mg/dL',
   });
   const [manualProfileError, setManualProfileError] = useState('');
   const [manualProfileSuccess, setManualProfileSuccess] = useState('');
-  // Add state for manual edit mode
   const [manualEditMode, setManualEditMode] = useState(false);
 
-  // Helper for empty time-value
   const emptyTimeValue = { time: '', value: 0 };
+  const isFirstTime = !settings.nightscoutUrl && !manualMode;
 
   useEffect(() => {
+    if (!session) {
+      router.push('/login');
+      return;
+    }
+
     const fetchSettings = async () => {
       try {
         const res = await fetch('/api/settings');
@@ -86,12 +88,9 @@ export default function ProfilePage() {
       }
     };
 
-    if (session) {
-      fetchSettings();
-      // Always load from DB when page opens first
-      loadFromDatabase();
-    }
-  }, [session]);
+    fetchSettings();
+    loadFromDatabase();
+  }, [session, router]);
 
   const loadFromDatabase = async () => {
     setLoading(true);
@@ -99,8 +98,7 @@ export default function ProfilePage() {
     setLoadingMessage('Loading profile from database...');
 
     try {
-      // Always try to load from database first
-      const localResponse = await fetch('/api/profile');
+      const localResponse = await fetch('/api/diabetes-profile');
       
       if (localResponse.ok) {
         const localProfile = await localResponse.json();
@@ -109,19 +107,11 @@ export default function ProfilePage() {
           setProfile(localProfile);
           setLoadingMessage('Profile loaded from database');
           setProfileSource('local');
-          
-          // Get the saved timestamp from the API response
-          const profileDetails = await fetch('/api/profile');
-          if (profileDetails.ok) {
-            const profileData = await profileDetails.json();
-            // For now, we'll set a generic saved time since the API doesn't return timestamps
-            setLastSavedTime(new Date().toLocaleString());
-          }
+          setLastSavedTime(new Date().toLocaleString());
           return;
         }
       }
 
-      // If no profile in database, try to fetch from Nightscout using stored settings
       console.log('No profile found in database, attempting to fetch from Nightscout');
       setLoadingMessage('No profile found in database. Checking Nightscout...');
       
@@ -142,7 +132,6 @@ export default function ProfilePage() {
     setLoadingMessage('Fetching profile from Nightscout...');
 
     try {
-      // Use GET endpoint which uses stored settings
       const nsResponse = await fetch('/api/nightscout/profile', {
         method: 'GET',
         headers: {
@@ -156,8 +145,7 @@ export default function ProfilePage() {
         setProfile(nsProfile);
         
         setLoadingMessage('Saving profile to database...');
-        // Automatically save the fetched profile to database
-        const saveResponse = await fetch('/api/profile', {
+        const saveResponse = await fetch('/api/diabetes-profile', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -176,7 +164,7 @@ export default function ProfilePage() {
       } else {
         const errorData = await nsResponse.json().catch(() => null);
         if (nsResponse.status === 400) {
-          setError('No Nightscout URL configured. Please update your settings first.');
+          // Do not set an error if Nightscout is not configured
         } else {
           throw new Error(errorData?.error || 'Failed to fetch profile from Nightscout');
         }
@@ -187,67 +175,6 @@ export default function ProfilePage() {
       setLoadingMessage('');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const fetchProfile = async () => {
-    if (!settings.nightscoutUrl) {
-      setError('Please enter your Nightscout URL');
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-    setLoadingMessage('Fetching profile from Nightscout...');
-
-    try {
-      const response = await fetch('/api/nightscout/profile', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ url: settings.nightscoutUrl }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch profile data');
-      }
-
-      const data = await response.json();
-      setProfile(data);
-      setProfileSource('nightscout');
-      setLoadingMessage('Profile fetched successfully');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch profile');
-      setLoadingMessage('');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const saveProfile = async () => {
-    if (!profile) return;
-
-    try {
-      setLoadingMessage('Saving profile locally...');
-      const response = await fetch('/api/profile', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(profile),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to save profile');
-      }
-
-      setProfileSource('local');
-      alert('Profile saved successfully!');
-      setLoadingMessage('');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save profile');
-      setLoadingMessage('');
     }
   };
 
@@ -293,91 +220,9 @@ export default function ProfilePage() {
     }
   };
 
-  // Handler for check button
-  const handleCheckNightscout = async () => {
-    try {
-      const response = await fetch('/api/nightscout/profile', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: settings.nightscoutUrl, token: settings.nightscoutApiToken }),
-      });
-      if (!response.ok) {
-        alert('Nightscout profile not available. Please check your URL and token.');
-        return;
-      }
-      const data = await response.json();
-      if (!data || Object.keys(data).length === 0) {
-        alert('Nightscout profile not available.');
-      } else {
-        alert('Nightscout profile found!');
-      }
-    } catch (err) {
-      alert('Nightscout profile not available.');
-    }
-  };
-
-  const formatTimeValue = (timeValue: TimeValue) => {
-    const time = timeValue.time.padStart(5, '0');
-    return `${time} - ${timeValue.value}`;
-  };
-
-  // Handlers for manual form
-  const handleManualChange = (field: keyof Profile, value: any) => {
-    setManualProfile((prev) => ({ ...prev, [field]: value }));
-  };
-  const handleManualTimeValueChange = (field: keyof Profile, idx: number, key: 'time' | 'value', value: any) => {
-    setManualProfile((prev) => ({
-      ...prev,
-      [field]: Array.isArray(prev[field])
-        ? (prev[field] as TimeValue[]).map((item: TimeValue, i: number) => i === idx ? { ...item, [key]: value } : item)
-        : prev[field],
-    }));
-  };
-  const addManualTimeValue = (field: keyof Profile) => {
-    setManualProfile((prev) => ({
-      ...prev,
-      [field]: Array.isArray(prev[field])
-        ? [...(prev[field] as TimeValue[]), { time: '', value: 0 }]
-        : prev[field],
-    }));
-  };
-  const removeManualTimeValue = (field: keyof Profile, idx: number) => {
-    setManualProfile((prev) => ({
-      ...prev,
-      [field]: Array.isArray(prev[field])
-        ? (prev[field] as TimeValue[]).filter((_: any, i: number) => i !== idx)
-        : prev[field],
-    }));
-  };
-  const handleManualProfileSave = async () => {
-    setManualProfileError('');
-    setManualProfileSuccess('');
-    // Basic validation
-    if (!manualProfile.units) {
-      setManualProfileError('Please fill in all required fields.');
-      return;
-    }
-    try {
-      const response = await fetch('/api/profile', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(manualProfile),
-      });
-      if (!response.ok) throw new Error('Failed to save manual profile');
-      setManualProfileSuccess('Profile saved successfully!');
-      setProfile(manualProfile);
-      setProfileSource('local');
-      setLastSavedTime(new Date().toLocaleString());
-    } catch (err) {
-      setManualProfileError(err instanceof Error ? err.message : 'Failed to save manual profile');
-    }
-  };
-
-  // Update manualMode toggle to load last available profile from DB when enabled
   const handleManualModeToggle = async (checked: boolean) => {
     setManualMode(checked);
     if (checked) {
-      // Clear Nightscout settings when manual mode is selected
       const updatedSettings = {
         ...settings,
         nightscoutUrl: '',
@@ -385,7 +230,6 @@ export default function ProfilePage() {
       };
       
       try {
-        // Save the cleared settings to database
         const response = await fetch('/api/settings', {
           method: 'PUT',
           headers: {
@@ -404,9 +248,8 @@ export default function ProfilePage() {
         setSettingsError('Failed to update settings');
       }
       
-      // Load profile from database for manual editing
       try {
-        const profileResponse = await fetch('/api/profile');
+        const profileResponse = await fetch('/api/diabetes-profile');
         if (profileResponse.ok) {
           const data = await profileResponse.json();
           if (data && Object.keys(data).length > 0) {
@@ -419,12 +262,71 @@ export default function ProfilePage() {
     }
   };
 
+  const formatTimeValue = (timeValue: TimeValue) => {
+    const time = timeValue.time.padStart(5, '0');
+    return `${time} - ${timeValue.value}`;
+  };
+
+  const handleManualChange = (field: keyof Profile, value: any) => {
+    setManualProfile((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleManualTimeValueChange = (field: keyof Profile, idx: number, key: 'time' | 'value', value: any) => {
+    setManualProfile((prev) => ({
+      ...prev,
+      [field]: Array.isArray(prev[field])
+        ? (prev[field] as TimeValue[]).map((item: TimeValue, i: number) => i === idx ? { ...item, [key]: value } : item)
+        : prev[field],
+    }));
+  };
+
+  const addManualTimeValue = (field: keyof Profile) => {
+    setManualProfile((prev) => ({
+      ...prev,
+      [field]: Array.isArray(prev[field])
+        ? [...(prev[field] as TimeValue[]), { time: '', value: 0 }]
+        : prev[field],
+    }));
+  };
+
+  const removeManualTimeValue = (field: keyof Profile, idx: number) => {
+    setManualProfile((prev) => ({
+      ...prev,
+      [field]: Array.isArray(prev[field])
+        ? (prev[field] as TimeValue[]).filter((_: any, i: number) => i !== idx)
+        : prev[field],
+    }));
+  };
+
+  const handleManualProfileSave = async () => {
+    setManualProfileError('');
+    setManualProfileSuccess('');
+    if (!manualProfile.units) {
+      setManualProfileError('Please fill in all required fields.');
+      return;
+    }
+    try {
+      const response = await fetch('/api/diabetes-profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(manualProfile),
+      });
+      if (!response.ok) throw new Error('Failed to save manual profile');
+      setManualProfileSuccess('Profile saved successfully!');
+      setProfile(manualProfile);
+      setProfileSource('local');
+      setLastSavedTime(new Date().toLocaleString());
+    } catch (err) {
+      setManualProfileError(err instanceof Error ? err.message : 'Failed to save manual profile');
+    }
+  };
+
   if (!session) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-gray-900">Access Denied</h1>
-          <p className="mt-2 text-gray-600">Please sign in to view your profile settings.</p>
+          <p className="mt-2 text-gray-600">Please sign in to view your diabetes profile settings.</p>
         </div>
       </div>
     );
@@ -432,9 +334,6 @@ export default function ProfilePage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      {/* User Profile Header with Photo */}
-      <UserProfileHeader showDetailed={true} className="mb-8" />
-      
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold">Diabetes Profile & Settings</h1>
         <div className="flex flex-col items-end space-y-2">
@@ -455,11 +354,24 @@ export default function ProfilePage() {
           </button>
         </div>
       </div>
-      {/* Profile Source Toggle */}
-      {/* Remove manual entry toggle, manualProfile state, and all related handlers and UI. Only show Nightscout settings and profile display. */}
-      {/* Conditional UI based on toggle */}
-      {/* Nightscout & Glucose Settings Section */}
+
       <div className="max-w-4xl mx-auto">
+        {isFirstTime && (
+          <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-6">
+            <div className="flex items-start">
+              <svg className="w-6 h-6 text-blue-600 mr-4 mt-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <div className="flex-1">
+                <h3 className="text-blue-900 font-semibold text-lg mb-2">Welcome to Your Diabetes Profile! 📊</h3>
+                <p className="text-blue-800 mb-3">
+                  This is your first time here. Set up your Nightscout connection or configure your diabetes settings manually to get started.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="bg-gradient-to-br from-blue-50 to-indigo-100 border-2 border-blue-200 p-8 rounded-xl shadow-lg mb-8">
           <h2 className="text-2xl font-semibold mb-6">Nightscout & Glucose Settings</h2>
           
@@ -475,7 +387,7 @@ export default function ProfilePage() {
                 <span className="ml-2 text-sm text-gray-700">Nightscout profile not available, I will proceed manually</span>
               </label>
             </div>
-            {/* Conditionally render Nightscout fields or manual placeholder */}
+
             {!manualMode ? (
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                 <div>
@@ -580,21 +492,6 @@ export default function ProfilePage() {
             </div>
           </form>
 
-          {error && (
-            <div className="bg-red-50 border-l-4 border-red-400 p-4 mt-6">
-              <div className="flex">
-                <div className="flex-shrink-0">
-                  <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                  </svg>
-                </div>
-                <div className="ml-3">
-                  <p className="text-sm text-red-700">{error}</p>
-                </div>
-              </div>
-            </div>
-          )}
-
           {loading && (
             <div className="text-center py-4">
               <div className="spinner">{loadingMessage}</div>
@@ -603,9 +500,6 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {/* In the Nightscout & Glucose Settings Section, after the manualMode toggle, render the manual entry form if manualMode is true */}
-      {/* Remove the separate manual profile section and integrate it into the existing Diabetes Profile Data section */}
-      {/* Diabetes Profile Data Section */}
       {profile && (
         <div className="max-w-4xl mx-auto">
           <div className="bg-gradient-to-br from-blue-50 to-indigo-100 border-2 border-blue-200 p-8 rounded-xl shadow-lg space-y-6">
@@ -737,6 +631,17 @@ export default function ProfilePage() {
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {manualMode && !isFirstTime && (
+        <div className="mt-8 text-xs text-blue-700 text-center opacity-80">
+          <span className="inline-flex items-center px-3 py-1 bg-blue-50 border border-blue-200 rounded">
+            <svg className="w-4 h-4 mr-1 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Manual mode is active. You can switch to Nightscout at any time in settings.
+          </span>
         </div>
       )}
     </div>

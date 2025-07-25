@@ -35,7 +35,8 @@ export async function GET() {
       return new NextResponse('Profile not found', { status: 404 });
     }
 
-    return NextResponse.json(profile.data);
+    // Return profile + photo
+    return NextResponse.json({ ...profile, photo: user.image });
   } catch (error) {
     console.error('Error fetching profile:', error);
     return new NextResponse(
@@ -55,7 +56,7 @@ export async function PUT(req: Request) {
     }
 
     const body = await req.json();
-    const { bio, location, website, birthDate, phoneNumber, occupation } = body;
+    const { bio, location, website, birthDate, phoneNumber, occupation, favoriteActivities, diagnosisAge, photo } = body;
 
     const profileData = {
       bio,
@@ -64,19 +65,26 @@ export async function PUT(req: Request) {
       birthDate: birthDate ? new Date(birthDate) : null,
       phoneNumber,
       occupation,
+      favoriteActivities,
+      diagnosisAge: diagnosisAge ? Number(diagnosisAge) : null,
     };
+
+    // Update user photo if provided
+    if (photo !== undefined) {
+      await prisma.user.update({
+        where: { email: user.email },
+        data: { image: photo },
+      });
+    }
 
     const profile = await prisma.profile.upsert({
       where: {
         userId: user.id,
       },
-      update: {
-        data: profileData,
-        updatedAt: new Date(),
-      },
+      update: profileData,
       create: {
         userId: user.id,
-        data: profileData,
+        ...profileData,
       },
     });
 
@@ -94,7 +102,7 @@ export async function POST(request: Request) {
       return new NextResponse('Unauthorized', { status: 401 });
     }
 
-    const profile = await request.json();
+    const profileData = await request.json();
 
     // Get the user's ID from the session
     const user = await prisma.user.findUnique({
@@ -108,13 +116,10 @@ export async function POST(request: Request) {
     // Save or update the profile
     const savedProfile = await prisma.profile.upsert({
       where: { userId: user.id },
-      update: {
-        data: profile,
-        updatedAt: new Date(),
-      },
+      update: profileData,
       create: {
         userId: user.id,
-        data: profile,
+        ...profileData,
       },
     });
 
@@ -125,5 +130,25 @@ export async function POST(request: Request) {
       error instanceof Error ? error.message : 'Failed to save profile',
       { status: 500 }
     );
+  }
+}
+
+export async function DELETE(req: Request) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user?.email) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
+    }
+    // Find the user by email
+    const user = await prisma.user.findUnique({ where: { email: session.user.email } });
+    if (!user) {
+      return new Response(JSON.stringify({ error: 'User not found' }), { status: 404 });
+    }
+    // Delete the user and cascade related data if needed
+    await prisma.user.delete({ where: { id: user.id } });
+    return new Response(JSON.stringify({ success: true }), { status: 200 });
+  } catch (error) {
+    console.error('Error deleting user:', error);
+    return new Response(JSON.stringify({ error: 'Failed to delete user' }), { status: 500 });
   }
 } 
