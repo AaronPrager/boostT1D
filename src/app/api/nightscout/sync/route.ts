@@ -162,8 +162,8 @@ export async function POST(req: Request) {
 
       // Create new readings in the database
       const createdReadings = await prisma.glucoseReading.createMany({
-        data: newReadings.map((reading: any, index: number) => ({
-          id: `ns_${reading.date.getTime()}_${reading.sgv}_${index}`,
+        data: newReadings.map((reading: any) => ({
+          id: `ns_${reading.date.getTime()}_${reading.sgv}_${crypto.randomUUID()}`,
           userId: user.id,
           timestamp: reading.date,
           sgv: reading.sgv,

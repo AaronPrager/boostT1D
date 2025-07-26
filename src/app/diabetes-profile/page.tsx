@@ -29,7 +29,7 @@ type Settings = {
 };
 
 export default function DiabetesProfilePage() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const router = useRouter();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -65,10 +65,15 @@ export default function DiabetesProfilePage() {
   const isFirstTime = !settings.nightscoutUrl && !manualMode;
 
   useEffect(() => {
-    if (!session) {
+    // Only redirect if session is definitely not available (not loading)
+    if (status === 'unauthenticated') {
       router.push('/login');
       return;
     }
+  }, [status, router]);
+
+  useEffect(() => {
+    if (!session || status !== 'authenticated') return;
 
     const fetchSettings = async () => {
       try {
@@ -90,7 +95,7 @@ export default function DiabetesProfilePage() {
 
     fetchSettings();
     loadFromDatabase();
-  }, [session, router]);
+  }, [session]);
 
   const loadFromDatabase = async () => {
     setLoading(true);

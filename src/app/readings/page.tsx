@@ -142,30 +142,66 @@ export default function ReadingsPage() {
   const [lastFetchTime, setLastFetchTime] = useState<Date | null>(null);
 
   // Add the missing fetchSettings function
-    const fetchSettings = async () => {
-      try {
-        const res = await fetch('/api/settings');
-        if (res.ok) {
-          const data = await res.json();
-          setSettings(data);
-          setNightscoutUrl(data.nightscoutUrl || '');
-        }
-      } catch (error) {
-        console.error('Error fetching settings:', error);
-      } finally {
-        setLoading(false);
+  const fetchSettings = async () => {
+    try {
+      const res = await fetch('/api/settings');
+      if (res.ok) {
+        const data = await res.json();
+        setSettings(data);
+        setNightscoutUrl(data.nightscoutUrl || '');
       }
-    };
+    } catch (error) {
+      console.error('Error fetching settings:', error);
+    }
+  };
+
+  // Automatic data loading on page load
+  useEffect(() => {
+    if (session) {
+      const loadData = async () => {
+        setLoading(true);
+        setError(null);
+        
+        try {
+          // First fetch settings
+          await fetchSettings();
+          
+          // If Nightscout is configured, sync data first
+          if (settings.nightscoutUrl) {
+            try {
+              await fetch('/api/nightscout/sync', { method: 'POST' });
+            } catch (syncError) {
+              console.warn('Nightscout sync failed, continuing with existing data:', syncError);
+            }
+          }
+          
+          // Then fetch readings data
+          await fetchReadings();
+        } catch (error) {
+          console.error('Error loading readings data:', error);
+          setError('Failed to load readings data. Please try refreshing the page.');
+        } finally {
+          setLoading(false);
+        }
+      };
+      
+      loadData();
+    }
+  }, [session]);
 
   const fetchReadings = async () => {
     setLoading(true);
     setError(null);
 
     try {
+      // Get current settings to ensure we have the latest data
+      const settingsRes = await fetch('/api/settings');
+      const currentSettings = settingsRes.ok ? await settingsRes.json() : settings;
+      
       const startDate = new Date(`${fromDate}T00:00:00.000Z`);
       const endDate = new Date(`${toDate}T23:59:59.999Z`);
 
-      const source = settings.nightscoutUrl ? 'combined' : 'manual';
+      const source = currentSettings.nightscoutUrl ? 'combined' : 'manual';
       
       const url = new URL('/api/readings', window.location.origin);
       url.searchParams.set('startDate', startDate.getTime().toString());
@@ -230,24 +266,7 @@ export default function ReadingsPage() {
     }
   };
 
-  // On mount, fetch settings
-  useEffect(() => {
-    if (session) {
-      fetchSettings();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session]);
 
-  // When settings.nightscoutUrl changes, sync or fetch readings
-  useEffect(() => {
-    if (!session) return;
-    if (settings.nightscoutUrl) {
-      syncFromNightscout();
-    } else {
-      fetchReadings();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [settings.nightscoutUrl]);
 
   useEffect(() => {
     const filtered = readings.filter(reading => {
@@ -256,7 +275,7 @@ export default function ReadingsPage() {
     });
     setFilteredReadings(filtered);
     calculateStatistics(filtered);
-  }, [readings, sourceFilter, settings]);
+  }, [readings, sourceFilter]);
 
   const calculateStatistics = (readings: Reading[]) => {
     if (readings.length === 0) return;
@@ -268,6 +287,7 @@ export default function ReadingsPage() {
     const estimatedA1C = parseFloat(((averageGlucose + 46.7) / 28.7).toFixed(1));
     const gmi = parseFloat((3.31 + (0.02392 * averageGlucose)).toFixed(1));
 
+    // Use current settings for range calculations
     const inRange = readings.filter(r => r.sgv >= settings.lowGlucose && r.sgv <= settings.highGlucose).length;
     const aboveRange = readings.filter(r => r.sgv > settings.highGlucose).length;
     const belowRange = readings.filter(r => r.sgv < settings.lowGlucose).length;
@@ -495,8 +515,8 @@ export default function ReadingsPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900">Loading...</h1>
-          <p className="mt-2 text-gray-600">Fetching your data.</p>
+          <h1 className="text-2xl font-bold text-gray-900">Loading Blood Glucose Data...</h1>
+          <p className="mt-2 text-gray-600">Fetching your latest readings and statistics.</p>
         </div>
       </div>
     );
@@ -627,29 +647,41 @@ export default function ReadingsPage() {
         </div>
       </div>
 
+
+
       {/* Tab Navigation */}
       <div className="bg-white rounded-lg shadow mb-8">
         <div className="border-b border-gray-200">
           <nav className="-mb-px flex space-x-8" aria-label="Tabs">
             <button
               onClick={() => setActiveTab('chart')}
-              className={`whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm ${
+              className={`whitespace-nowrap py-4 px-6 border-b-2 font-semibold text-base transition-colors ${
                 activeTab === 'chart'
-                  ? 'border-indigo-500 text-indigo-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  ? 'border-indigo-500 text-indigo-600 bg-indigo-50'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 hover:bg-gray-50'
               }`}
             >
-              Chart View
+              <div className="flex items-center">
+                <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
+                </svg>
+                Chart View
+              </div>
             </button>
             <button
               onClick={() => setActiveTab('data')}
-              className={`whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm ${
+              className={`whitespace-nowrap py-4 px-6 border-b-2 font-semibold text-base transition-colors ${
                 activeTab === 'data'
-                  ? 'border-indigo-500 text-indigo-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  ? 'border-indigo-500 text-indigo-600 bg-indigo-50'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 hover:bg-gray-50'
               }`}
             >
-              Raw Data
+              <div className="flex items-center">
+                <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+                Raw Data
+              </div>
             </button>
           </nav>
         </div>
@@ -724,7 +756,6 @@ export default function ReadingsPage() {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Glucose</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Direction</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Source</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -748,9 +779,6 @@ export default function ReadingsPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {reading.direction ? DIRECTION_ARROWS[reading.direction] || reading.direction : '-'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {reading.source}
                     </td>
                   </tr>
                 ))}

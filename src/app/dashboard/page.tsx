@@ -93,19 +93,37 @@ export default function DashboardPage() {
       newStart.setHours(0, 0, 0, 0);
       setStartDate(newStart);
       setEndDate(newEnd);
-      // Always fetch settings fresh, then decide to sync/fetch
-      fetch('/api/settings').then(async (res) => {
-        if (res.ok) {
-          const data = await res.json();
-          setSettings(data);
-          if (data.nightscoutUrl) {
-            await fetch('/api/nightscout/sync', { method: 'POST' });
+      
+      // Load data automatically
+      const loadDashboardData = async () => {
+        try {
+          // First fetch settings
+          const settingsRes = await fetch('/api/settings');
+          if (settingsRes.ok) {
+            const settingsData = await settingsRes.json();
+            setSettings(settingsData);
+            
+            // If Nightscout is configured, sync data first
+            if (settingsData.nightscoutUrl) {
+              try {
+                await fetch('/api/nightscout/sync', { method: 'POST' });
+              } catch (syncError) {
+                console.warn('Nightscout sync failed, continuing with existing data:', syncError);
+              }
+            }
           }
+          
+          // Then fetch dashboard data
+          await fetchDashboardData(newStart, newEnd);
+        } catch (error) {
+          console.error('Error loading dashboard data:', error);
+          setError('Failed to load dashboard data. Please try refreshing the page.');
+          setLoading(false);
         }
-        await fetchDashboardData(newStart, newEnd);
-      });
+      };
+      
+      loadDashboardData();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session, refreshTrigger]);
 
   const fetchSettings = async () => {
@@ -130,8 +148,12 @@ export default function DashboardPage() {
     setError(null);
 
     try {
+      // Get current settings to ensure we have the latest data
+      const settingsRes = await fetch('/api/settings');
+      const currentSettings = settingsRes.ok ? await settingsRes.json() : settings;
+      
       // Check if Nightscout is configured
-      const source = settings.nightscoutUrl ? 'combined' : 'manual';
+      const source = currentSettings.nightscoutUrl ? 'combined' : 'manual';
       const useStart = customStart || startDate;
       const useEnd = customEnd || endDate;
 
@@ -164,9 +186,9 @@ export default function DashboardPage() {
       const totalReadings = readings.length;
       const averageGlucose = readings.reduce((sum: number, r: any) => sum + r.sgv, 0) / totalReadings;
       
-      const inRange = readings.filter((r: any) => r.sgv >= settings.lowGlucose && r.sgv <= settings.highGlucose).length;
-      const aboveRange = readings.filter((r: any) => r.sgv > settings.highGlucose).length;
-      const belowRange = readings.filter((r: any) => r.sgv < settings.lowGlucose).length;
+      const inRange = readings.filter((r: any) => r.sgv >= currentSettings.lowGlucose && r.sgv <= currentSettings.highGlucose).length;
+      const aboveRange = readings.filter((r: any) => r.sgv > currentSettings.highGlucose).length;
+      const belowRange = readings.filter((r: any) => r.sgv < currentSettings.lowGlucose).length;
       
       const timeInRange = (inRange / totalReadings) * 100;
       const timeAboveRange = (aboveRange / totalReadings) * 100;
@@ -332,7 +354,7 @@ export default function DashboardPage() {
                   <p>{formatRelativeTime(stats.lastUpdated)}</p>
                 </div>
               )}
-              {settings.nightscoutUrl ? (
+              {settings.nightscoutUrl && (
                 <button
                   onClick={handleRefresh}
                   disabled={refreshing}
@@ -355,11 +377,6 @@ export default function DashboardPage() {
                     </div>
                   )}
                 </button>
-              ) : (
-                <div className="text-right text-sm text-gray-500">
-                  <p>Manual mode</p>
-                  <p>Ready to use</p>
-                </div>
               )}
             </div>
           </div>
@@ -435,20 +452,18 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {error && (
-          <div className={`mb-6 rounded-lg p-4 ${error === 'Please wait, loading your data...' ? 'bg-blue-50 border border-blue-200' : 'bg-red-50 border border-red-200'}`}>
+        {error && error !== 'Please wait, loading your data...' && (
+          <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
             <div className="flex">
-              <div className={error === 'Please wait, loading your data...' ? 'text-blue-800' : 'text-red-800'}>
-                <h3 className="font-medium">{error === 'Please wait, loading your data...' ? 'Loading Data' : 'Error Loading Data'}</h3>
+              <div className="text-red-800">
+                <h3 className="font-medium">Error Loading Data</h3>
                 <p className="text-sm mt-1">{error}</p>
-                {error !== 'Please wait, loading your data...' && (
-                  <button 
-                    onClick={handleRefresh}
-                    className="mt-2 text-sm text-red-600 hover:text-red-800 underline"
-                  >
-                    Try Again
-                  </button>
-                )}
+                <button 
+                  onClick={handleRefresh}
+                  className="mt-2 text-sm text-red-600 hover:text-red-800 underline"
+                >
+                  Try Again
+                </button>
               </div>
             </div>
           </div>

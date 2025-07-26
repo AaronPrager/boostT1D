@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import crypto from 'crypto';
+
+function sha1(token: string): string {
+  return crypto.createHash('sha1').update(token).digest('hex');
+}
 
 export async function GET(req: NextRequest) {
   try {
@@ -15,12 +20,18 @@ export async function GET(req: NextRequest) {
       include: { settings: true },
     });
 
-    if (!user) {
+            if (!user) {
       return new NextResponse('User not found', { status: 404 });
     }
 
-    if (!user.settings?.nightscoutUrl || !user.settings?.nightscoutApiSecret) {
-      return new NextResponse('Nightscout not configured', { status: 400 });
+
+
+    if (!user.settings?.nightscoutUrl) {
+      return new NextResponse('Nightscout URL not configured. Please set your Nightscout URL in settings.', { status: 400 });
+    }
+
+    if (!user.settings?.nightscoutApiToken) {
+      return new NextResponse('Nightscout API token not configured. Please go to Diabetes Profile and enter your Nightscout API token in the settings section.', { status: 400 });
     }
 
     const { searchParams } = new URL(req.url);
@@ -33,18 +44,24 @@ export async function GET(req: NextRequest) {
 
     // Fetch treatments from Nightscout
     const nightscoutUrl = user.settings.nightscoutUrl;
-    const apiSecret = user.settings.nightscoutApiSecret;
+    const apiToken = user.settings.nightscoutApiToken;
 
     const treatmentsUrl = `${nightscoutUrl}/api/v1/treatments`;
+    
+    // Use the requested date range
     const queryParams = new URLSearchParams({
-      'find[created_at][$gte]': startDate,
-      'find[created_at][$lte]': endDate,
+      'find[created_at][$gte]': new Date(parseInt(startDate)).toISOString(),
+      'find[created_at][$lte]': new Date(parseInt(endDate)).toISOString(),
       'count': '1000', // Adjust as needed
     });
+    
+
+    
+
 
     const response = await fetch(`${treatmentsUrl}?${queryParams}`, {
       headers: {
-        'api-secret': apiSecret,
+        'api-secret': sha1(apiToken),
         'Content-Type': 'application/json',
       },
     });
@@ -55,17 +72,23 @@ export async function GET(req: NextRequest) {
     }
 
     const treatments = await response.json();
+    
 
-    // Filter and format treatments
+    
+
+    
+
+
+    // Filter and format treatments - include all relevant treatment types
     const formattedTreatments = treatments
       .filter((treatment: any) => 
         treatment.eventType === 'Bolus' || 
-        treatment.eventType === 'Meal Bolus' ||
-        treatment.eventType === 'Correction Bolus' ||
-        treatment.eventType === 'Carb Correction' ||
+        treatment.eventType === 'SMB' ||
         treatment.eventType === 'Temp Basal' ||
-        treatment.eventType === 'Temp Basal Start' ||
-        treatment.eventType === 'Temp Basal End'
+        treatment.eventType === 'Carb Correction' ||
+        treatment.eventType === 'Note' ||
+        treatment.eventType === 'Site Change' ||
+        treatment.eventType === 'Exercise'
       )
       .map((treatment: any) => ({
         id: treatment._id,
@@ -80,6 +103,8 @@ export async function GET(req: NextRequest) {
         percent: treatment.percent || null,
         absolute: treatment.absolute || null,
       }));
+
+
 
     return NextResponse.json({
       treatments: formattedTreatments,
@@ -120,8 +145,8 @@ export async function POST(req: NextRequest) {
         userId: user.id,
         timestamp: new Date(timestamp),
         type,
-        insulin: insulin || 0,
-        carbs: carbs || 0,
+        insulinUnits: insulin || 0,
+        carbsGrams: carbs || 0,
         glucoseValue: glucoseValue || null,
         notes: notes || '',
       },
