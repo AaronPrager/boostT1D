@@ -53,6 +53,9 @@ model User {
   treatments     Treatment[]
   buddyRequests  BuddyConnection[] @relation("BuddyConnectionRequester")
   buddyResponses BuddyConnection[] @relation("BuddyConnectionTarget")
+  newsPreferences NewsPreference[]
+  newsBookmarks  NewsBookmark[]
+  newsInteractions NewsInteraction[]
 }
 
 model Profile {
@@ -195,4 +198,87 @@ model BuddyConnection {
   @@index([requesterId])
   @@index([targetId])
   @@unique([requesterId, targetId])
+}
+
+model NewsPreference {
+  id         String   @id @default(cuid())
+  userId     String   @unique
+  categories String[] @default([])
+  sources    String[] @default([])
+  keywords   String[] @default([])
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model NewsSource {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  displayName String
+  rssUrl      String
+  logoUrl     String?
+  reliability String   @default("medium") // low, medium, high
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  articles    NewsArticle[]
+}
+
+model NewsArticle {
+  id          String   @id @default(cuid())
+  sourceId    String
+  title       String
+  summary     String?
+  content     String?
+  url         String   @unique
+  imageUrl    String?
+  author      String?
+  publishedAt DateTime @default(now())
+  category    String   @default("general")
+  tags        String[] @default([])
+  importance  String   @default("low") // low, medium, high, critical
+  isBreaking  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  source      NewsSource        @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  bookmarks   NewsBookmark[]
+  interactions NewsInteraction[]
+
+  @@index([sourceId])
+  @@index([category])
+  @@index([importance])
+  @@index([publishedAt])
+}
+
+model NewsBookmark {
+  id        String   @id @default(cuid())
+  userId    String
+  articleId String
+  createdAt DateTime @default(now())
+  
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  article   NewsArticle  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, articleId])
+  @@index([userId])
+  @@index([articleId])
+}
+
+model NewsInteraction {
+  id        String   @id @default(cuid())
+  userId    String
+  articleId String
+  type      String   // like, share, etc.
+  createdAt DateTime @default(now())
+  
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  article   NewsArticle  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, articleId, type])
+  @@index([userId])
+  @@index([articleId])
+  @@index([type])
 }
