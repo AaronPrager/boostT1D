@@ -72,7 +72,16 @@ export async function POST(request: Request) {
     });
 
     if (!profile || !profile.data) {
-      return new NextResponse('Profile not found', { status: 404 });
+      return new NextResponse(
+        JSON.stringify({ 
+          error: 'DIABETES_PROFILE_NOT_SETUP',
+          message: 'Please set up your diabetes profile first before analyzing therapy adjustments.' 
+        }), 
+        { 
+          status: 400,
+          headers: { 'Content-Type': 'application/json' }
+        }
+      );
     }
 
     const profileData = profile.data as unknown as ProfileData;

@@ -59,7 +59,14 @@ export default function AnalysisPage() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to fetch therapy adjustments');
+        const errorData = await response.json().catch(() => ({}));
+        
+        if (errorData.error === 'DIABETES_PROFILE_NOT_SETUP') {
+          setError('Please set up your diabetes profile first before analyzing therapy adjustments. Go to Diabetes Profile to configure your settings.');
+        } else {
+          throw new Error('Failed to fetch therapy adjustments');
+        }
+        return;
       }
 
       const data = await response.json();
@@ -200,7 +207,15 @@ export default function AnalysisPage() {
                 <div className="ml-3">
                   <h3 className="text-sm font-medium text-red-800">Analysis Error</h3>
                   <p className="text-sm text-red-700 mt-1">{error}</p>
-              </div>
+                  {error.includes('diabetes profile') && (
+                    <a 
+                      href="/diabetes-profile" 
+                      className="inline-block mt-2 px-4 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 transition-colors"
+                    >
+                      Go to Diabetes Profile
+                    </a>
+                  )}
+                </div>
               </div>
             </div>
           )}
