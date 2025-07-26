@@ -200,26 +200,6 @@ export default function AnalysisPage() {
             </div>
           </div>
 
-          {error && (
-            <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-6">
-              <div className="flex">
-                <div className="text-red-400">⚠️</div>
-                <div className="ml-3">
-                  <h3 className="text-sm font-medium text-red-800">Analysis Error</h3>
-                  <p className="text-sm text-red-700 mt-1">{error}</p>
-                  {error.includes('diabetes profile') && (
-                    <a 
-                      href="/diabetes-profile" 
-                      className="inline-block mt-2 px-4 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 transition-colors"
-                    >
-                      Go to Diabetes Profile
-                    </a>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
           {/* Manual Mode Section - Show when diabetes profile is not set up */}
           {error && error.includes('diabetes profile') && (
             <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-6">
