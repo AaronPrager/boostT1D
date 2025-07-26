@@ -216,8 +216,12 @@ model NewsSource {
   id          String   @id @default(cuid())
   name        String   @unique
   displayName String
-  rssUrl      String
+  description String?
+  website     String
+  rssUrl      String?
+  apiUrl      String?
   logoUrl     String?
+  category    String
   reliability String   @default("medium") // low, medium, high
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
