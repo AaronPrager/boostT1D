@@ -80,7 +80,9 @@ model Treatment {
   type         String
   glucoseValue Float?
   carbsGrams   Float?
+  carbs        Float?   // Alias for carbsGrams for compatibility
   insulinUnits Float?
+  insulin      Float?   // Alias for insulinUnits for compatibility
   insulinType  String?
   notes        String?
   userId       String
