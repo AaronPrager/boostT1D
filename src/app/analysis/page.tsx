@@ -220,6 +220,55 @@ export default function AnalysisPage() {
             </div>
           )}
 
+          {/* Manual Mode Section - Show when diabetes profile is not set up */}
+          {error && error.includes('diabetes profile') && (
+            <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-6">
+              <div className="flex items-start">
+                <svg className="w-6 h-6 text-blue-600 mr-4 mt-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div className="flex-1">
+                  <h3 className="text-blue-900 font-semibold text-lg mb-2">Manual Mode Active 📊</h3>
+                  <p className="text-blue-800 mb-3">
+                    You're currently in manual mode. To get AI-powered therapy adjustment suggestions, you need to set up your diabetes profile with your current therapy settings.
+                  </p>
+                  <div className="bg-blue-100 rounded-lg p-4 mb-3">
+                    <h4 className="text-blue-900 font-medium mb-2">To enable therapy analysis:</h4>
+                    <ul className="text-blue-800 text-sm space-y-1">
+                      <li>• <strong>Configure your diabetes profile</strong> with current basal rates, carb ratios, and sensitivity factors</li>
+                      <li>• <strong>Set up Nightscout</strong> for automatic real-time data sync (optional)</li>
+                      <li>• <strong>Add glucose readings</strong> manually or via Nightscout</li>
+                      <li>• <strong>Get AI-powered suggestions</strong> for therapy adjustments</li>
+                    </ul>
+                  </div>
+                  <div className="flex flex-wrap gap-3">
+                    <a 
+                      href="/diabetes-profile" 
+                      className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors"
+                    >
+                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                      Configure Diabetes Profile
+                    </a>
+                    <a 
+                      href="https://nightscout.github.io/" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center px-4 py-2 bg-white text-blue-600 text-sm font-medium rounded-md border border-blue-300 hover:bg-blue-50 transition-colors"
+                    >
+                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                      </svg>
+                      Learn About Nightscout
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {suggestions && (
             <>
               {/* Analysis Metrics */}
