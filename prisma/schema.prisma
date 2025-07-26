@@ -51,6 +51,8 @@ model User {
   sessions       Session[]
   settings       Settings?
   treatments     Treatment[]
+  buddyRequests  BuddyConnection[] @relation("BuddyConnectionRequester")
+  buddyResponses BuddyConnection[] @relation("BuddyConnectionTarget")
 }
 
 model Profile {
@@ -176,4 +178,21 @@ model TargetRange {
   BasalProfile BasalProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
 
   @@index([profileId])
+}
+
+model BuddyConnection {
+  id          String   @id @default(cuid())
+  requesterId String
+  targetId    String
+  status      String   @default("pending") // pending, approved, rejected
+  message     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  requester   User     @relation("BuddyConnectionRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  target      User     @relation("BuddyConnectionTarget", fields: [targetId], references: [id], onDelete: Cascade)
+
+  @@index([requesterId])
+  @@index([targetId])
+  @@unique([requesterId, targetId])
 }

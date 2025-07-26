@@ -23,10 +23,10 @@ interface AdjustmentSuggestions {
   safetyWarnings: string[];
   analysisMetrics: {
     timeInRange: number;
-    timeAboveRange: number;
-    timeBelowRange: number;
-    averageGlucose: number;
-    glucoseVariability: number;
+  timeAboveRange: number;
+  timeBelowRange: number;
+  averageGlucose: number;
+  glucoseVariability: number;
     dataQuality: 'poor' | 'fair' | 'good' | 'excellent';
   };
 }
@@ -162,7 +162,7 @@ export default function AnalysisPage() {
                 AI-powered suggestions based on your glucose patterns and current therapy settings
               </p>
             </div>
-            <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Analysis Period
@@ -181,7 +181,7 @@ export default function AnalysisPage() {
                     onChange={(e) => setToDate(e.target.value)}
                     className="border border-gray-300 rounded-md px-3 py-2 text-sm"
                   />
-                </div>
+      </div>
               </div>
               <button
                 onClick={fetchAdjustmentSuggestions}
@@ -200,7 +200,7 @@ export default function AnalysisPage() {
                 <div className="ml-3">
                   <h3 className="text-sm font-medium text-red-800">Analysis Error</h3>
                   <p className="text-sm text-red-700 mt-1">{error}</p>
-                </div>
+              </div>
               </div>
             </div>
           )}
@@ -220,7 +220,7 @@ export default function AnalysisPage() {
                     {suggestions.analysisMetrics.timeAboveRange}%
                   </div>
                   <div className="text-sm text-gray-600">Time Above</div>
-                </div>
+          </div>
                 <div className="bg-yellow-50 p-4 rounded-lg text-center">
                   <div className="text-2xl font-bold text-yellow-600">
                     {suggestions.analysisMetrics.timeBelowRange}%
@@ -232,11 +232,11 @@ export default function AnalysisPage() {
                     {suggestions.analysisMetrics.averageGlucose}
                   </div>
                   <div className="text-sm text-gray-600">Avg Glucose</div>
-                </div>
+            </div>
                 <div className="bg-purple-50 p-4 rounded-lg text-center">
                   <div className="text-2xl font-bold text-purple-600">
                     {((suggestions.analysisMetrics.averageGlucose + 46.7) / 28.7).toFixed(1)}%
-                  </div>
+          </div>
                   <div className="text-sm text-gray-600">Est. A1C</div>
                 </div>
               </div>
@@ -267,9 +267,9 @@ export default function AnalysisPage() {
                           <span className="text-blue-600 mr-2">•</span>
                           {rec}
                         </li>
-                      ))}
-                    </ul>
-                  </div>
+                  ))}
+                </ul>
+              </div>
                 </div>
               )}
 
@@ -289,8 +289,8 @@ export default function AnalysisPage() {
                   <h2 className="text-xl font-semibold text-gray-900 mb-4">🍽️ Carb Ratio Adjustments</h2>
                   <div className="grid gap-4 md:grid-cols-2">
                     {suggestions.carbRatioAdjustments.map((adjustment, index) => renderAdjustmentCard(adjustment, index))}
-                  </div>
-                </div>
+            </div>
+          </div>
               )}
 
               {/* Sensitivity Adjustments */}
@@ -309,8 +309,8 @@ export default function AnalysisPage() {
                   <h2 className="text-xl font-semibold text-gray-900 mb-4">🎯 Target Range Adjustments</h2>
                   <div className="grid gap-4 md:grid-cols-2">
                     {suggestions.targetAdjustments.map((adjustment, index) => renderAdjustmentCard(adjustment, index))}
-                  </div>
-                </div>
+            </div>
+          </div>
               )}
 
               {/* No Adjustments Message */}
@@ -325,8 +325,8 @@ export default function AnalysisPage() {
                   </h3>
                   <p className="text-gray-600">
                     Your current therapy settings appear to be working well based on recent glucose patterns.
-                  </p>
-                </div>
+            </p>
+          </div>
               )}
 
 

@@ -142,20 +142,20 @@ export default function ReadingsPage() {
   const [lastFetchTime, setLastFetchTime] = useState<Date | null>(null);
 
   // Add the missing fetchSettings function
-  const fetchSettings = async () => {
-    try {
-      const res = await fetch('/api/settings');
-      if (res.ok) {
-        const data = await res.json();
-        setSettings(data);
-        setNightscoutUrl(data.nightscoutUrl || '');
+    const fetchSettings = async () => {
+      try {
+        const res = await fetch('/api/settings');
+        if (res.ok) {
+          const data = await res.json();
+          setSettings(data);
+          setNightscoutUrl(data.nightscoutUrl || '');
+        }
+      } catch (error) {
+        console.error('Error fetching settings:', error);
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      console.error('Error fetching settings:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
 
   const fetchReadings = async () => {
     setLoading(true);
@@ -599,10 +599,10 @@ export default function ReadingsPage() {
               <div className="text-sm text-gray-500">
                 <p>Last updated</p>
                 <p>{lastFetchTime ? formatRelativeTime(lastFetchTime.toISOString()) : 'Never'}</p>
-              </div>
+          </div>
             )}
-            <button
-              onClick={fetchReadings}
+        <button
+          onClick={fetchReadings}
               disabled={loading}
               className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-indigo-400 disabled:cursor-not-allowed transition-colors"
             >
@@ -622,7 +622,7 @@ export default function ReadingsPage() {
                   Update
                 </div>
               )}
-            </button>
+        </button>
           </div>
         </div>
       </div>
@@ -710,7 +710,7 @@ export default function ReadingsPage() {
               <h3 className="text-lg font-semibold mb-4">Glucose Chart</h3>
               <div className="h-[500px]">
                 <Line options={chartOptions} data={chartData} />
-            </div>
+        </div>
             </div>
           )}
         
