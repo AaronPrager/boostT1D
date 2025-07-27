@@ -533,11 +533,90 @@ export default function ReadingsPage() {
     );
   }
 
+  // Get current glucose value (most recent reading)
+  const getCurrentGlucose = () => {
+    if (!readings.length) return null;
+    
+    // Sort readings by date and get the most recent one
+    const sortedReadings = [...readings].sort((a, b) => b.date - a.date);
+    const currentReading = sortedReadings[0];
+    
+    return {
+      value: currentReading.sgv,
+      direction: currentReading.direction || 'NONE',
+      timestamp: new Date(currentReading.date),
+      source: currentReading.source
+    };
+  };
+
+  const currentGlucose = getCurrentGlucose();
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold">Blood Glucose Data</h1>
       </div>
+
+      {/* Current Glucose Value Display */}
+      {currentGlucose && (
+        <div className="mb-6 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-6 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <div className="flex flex-col">
+                <span className="text-sm font-medium text-gray-600">Current Glucose</span>
+                <div className="flex items-center space-x-2">
+                  <span className={`text-4xl font-bold ${
+                    currentGlucose.value < settings.lowGlucose ? 'text-red-600' :
+                    currentGlucose.value > settings.highGlucose ? 'text-orange-500' :
+                    'text-green-600'
+                  }`}>
+                    {currentGlucose.value}
+                  </span>
+                  <span className="text-gray-500 text-sm">mg/dL</span>
+                  <span className="text-2xl">
+                    {DIRECTION_ARROWS[currentGlucose.direction] || '→'}
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="text-sm text-gray-500">
+                {currentGlucose.timestamp.toLocaleTimeString([], { 
+                  hour: '2-digit', 
+                  minute: '2-digit' 
+                })}
+              </div>
+              <div className="text-xs text-gray-400 capitalize">
+                {currentGlucose.source} reading
+              </div>
+              <div className="text-xs text-gray-400">
+                {currentGlucose.timestamp.toLocaleDateString()}
+              </div>
+            </div>
+          </div>
+          
+          {/* Status indicator */}
+          <div className="mt-3 flex items-center space-x-2">
+            <div className={`w-3 h-3 rounded-full ${
+              currentGlucose.value < settings.lowGlucose ? 'bg-red-500' :
+              currentGlucose.value > settings.highGlucose ? 'bg-orange-500' :
+              'bg-green-500'
+            }`}></div>
+            <span className={`text-sm font-medium ${
+              currentGlucose.value < settings.lowGlucose ? 'text-red-700' :
+              currentGlucose.value > settings.highGlucose ? 'text-orange-700' :
+              'text-green-700'
+            }`}>
+              {currentGlucose.value < settings.lowGlucose ? 'Below Range' :
+               currentGlucose.value > settings.highGlucose ? 'Above Range' :
+               'In Range'}
+            </span>
+            <span className="text-xs text-gray-500">
+              (Target: {settings.lowGlucose}-{settings.highGlucose} mg/dL)
+            </span>
+          </div>
+        </div>
+      )}
       
       {/* Nightscout Information Message */}
       {!settings.nightscoutUrl && (

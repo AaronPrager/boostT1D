@@ -25,10 +25,11 @@ export async function GET() {
     // Format the response to match what UserProfileHeader expects
     const personalProfileData = {
       name: user.name,
+      email: user.email,
       about: user.profile?.bio || null,
       photo: user.image,
       phone: user.profile?.phoneNumber || null,
-      dateOfBirth: user.profile?.birthDate ? user.profile.birthDate.toISOString() : null,
+      dateOfBirth: user.dateOfBirth ? user.dateOfBirth.toISOString().split('T')[0] : (user.profile?.birthDate ? user.profile.birthDate.toISOString().split('T')[0] : null),
       occupation: user.profile?.occupation || null,
       country: user.country,
       state: user.state,
@@ -75,6 +76,7 @@ export async function PUT(req: Request) {
         name: name || user.name,
         country: country || user.country,
         state: state || user.state,
+        dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : user.dateOfBirth,
         image: photo !== undefined ? photo : user.image,
       },
     });
@@ -86,7 +88,7 @@ export async function PUT(req: Request) {
       occupation: occupation || null,
       favoriteActivities: favoriteActivities || null,
       diagnosisAge: diagnosisAge ? Number(diagnosisAge) : null,
-      birthDate: dateOfBirth ? new Date(dateOfBirth) : user.profile?.birthDate || null,
+      birthDate: dateOfBirth ? new Date(dateOfBirth) : (user.dateOfBirth || user.profile?.birthDate || null),
     };
 
     await prisma.profile.upsert({
@@ -103,6 +105,42 @@ export async function PUT(req: Request) {
     console.error('Error updating personal profile:', error);
     return new NextResponse(
       error instanceof Error ? error.message : 'Failed to update personal profile',
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE() {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user?.email) {
+      return new NextResponse('Unauthorized', { status: 401 });
+    }
+
+    // Get the user
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email },
+      include: {
+        profile: true,
+      },
+    });
+
+    if (!user) {
+      return new NextResponse('User not found', { status: 404 });
+    }
+
+    // Delete all associated data and the user account
+    // Note: The user deletion will cascade and delete all related data
+    // due to foreign key constraints and cascade rules in the schema
+    await prisma.user.delete({
+      where: { id: user.id },
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting user account:', error);
+    return new NextResponse(
+      error instanceof Error ? error.message : 'Failed to delete user account',
       { status: 500 }
     );
   }

@@ -79,7 +79,8 @@ export const authOptions: NextAuthOptions = {
       if (url.startsWith("/")) return `${baseUrl}${url}`
       // Allows callback URLs on the same origin
       else if (new URL(url).origin === baseUrl) return url
-      return baseUrl
+      // Default redirect to home page instead of dashboard
+      return `${baseUrl}/`
     },
   },
   session: {

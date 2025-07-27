@@ -44,14 +44,10 @@ function SignInForm() {
         const settingsRes = await fetch('/api/settings');
         if (settingsRes.ok) {
           const settings = await settingsRes.json();
-          // If neither Nightscout nor manual mode is set, redirect to profile
-          if (!settings.nightscoutUrl && !settings.manualMode) {
-            router.push('/profile');
-          } else {
-            router.push('/');
-          }
+          // Always redirect to home page after successful login
+          router.push('/');
         } else {
-          // Fallback to dashboard if settings can't be loaded
+          // Fallback to home page if settings can't be loaded
           router.push('/');
         }
       }

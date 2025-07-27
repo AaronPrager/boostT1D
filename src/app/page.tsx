@@ -3,6 +3,7 @@
 import { useSession, signIn } from 'next-auth/react';
 import Link from 'next/link';
 
+
 export default function Home() {
   const { data: session } = useSession();
 
@@ -149,6 +150,35 @@ export default function Home() {
         </div>
       </div>
 
+      {/* Carb Estimator CTA Section */}
+      <div className="py-16 bg-gradient-to-br from-green-50 to-blue-50">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <div className="bg-white rounded-xl shadow-lg p-8">
+            <div className="flex items-center justify-center w-16 h-16 mx-auto mb-6 bg-green-100 rounded-full">
+              <svg className="w-8 h-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            </div>
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">
+              🍎 Try Our Carb Estimator
+            </h2>
+            <p className="text-xl text-gray-600 mb-6">
+              Upload a photo of your meal and get instant carbohydrate estimates to help manage your diabetes.
+            </p>
+            <p className="text-gray-500 mb-8">
+              No account required - try it now!
+            </p>
+            <Link
+              href="/food-analysis"
+              className="inline-flex items-center px-8 py-4 border border-transparent text-lg font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 transition-colors"
+            >
+              Try Carb Estimator →
+            </Link>
+          </div>
+        </div>
+      </div>
+
       {/* CTA Section - replaced with Aaron's info */}
       <div className="bg-white">
         <div className="max-w-2xl mx-auto text-center py-16 px-4 sm:py-20 sm:px-6 lg:px-8">
@@ -174,30 +204,7 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Divider between Aaron and Gallery */}
-      <hr className="my-8 border-t-2 border-gray-200 w-3/4 mx-auto" />
 
-      {/* Photo Gallery Section */}
-      <div className="py-12 bg-white">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h3 className="text-2xl font-bold text-gray-900 text-center mb-8">Our Community in Photos</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-            {[1,2,3].map(num => (
-              <div key={num} className="rounded-xl overflow-hidden shadow-xl bg-white flex items-center justify-center aspect-[3/2]">
-                <img
-                  src={`/gallery${num}.JPG`}
-                  alt={`Community photo ${num}`}
-                  className="object-cover w-full h-full transition-transform duration-300 hover:scale-105"
-                  onError={e => {
-                    (e.target as HTMLImageElement).style.display = 'none';
-                    (e.target as HTMLImageElement).parentElement!.innerHTML = `<div class='flex flex-col items-center justify-center w-full h-full text-indigo-400'><svg xmlns='http://www.w3.org/2000/svg' class='h-12 w-12 mb-2' fill='none' viewBox='0 0 24 24' stroke='currentColor'><path stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M3 7v10a4 4 0 004 4h10a4 4 0 004-4V7a4 4 0 00-4-4H7a4 4 0 00-4 4z' /><path stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M8 11l4 4 4-4' /></svg><span class='text-sm'>Photo unavailable</span></div>`;
-                  }}
-                />
-              </div>
-            ))}
-              </div>
-        </div>
-      </div>
     </div>
   );
 }

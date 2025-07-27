@@ -214,29 +214,21 @@ async function getCurrentGlucose(userEmail: string) {
 
 export async function POST(request: NextRequest) {
   try {
-    // Check authentication
+    // Get session (but don't require it for basic carb estimation)
     const session = await getServerSession(authOptions);
-    if (!session?.user?.email) {
-      return NextResponse.json({
-        success: false,
-        error: "Authentication required"
-      }, { status: 401 });
-    }
 
     // Check if API key is configured
     if (!process.env.GOOGLE_AI_API_KEY) {
       return NextResponse.json({
-        success: false,
-        error: "Google AI API key not configured. Please add GOOGLE_AI_API_KEY to your environment variables."
-      }, { status: 500 });
+        error: "Food analysis service is currently unavailable. Please try again later."
+      }, { status: 503 });
     }
 
     const formData = await request.formData();
-    const imageFile = formData.get('image') as File;
+    const imageFile = (formData.get('photo') || formData.get('image')) as File;
 
     if (!imageFile) {
       return NextResponse.json({
-        success: false,
         error: "No image file provided"
       }, { status: 400 });
     }
@@ -304,13 +296,18 @@ Please be as accurate as possible and consider typical serving sizes. Respond in
       throw new Error('Invalid response structure from Google AI');
     }
 
-    // Fetch user profile for insulin calculations
-    const profile = await getUserProfile(session.user.email);
-    const currentGlucose = await getCurrentGlucose(session.user.email);
+    // Fetch user profile for insulin calculations (only for authenticated users)
+    let profile = null;
+    let currentGlucose = null;
+    
+    if (session?.user?.email) {
+      profile = await getUserProfile(session.user.email);
+      currentGlucose = await getCurrentGlucose(session.user.email);
+    }
     
     let insulinRecommendation = null;
     
-    if (profile && profile.carbratio && profile.carbratio.length > 0) {
+    if (session?.user?.email && profile && profile.carbratio && profile.carbratio.length > 0) {
       const currentCarbRatio = getCurrentCarbRatio(profile.carbratio);
       const carbBolusUnits = analysis.carbs_grams / currentCarbRatio.value;
       
@@ -342,13 +339,12 @@ Please be as accurate as possible and consider typical serving sizes. Respond in
       };
     }
 
-    // Add insulin recommendation to analysis
-    analysis.insulin_recommendation = insulinRecommendation;
+    // Add insulin recommendation to analysis (only for authenticated users)
+    if (session?.user?.email) {
+      analysis.insulin_recommendation = insulinRecommendation;
+    }
 
-    return NextResponse.json({
-      success: true,
-      analysis
-    });
+    return NextResponse.json(analysis);
 
   } catch (error) {
     console.error('Food analysis error:', error);
@@ -356,13 +352,11 @@ Please be as accurate as possible and consider typical serving sizes. Respond in
     // Check if it's a Google AI API error
     if (error instanceof Error && error.message && error.message.includes('API key')) {
       return NextResponse.json({
-        success: false,
-        error: "Invalid or missing Google AI API key. Please check your configuration."
-      }, { status: 500 });
+        error: "Food analysis service is currently unavailable. Please try again later."
+      }, { status: 503 });
     }
 
     return NextResponse.json({
-      success: false,
       error: "Failed to analyze the food image. Please try again with a clearer photo."
     }, { status: 500 });
   }

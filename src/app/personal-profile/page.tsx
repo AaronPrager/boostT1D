@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { Edit2, Save, X, Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import { Edit2, Save, X, Mail, Lock, Eye, EyeOff, Trash2 } from 'lucide-react';
 import { signOut } from 'next-auth/react';
 
 const countries = [
@@ -247,6 +247,10 @@ export default function PersonalProfile() {
   const [isEditing, setIsEditing] = useState(false);
   const [editingProfile, setEditingProfile] = useState<PersonalProfileData>({});
   const [validationErrors, setValidationErrors] = useState<any>({});
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -322,133 +326,413 @@ export default function PersonalProfile() {
     setIsEditing(false);
   };
 
+  const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setUploadingPhoto(true);
+    try {
+      const formData = new FormData();
+      formData.append('photo', file);
+
+      const response = await fetch('/api/personal-profile/photos', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setEditingProfile(prev => ({ ...prev, photo: data.photoUrl }));
+        setProfile(prev => ({ ...prev, photo: data.photoUrl }));
+        
+        // Dispatch event to update navigation photo
+        window.dispatchEvent(new CustomEvent('profilePhotoUpdated'));
+      } else {
+        alert('Failed to upload photo');
+      }
+    } catch (error) {
+      console.error('Error uploading photo:', error);
+      alert('Failed to upload photo');
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
+  const triggerPhotoUpload = () => {
+    fileInputRef.current?.click();
+  };
+
+  const getCountryName = (countryCode: string) => {
+    const country = countries.find(c => c.code === countryCode);
+    return country ? country.name : countryCode;
+  };
+
+  const getStateName = (stateCode: string) => {
+    const state = US_STATES.find(s => s.code === stateCode);
+    return state ? state.name : stateCode;
+  };
+
+  const formatDate = (dateString: string) => {
+    if (!dateString) return 'Not provided';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    });
+  };
+
+  const handleDeleteProfile = async () => {
+    setDeleting(true);
+    try {
+      const response = await fetch('/api/personal-profile', {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        // Account deleted successfully - redirect to login
+        alert('Account deleted successfully. You will be redirected to the login page.');
+        
+        // Sign out and redirect to login
+        await signOut({ callbackUrl: '/login' });
+      } else {
+        alert('Failed to delete account');
+      }
+    } catch (error) {
+      console.error('Error deleting account:', error);
+      alert('Failed to delete account');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-2xl mx-auto bg-white p-8 rounded shadow">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold">Personal Profile</h1>
-            {!isEditing ? (
-            <button onClick={() => setIsEditing(true)} className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">
-              <Edit2 className="h-4 w-4 mr-2" /> Edit
-              </button>
-            ) : (
-              <div className="flex space-x-2">
-              <button onClick={handleSave} disabled={saving} className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50">
-                <Save className="h-4 w-4 mr-2" /> {saving ? 'Saving...' : 'Save'}
-                </button>
-              <button onClick={handleCancel} className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700">
-                <X className="h-4 w-4 mr-2" /> Cancel
-                </button>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 py-8">
+      <div className="max-w-4xl mx-auto">
+        <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+          {/* Header */}
+          <div className="bg-gradient-to-r from-slate-700 to-slate-800 px-8 py-6">
+            <div className="flex justify-between items-center">
+              <div>
+                <h1 className="text-3xl font-bold text-white">Personal Profile</h1>
+                <p className="text-slate-300 mt-1">Manage your personal information and preferences</p>
               </div>
-            )}
-          </div>
-        <form className="space-y-4">
-          {/* Full Name */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Full Name *</label>
-            {isEditing ? (
-              <input type="text" value={editingProfile.name || ''} onChange={e => setEditingProfile({ ...editingProfile, name: e.target.value })} className="w-full px-3 py-2 border rounded" required />
-            ) : (
-              <p>{profile.name}</p>
-            )}
-            {validationErrors.name && <p className="text-red-600 text-sm">{validationErrors.name}</p>}
-          </div>
-          {/* Email */}
-              <div>
-            <label className="block text-sm font-medium text-gray-700">Email *</label>
-                {isEditing ? (
-              <input type="email" value={editingProfile.email || ''} onChange={e => setEditingProfile({ ...editingProfile, email: e.target.value })} className="w-full px-3 py-2 border rounded" required />
-            ) : (
-              <p>{profile.email}</p>
-            )}
-            {validationErrors.email && <p className="text-red-600 text-sm">{validationErrors.email}</p>}
-              </div>
-          {/* Password (change logic as needed) */}
-          {/* You can add a password change section here if needed */}
-          {/* Date of Birth */}
-              <div>
-            <label className="block text-sm font-medium text-gray-700">Date of Birth *</label>
-                {isEditing ? (
-              <input type="date" value={editingProfile.dateOfBirth || ''} onChange={e => setEditingProfile({ ...editingProfile, dateOfBirth: e.target.value })} className="w-full px-3 py-2 border rounded" required />
-            ) : (
-              <p>{profile.dateOfBirth}</p>
-            )}
-            {validationErrors.dateOfBirth && <p className="text-red-600 text-sm">{validationErrors.dateOfBirth}</p>}
-          </div>
-          {/* Country */}
-              <div>
-            <label className="block text-sm font-medium text-gray-700">Country *</label>
-                {isEditing ? (
-              <select value={editingProfile.country || ''} onChange={e => setEditingProfile({ ...editingProfile, country: e.target.value, state: '' })} className="w-full px-3 py-2 border rounded" required>
-                <option value="">Select your country</option>
-                {countries.map((country) => (
-                  <option key={country.code} value={country.code}>{country.name}</option>
-                ))}
-              </select>
-            ) : (
-              <p>{profile.country}</p>
-            )}
-            {validationErrors.country && <p className="text-red-600 text-sm">{validationErrors.country}</p>}
-          </div>
-          {/* State (if US) */}
-          {((isEditing && editingProfile.country === 'US') || (!isEditing && profile.country === 'US')) && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700">State *</label>
-              {isEditing ? (
-                <select value={editingProfile.state || ''} onChange={e => setEditingProfile({ ...editingProfile, state: e.target.value })} className="w-full px-3 py-2 border rounded" required>
-                  <option value="">Select your state</option>
-                  {US_STATES.map((state) => (
-                    <option key={state.code} value={state.code}>{state.name}</option>
-                  ))}
-                </select>
+              {!isEditing ? (
+                <button 
+                  onClick={() => setIsEditing(true)} 
+                  className="flex items-center px-6 py-3 bg-white text-slate-700 rounded-lg hover:bg-slate-100 transition-colors font-medium shadow-sm"
+                >
+                  <Edit2 className="h-4 w-4 mr-2" /> Edit Profile
+                </button>
               ) : (
-                <p>{profile.state}</p>
+                <div className="flex space-x-3">
+                  <button 
+                    onClick={handleSave} 
+                    disabled={saving} 
+                    className="flex items-center px-6 py-3 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 transition-colors font-medium shadow-sm"
+                  >
+                    <Save className="h-4 w-4 mr-2" /> {saving ? 'Saving...' : 'Save Changes'}
+                  </button>
+                  <button 
+                    onClick={handleCancel} 
+                    className="flex items-center px-6 py-3 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition-colors font-medium shadow-sm"
+                  >
+                    <X className="h-4 w-4 mr-2" /> Cancel
+                  </button>
+                </div>
               )}
-              {validationErrors.state && <p className="text-red-600 text-sm">{validationErrors.state}</p>}
             </div>
-          )}
-          {/* Phone (optional) */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Phone</label>
-            {isEditing ? (
-              <input type="tel" value={editingProfile.phone || ''} onChange={e => setEditingProfile({ ...editingProfile, phone: e.target.value })} className="w-full px-3 py-2 border rounded" />
-            ) : (
-              <p>{profile.phone}</p>
-            )}
           </div>
-          {/* Activities and Interests (optional) */}
-              <div>
-            <label className="block text-sm font-medium text-gray-700">Activities & Interests</label>
-                {isEditing ? (
-              <textarea value={editingProfile.favoriteActivities || ''} onChange={e => setEditingProfile({ ...editingProfile, favoriteActivities: e.target.value })} className="w-full px-3 py-2 border rounded" rows={2} />
-            ) : (
-              <p>{profile.favoriteActivities}</p>
+
+          {/* Content */}
+          <div className="p-8">
+            {/* Photo Section */}
+            <div className="mb-8 flex items-center space-x-6 p-6 bg-gradient-to-r from-slate-50 to-blue-50 rounded-xl border border-slate-200">
+              <div className="relative">
+                {profile.photo ? (
+                  <img
+                    src={profile.photo}
+                    alt="Profile"
+                    className="w-28 h-28 rounded-full object-cover border-4 border-white shadow-lg"
+                  />
+                ) : (
+                  <div className="w-28 h-28 rounded-full bg-gradient-to-br from-slate-300 to-slate-400 flex items-center justify-center border-4 border-white shadow-lg">
+                    <span className="text-4xl text-white">👤</span>
+                  </div>
+                )}
+                {isEditing && (
+                  <button
+                    onClick={triggerPhotoUpload}
+                    disabled={uploadingPhoto}
+                    className="absolute -bottom-2 -right-2 bg-slate-700 text-white rounded-full p-3 hover:bg-slate-800 disabled:opacity-50 transition-colors shadow-lg"
+                    title="Change photo"
+                  >
+                    {uploadingPhoto ? (
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    ) : (
+                      <Edit2 className="w-4 h-4" />
+                    )}
+                  </button>
                 )}
               </div>
-          {/* About (optional) */}
               <div>
-            <label className="block text-sm font-medium text-gray-700">About</label>
-                {isEditing ? (
-              <textarea value={editingProfile.about || ''} onChange={e => setEditingProfile({ ...editingProfile, about: e.target.value })} className="w-full px-3 py-2 border rounded" rows={2} />
-            ) : (
-              <p>{profile.about}</p>
+                <h2 className="text-2xl font-bold text-slate-800">
+                  {profile.name || 'Your Name'}
+                </h2>
+                <p className="text-slate-600 text-lg">
+                  {profile.email || 'your.email@example.com'}
+                </p>
+                {isEditing && (
+                  <p className="text-sm text-slate-500 mt-2">
+                    Click the edit button to change your profile photo
+                  </p>
                 )}
               </div>
-          {/* Diagnosis Age (optional) */}
-              <div>
-            <label className="block text-sm font-medium text-gray-700">Diagnosis Age</label>
+            </div>
+
+            {/* Hidden file input */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handlePhotoUpload}
+              className="hidden"
+            />
+
+                        {/* Form Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Full Name */}
+              <div className="space-y-2">
+                <label className="block text-sm font-semibold text-slate-700">Full Name *</label>
                 {isEditing ? (
-              <input type="number" value={editingProfile.diagnosisAge || ''} onChange={e => setEditingProfile({ ...editingProfile, diagnosisAge: parseInt(e.target.value) || undefined })} className="w-full px-3 py-2 border rounded" />
-            ) : (
-              <p>{profile.diagnosisAge}</p>
+                  <input 
+                    type="text" 
+                    value={editingProfile.name || ''} 
+                    onChange={e => setEditingProfile({ ...editingProfile, name: e.target.value })} 
+                    className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-slate-500 transition-colors" 
+                    required 
+                  />
+                ) : (
+                  <p className="px-4 py-3 bg-slate-50 rounded-lg text-slate-700">{profile.name || 'Not provided'}</p>
+                )}
+                {validationErrors.name && <p className="text-red-600 text-sm font-medium">{validationErrors.name}</p>}
+              </div>
+
+              {/* Email */}
+              <div className="space-y-2">
+                <label className="block text-sm font-semibold text-slate-700">Email *</label>
+                {isEditing ? (
+                  <input 
+                    type="email" 
+                    value={editingProfile.email || ''} 
+                    onChange={e => setEditingProfile({ ...editingProfile, email: e.target.value })} 
+                    className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-slate-500 transition-colors" 
+                    required 
+                  />
+                ) : (
+                  <p className="px-4 py-3 bg-slate-50 rounded-lg text-slate-700">{profile.email || 'Not provided'}</p>
+                )}
+                {validationErrors.email && <p className="text-red-600 text-sm font-medium">{validationErrors.email}</p>}
+              </div>
+
+              {/* Date of Birth */}
+              <div className="space-y-2">
+                <label className="block text-sm font-semibold text-slate-700">Date of Birth *</label>
+                {isEditing ? (
+                  <input 
+                    type="date" 
+                    value={editingProfile.dateOfBirth || ''} 
+                    onChange={e => setEditingProfile({ ...editingProfile, dateOfBirth: e.target.value })} 
+                    className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-slate-500 transition-colors" 
+                    required 
+                  />
+                ) : (
+                  <p className="px-4 py-3 bg-slate-50 rounded-lg text-slate-700">{formatDate(profile.dateOfBirth || '')}</p>
+                )}
+                {validationErrors.dateOfBirth && <p className="text-red-600 text-sm font-medium">{validationErrors.dateOfBirth}</p>}
+              </div>
+
+              {/* Country */}
+              <div className="space-y-2">
+                <label className="block text-sm font-semibold text-slate-700">Country *</label>
+                {isEditing ? (
+                  <select 
+                    value={editingProfile.country || ''} 
+                    onChange={e => setEditingProfile({ ...editingProfile, country: e.target.value, state: '' })} 
+                    className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-slate-500 transition-colors" 
+                    required
+                  >
+                    <option value="">Select your country</option>
+                    {countries.map((country) => (
+                      <option key={country.code} value={country.code}>{country.name}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <p className="px-4 py-3 bg-slate-50 rounded-lg text-slate-700">{profile.country ? getCountryName(profile.country) : 'Not provided'}</p>
+                )}
+                {validationErrors.country && <p className="text-red-600 text-sm font-medium">{validationErrors.country}</p>}
+              </div>
+
+              {/* State (if US) */}
+              {((isEditing && editingProfile.country === 'US') || (!isEditing && profile.country === 'US')) && (
+                <div className="space-y-2">
+                  <label className="block text-sm font-semibold text-slate-700">State *</label>
+                  {isEditing ? (
+                    <select 
+                      value={editingProfile.state || ''} 
+                      onChange={e => setEditingProfile({ ...editingProfile, state: e.target.value })} 
+                      className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-slate-500 transition-colors" 
+                      required
+                    >
+                      <option value="">Select your state</option>
+                      {US_STATES.map((state) => (
+                        <option key={state.code} value={state.code}>{state.name}</option>
+                      ))}
+                    </select>
+                                      ) : (
+                      <p className="px-4 py-3 bg-slate-50 rounded-lg text-slate-700">{profile.state ? getStateName(profile.state) : 'Not provided'}</p>
+                    )}
+                  {validationErrors.state && <p className="text-red-600 text-sm font-medium">{validationErrors.state}</p>}
+                </div>
+              )}
+
+              {/* Phone (optional) */}
+              <div className="space-y-2">
+                <label className="block text-sm font-semibold text-slate-700">Phone</label>
+                {isEditing ? (
+                  <input 
+                    type="tel" 
+                    value={editingProfile.phone || ''} 
+                    onChange={e => setEditingProfile({ ...editingProfile, phone: e.target.value })} 
+                    className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-slate-500 transition-colors" 
+                  />
+                ) : (
+                  <p className="px-4 py-3 bg-slate-50 rounded-lg text-slate-700">{profile.phone || 'Not provided'}</p>
+                )}
+              </div>
+
+              {/* Diagnosis Age (optional) */}
+              <div className="space-y-2">
+                <label className="block text-sm font-semibold text-slate-700">Diagnosis Age</label>
+                {isEditing ? (
+                  <input 
+                    type="number" 
+                    value={editingProfile.diagnosisAge || ''} 
+                    onChange={e => setEditingProfile({ ...editingProfile, diagnosisAge: parseInt(e.target.value) || undefined })} 
+                    className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-slate-500 transition-colors" 
+                  />
+                ) : (
+                  <p className="px-4 py-3 bg-slate-50 rounded-lg text-slate-700">{profile.diagnosisAge || 'Not provided'}</p>
+                )}
+              </div>
+            </div>
+
+            {/* Full Width Fields */}
+            <div className="mt-8 space-y-6">
+              {/* Activities and Interests */}
+              <div className="space-y-2">
+                <label className="block text-sm font-semibold text-slate-700">Activities & Interests</label>
+                {isEditing ? (
+                  <textarea 
+                    value={editingProfile.favoriteActivities || ''} 
+                    onChange={e => setEditingProfile({ ...editingProfile, favoriteActivities: e.target.value })} 
+                    className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-slate-500 transition-colors resize-none" 
+                    rows={3}
+                    placeholder="Tell us about your hobbies and interests..."
+                  />
+                ) : (
+                  <p className="px-4 py-3 bg-slate-50 rounded-lg text-slate-700 min-h-[60px]">{profile.favoriteActivities || 'Not provided'}</p>
+                )}
+              </div>
+
+              {/* About */}
+              <div className="space-y-2">
+                <label className="block text-sm font-semibold text-slate-700">About</label>
+                {isEditing ? (
+                  <textarea 
+                    value={editingProfile.about || ''} 
+                    onChange={e => setEditingProfile({ ...editingProfile, about: e.target.value })} 
+                    className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-slate-500 transition-colors resize-none" 
+                    rows={4}
+                    placeholder="Tell us a bit about yourself..."
+                  />
+                ) : (
+                  <p className="px-4 py-3 bg-slate-50 rounded-lg text-slate-700 min-h-[80px]">{profile.about || 'Not provided'}</p>
+                )}
+              </div>
+            </div>
+
+            {/* Delete Profile Section - Only show when editing */}
+            {isEditing && (
+              <div className="mt-12 pt-8 border-t border-slate-200">
+                <div className="bg-red-50 rounded-lg p-6 border border-red-200">
+                  <div className="flex items-start space-x-4">
+                    <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
+                      <Trash2 className="w-5 h-5 text-red-600" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-lg font-semibold text-red-800 mb-2">Delete Account</h3>
+                      <p className="text-red-700 text-sm mb-4">
+                        Permanently delete your entire account and all associated data including profile information, 
+                        diabetes readings, treatments, settings, and all other data. This action cannot be undone.
+                      </p>
+                      <button 
+                        onClick={() => setShowDeleteConfirmation(true)} 
+                        className="flex items-center px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium shadow-sm"
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" /> Delete Account
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
             )}
           </div>
-        </form>
+        </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirmation && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 max-w-md mx-4 shadow-2xl">
+            <div className="flex items-center mb-4">
+              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mr-4">
+                <Trash2 className="w-6 h-6 text-red-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-slate-800">Delete Account</h3>
+                <p className="text-slate-600 text-sm">This action cannot be undone</p>
+              </div>
+            </div>
+            
+            <p className="text-slate-700 mb-6">
+              Are you sure you want to delete your entire account? This will permanently remove ALL your data including 
+              profile information, diabetes readings, treatments, settings, and everything else. You will need to create 
+              a new account to use the application again.
+            </p>
+            
+            <div className="flex space-x-3">
+              <button
+                onClick={() => setShowDeleteConfirmation(false)}
+                className="flex-1 px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition-colors font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteProfile}
+                disabled={deleting}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors font-medium"
+              >
+                {deleting ? 'Deleting...' : 'Delete Account'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 } 

@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Image from 'next/image';
+import { useSession, signIn } from 'next-auth/react';
 
 type InsulinRecommendation = {
   carb_bolus_units: number;
@@ -23,6 +24,7 @@ type FoodAnalysis = {
 };
 
 export default function FoodAnalysisPage() {
+  const { data: session, status } = useSession();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [analysis, setAnalysis] = useState<FoodAnalysis | null>(null);
@@ -79,22 +81,27 @@ export default function FoodAnalysisPage() {
 
     try {
       const formData = new FormData();
-      formData.append('image', selectedFile);
+      formData.append('photo', selectedFile); // Changed from 'image' to 'photo' to match API
 
       const response = await fetch('/api/food-analysis', {
         method: 'POST',
         body: formData,
       });
 
-      const data = await response.json();
-
-      if (data.success) {
-        setAnalysis(data.analysis);
-      } else {
-        setError(data.error || 'Analysis failed');
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Analysis failed');
       }
-    } catch {
-      setError('Failed to analyze image');
+
+      const data = await response.json();
+      setAnalysis(data);
+    } catch (error) {
+      console.error('Analysis error:', error);
+      if (error instanceof Error) {
+        setError(error.message);
+      } else {
+        setError('Failed to analyze food. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -115,7 +122,50 @@ export default function FoodAnalysisPage() {
       <div className="max-w-4xl mx-auto">
         <div className="bg-white shadow sm:rounded-lg">
           <div className="px-4 py-5 sm:p-6">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">🍎 Food Analysis & Insulin Calculator</h2>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-gray-900">🍎 Carb Estimator</h2>
+              {!session && (
+                <div className="text-sm text-gray-600">
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                    Guest Mode - Carb estimates only
+                  </span>
+                </div>
+              )}
+            </div>
+            
+            {!session && (
+              <div className="mb-6 bg-blue-50 border border-blue-200 rounded-md p-4">
+                <div className="flex">
+                  <div className="flex-shrink-0">
+                    <svg className="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div className="ml-3">
+                    <h3 className="text-sm font-medium text-blue-800">
+                      Get More Features with an Account
+                    </h3>
+                    <div className="mt-2 text-sm text-blue-700">
+                      <p>Currently you can get carbohydrate estimates. Sign in or create an account to get:</p>
+                      <ul className="list-disc list-inside mt-2 space-y-1">
+                        <li>Personalized insulin recommendations</li>
+                        <li>Save your meal history</li>
+                        <li>Track patterns over time</li>
+                        <li>Integrate with Nightscout</li>
+                      </ul>
+                    </div>
+                    <div className="mt-4">
+                      <button
+                        onClick={() => signIn()}
+                        className="text-sm bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
+                      >
+                        Sign In / Create Account
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
             <p className="text-gray-600 mb-6">Upload a photo of your food to get an AI-powered estimate of carbohydrates and personalized insulin recommendations based on your pump settings.</p>
 
             <div className="space-y-6">
@@ -245,8 +295,8 @@ export default function FoodAnalysisPage() {
                     </div>
                   </div>
 
-                  {/* Insulin Recommendation */}
-                  {analysis.insulin_recommendation && (
+                  {/* Insulin Recommendation - Only show for logged-in users */}
+                  {session && analysis.insulin_recommendation && (
                     <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
                       <div className="flex">
                         <div className="flex-shrink-0">
@@ -308,8 +358,35 @@ export default function FoodAnalysisPage() {
                     </div>
                   )}
 
-                  {/* No Insulin Data Warning */}
-                  {!analysis.insulin_recommendation && (
+                  {/* Sign in prompt for non-logged-in users */}
+                  {!session && (
+                    <div className="bg-indigo-50 border border-indigo-200 rounded-md p-4">
+                      <div className="flex">
+                        <div className="flex-shrink-0">
+                          <svg className="h-5 w-5 text-indigo-400" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                        <div className="ml-3">
+                          <h4 className="text-sm font-medium text-indigo-800">💉 Want Insulin Recommendations?</h4>
+                          <p className="text-sm text-indigo-700 mt-1">
+                            Sign in to get personalized insulin dose calculations based on your carb ratios and current glucose levels.
+                          </p>
+                          <div className="mt-3">
+                            <button
+                              onClick={() => signIn()}
+                              className="text-sm bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition-colors"
+                            >
+                              Sign In for Insulin Recommendations
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* No Insulin Data Warning - Only for logged-in users */}
+                  {session && !analysis.insulin_recommendation && (
                     <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4">
                       <div className="flex">
                         <div className="flex-shrink-0">
