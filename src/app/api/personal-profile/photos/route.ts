@@ -1,9 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import { writeFile, mkdir } from "fs/promises";
-import path from "path";
-import { v4 as uuidv4 } from "uuid";
+import { prisma } from "@/lib/prisma";
 
 export async function POST(request: Request) {
   try {
@@ -31,31 +29,20 @@ export async function POST(request: Request) {
       return new NextResponse('File too large. Maximum size is 5MB.', { status: 400 });
     }
 
-    // Create uploads directory if it doesn't exist
-    const uploadsDir = path.join(process.cwd(), 'public', 'uploads', 'photos');
-    try {
-      await mkdir(uploadsDir, { recursive: true });
-    } catch {
-      // Directory might already exist, that's okay
-    }
-
-    // Generate unique filename
-    const fileExtension = path.extname(file.name);
-    const uniqueFilename = `${uuidv4()}${fileExtension}`;
-    const filePath = path.join(uploadsDir, uniqueFilename);
-
-    // Convert file to buffer and save
+    // Convert file to base64
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
-    
-    await writeFile(filePath, buffer);
+    const base64String = `data:${file.type};base64,${buffer.toString('base64')}`;
 
-    // Return the public URL
-    const photoUrl = `/uploads/photos/${uniqueFilename}`;
+    // Update user's image in database
+    await prisma.user.update({
+      where: { email: session.user.email },
+      data: { image: base64String }
+    });
 
     return NextResponse.json({
       success: true,
-      photoUrl: photoUrl,
+      photoUrl: base64String,
       message: 'Photo uploaded successfully!'
     });
 
