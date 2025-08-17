@@ -339,6 +339,8 @@ export default function RegisterPage() {
         body: JSON.stringify(payload),
       });
       if (res.ok) {
+        const data = await res.json();
+        // Redirect to login page after successful registration
         router.push('/login?registered=true');
       } else {
         const data = await res.json();

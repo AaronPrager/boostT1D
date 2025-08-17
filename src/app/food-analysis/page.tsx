@@ -2,17 +2,29 @@
 
 import React, { useState } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { useSession, signIn } from 'next-auth/react';
 
 type InsulinRecommendation = {
   carb_bolus_units: number;
   correction_units: number;
   total_units: number;
+  safe_bolus: number;
+  current_iob: number;
+  iob_reduction: number;
   carb_ratio: number;
   carb_ratio_time: string;
   current_glucose?: number;
   calculation_note: string;
   warning?: string;
+  safety_warnings: string[];
+  iob_breakdown?: Array<{
+    treatmentId: string;
+    originalDose: number;
+    remainingIOB: number;
+    timeSinceDose: number;
+    percentageRemaining: number;
+  }>;
 };
 
 type FoodAnalysis = {
@@ -311,17 +323,20 @@ export default function FoodAnalysisPage() {
                             {/* Main Bolus Recommendation */}
                             <div className="bg-blue-100 rounded-lg p-3 border">
                               <p className="text-lg font-bold text-blue-900">
-                                Recommended Bolus: <span className="text-xl">{analysis.insulin_recommendation.total_units}u</span>
+                                Safe Bolus: <span className="text-xl">{analysis.insulin_recommendation.safe_bolus}u</span>
                               </p>
                               <p className="text-xs text-blue-600 mt-1">{analysis.insulin_recommendation.calculation_note}</p>
                             </div>
 
                             {/* Breakdown */}
-                            <div className="grid grid-cols-2 gap-2 text-xs">
+                            <div className="grid grid-cols-3 gap-2 text-xs">
                               <div className="bg-white rounded p-2 border border-blue-200">
                                 <p className="font-medium">Carb Bolus</p>
                                 <p className="text-lg font-bold text-blue-900">{analysis.insulin_recommendation.carb_bolus_units}u</p>
                                 <p className="text-blue-600">For {analysis.carbs_grams}g carbs</p>
+                                <p className="text-blue-500 text-xs mt-1">
+                                  {analysis.carbs_grams}g ÷ {analysis.insulin_recommendation.carb_ratio} = {analysis.insulin_recommendation.carb_bolus_units}u
+                                </p>
                               </div>
                               
                               {analysis.insulin_recommendation.correction_units > 0 && (
@@ -329,8 +344,20 @@ export default function FoodAnalysisPage() {
                                   <p className="font-medium">Correction</p>
                                   <p className="text-lg font-bold text-blue-900">{analysis.insulin_recommendation.correction_units}u</p>
                                   <p className="text-blue-600">For high glucose</p>
+                                  <p className="text-blue-500 text-xs mt-1">
+                                    {analysis.insulin_recommendation.current_glucose} - target = {analysis.insulin_recommendation.correction_units}u
+                                  </p>
                                 </div>
                               )}
+                              
+                              <div className="bg-white rounded p-2 border border-orange-200">
+                                <p className="font-medium">Current IOB</p>
+                                <p className="text-lg font-bold text-orange-900">{analysis.insulin_recommendation.current_iob}u</p>
+                                <p className="text-orange-600">Active insulin</p>
+                                <p className="text-orange-500 text-xs mt-1">
+                                  From Nightscout
+                                </p>
+                              </div>
                             </div>
 
                             {/* Settings Used */}
@@ -340,6 +367,44 @@ export default function FoodAnalysisPage() {
                                 <p><strong>Current Glucose:</strong> {analysis.insulin_recommendation.current_glucose} mg/dL</p>
                               )}
                             </div>
+
+                            {/* IOB Breakdown */}
+                            {analysis.insulin_recommendation.iob_breakdown && analysis.insulin_recommendation.iob_breakdown.length > 0 && (
+                              <div className="mt-3 bg-gray-50 rounded p-3 border border-gray-200">
+                                <p className="text-xs font-medium text-gray-700 mb-2">📊 IOB Breakdown:</p>
+                                <div className="space-y-1">
+                                  {analysis.insulin_recommendation.iob_breakdown.map((dose, index) => (
+                                    <div key={index} className="text-xs text-gray-600 flex justify-between">
+                                      <span>{dose.originalDose}u ({dose.timeSinceDose.toFixed(1)}h ago)</span>
+                                      <span className="font-medium">{dose.remainingIOB.toFixed(1)}u remaining</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Safety Warnings */}
+                            {analysis.insulin_recommendation.safety_warnings && analysis.insulin_recommendation.safety_warnings.length > 0 && (
+                              <div className="mt-3 space-y-2">
+                                {analysis.insulin_recommendation.safety_warnings.map((warning, index) => (
+                                  <div key={index} className="bg-yellow-100 border border-yellow-300 rounded p-2">
+                                    <div className="flex">
+                                      <svg className="h-4 w-4 text-yellow-400 mt-0.5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                      </svg>
+                                      <div className="flex-1">
+                                        <p className="text-xs text-yellow-800">{warning}</p>
+                                        {warning.includes('Nightscout') && (
+                                          <Link href="/diabetes-profile" className="text-xs text-blue-600 hover:text-blue-800 underline mt-1 inline-block">
+                                            🔧 Check Diabetes Profile Settings
+                                          </Link>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
 
                             {/* Warning */}
                             {analysis.insulin_recommendation.warning && (

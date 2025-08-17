@@ -21,11 +21,9 @@ export default async function RootLayout({
     <html lang="en" className="h-full">
       <body className={`${inter.className} min-h-screen flex flex-col`}>
         <AuthProvider>
-          <Navigation />
           <main className="flex-grow">
             {children}
           </main>
-          <Footer />
         </AuthProvider>
       </body>
     </html>

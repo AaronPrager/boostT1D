@@ -4,6 +4,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import crypto from 'crypto';
+import { calculateIOB, calculateSafeBolus, calculateSafeBolusWithNightscoutIOB, fetchRecentTreatments, fetchNightscoutIOB, Treatment } from '@/lib/insulinCalculations';
 
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY || '');
 
@@ -255,10 +256,24 @@ Please be as accurate as possible and consider typical serving sizes. Respond in
   "notes": "relevant notes about the estimation"
 }`;
 
+    // Ensure we have a valid MIME type
+    let mimeType = imageFile.type;
+    if (!mimeType || mimeType === 'application/octet-stream') {
+      // Default to JPEG if no valid MIME type
+      mimeType = 'image/jpeg';
+    }
+    
+    console.log('📸 Image details:', {
+      name: imageFile.name,
+      size: imageFile.size,
+      type: imageFile.type,
+      finalMimeType: mimeType
+    });
+
     const imagePart = {
       inlineData: {
         data: base64Image,
-        mimeType: imageFile.type
+        mimeType: mimeType
       }
     };
 
@@ -296,47 +311,185 @@ Please be as accurate as possible and consider typical serving sizes. Respond in
       throw new Error('Invalid response structure from Google AI');
     }
 
-    // Fetch user profile for insulin calculations (only for authenticated users)
+    // Fetch user profile and data for insulin calculations (only for authenticated users)
     let profile = null;
     let currentGlucose = null;
+    let nightscoutIOB = 0;
+    let recentTreatments: Treatment[] = [];
+    let nightscoutError: string | null = null;
     
     if (session?.user?.email) {
-      profile = await getUserProfile(session.user.email);
-      currentGlucose = await getCurrentGlucose(session.user.email);
+      const user = await prisma.user.findUnique({
+        where: { email: session.user.email },
+        include: { settings: true }
+      });
+      
+      if (user?.settings?.nightscoutUrl && user?.settings?.nightscoutApiToken) {
+        profile = await getUserProfile(session.user.email);
+        currentGlucose = await getCurrentGlucose(session.user.email);
+        
+        // Try to get IOB from Nightscout first
+        console.log('🔄 Starting IOB fetch process...');
+        console.log('📡 Nightscout URL:', user.settings.nightscoutUrl);
+        console.log('🔑 API Token length:', user.settings.nightscoutApiToken?.length || 0);
+        console.log('🔑 API Token (first 10 chars):', user.settings.nightscoutApiToken?.substring(0, 10) + '...');
+        console.log('🔑 API Secret length:', (user.settings as any)?.nightscoutApiSecret?.length || 0);
+        console.log('🔑 API Secret (first 10 chars):', (user.settings as any)?.nightscoutApiSecret?.substring(0, 10) + '...');
+        console.log('🔑 Full settings object keys:', Object.keys(user.settings));
+        
+        try {
+          console.log('🔑 Using raw API token for IOB fetch');
+          
+          // Test if token might be empty or whitespace
+          const token = user.settings.nightscoutApiToken?.trim();
+          if (!token) {
+            throw new Error('API token is empty or contains only whitespace');
+          }
+          
+          const iobResult = await fetchNightscoutIOB(
+            user.settings.nightscoutUrl,
+            token
+          );
+          
+          nightscoutIOB = iobResult.iob;
+          console.log('✅ Nightscout IOB fetch successful:', {
+            iob: nightscoutIOB,
+            source: iobResult.source
+          });
+        } catch (error) {
+          console.error('❌ Failed to fetch Nightscout IOB, falling back to manual calculation:', error);
+          console.error('❌ Error details:', {
+            message: error instanceof Error ? error.message : 'Unknown error',
+            stack: error instanceof Error ? error.stack : 'No stack trace',
+            name: error instanceof Error ? error.name : 'Unknown error type'
+          });
+          nightscoutError = error instanceof Error ? error.message : 'Unknown error';
+          
+          // Fallback: fetch recent treatments for manual IOB calculation
+          try {
+            console.log('🔄 Attempting fallback to manual IOB calculation...');
+            recentTreatments = await fetchRecentTreatments(
+              user.settings.nightscoutUrl,
+              user.settings.nightscoutApiToken,
+              6 // Look back 6 hours
+            );
+            console.log('📊 Fetched recent treatments for manual IOB:', recentTreatments.length, 'treatments');
+          } catch (fallbackError) {
+            console.error('❌ Failed to fetch recent treatments for IOB:', fallbackError);
+          }
+        }
+      }
     }
     
     let insulinRecommendation = null;
     
     if (session?.user?.email && profile && profile.carbratio && profile.carbratio.length > 0) {
       const currentCarbRatio = getCurrentCarbRatio(profile.carbratio);
-      const carbBolusUnits = analysis.carbs_grams / currentCarbRatio.value;
       
-      let correctionUnits = 0;
-      let correctionNote = "";
+      // Get insulin sensitivity and target glucose for correction calculation
+      let currentSensitivity = null;
+      let targetGlucose = null;
       
-      // Calculate correction bolus if we have glucose and sensitivity data
-      if (currentGlucose && profile.sens && profile.sens.length > 0 && profile.target_high && profile.target_high.length > 0) {
-        const currentSensitivity = getCurrentInsulinSensitivity(profile.sens);
-        const targetGlucose = profile.target_high[0].value; // Use first target high value
+      if (profile.sens && profile.sens.length > 0 && profile.target_high && profile.target_high.length > 0) {
+        currentSensitivity = getCurrentInsulinSensitivity(profile.sens);
+        targetGlucose = profile.target_high[0].value;
+      }
+      
+      // Use Nightscout IOB if available, otherwise fall back to manual calculation
+      let currentIOB = nightscoutIOB;
+      let iobResult = null;
+      let safetyWarnings: string[] = [];
+      
+      console.log('🧮 IOB decision logic:');
+      console.log('  - Nightscout IOB:', nightscoutIOB);
+      console.log('  - Recent treatments count:', recentTreatments.length);
+      
+      if (nightscoutIOB > 0) {
+        // Use Nightscout IOB
+        console.log('✅ Using Nightscout IOB:', nightscoutIOB);
+        safetyWarnings.push(`Using Nightscout IOB: ${nightscoutIOB.toFixed(1)}u`);
+      } else if (recentTreatments.length > 0) {
+        // Fallback to manual IOB calculation
+        console.log('🔄 Falling back to manual IOB calculation...');
+        iobResult = calculateIOB(recentTreatments);
+        currentIOB = iobResult.totalIOB;
+        safetyWarnings = iobResult.safetyWarnings;
+        console.log('✅ Using calculated IOB:', currentIOB);
+      } else {
+        console.log('⚠️ No IOB data available - using 0');
         
-        if (currentGlucose > targetGlucose) {
-          correctionUnits = (currentGlucose - targetGlucose) / currentSensitivity.value;
-          correctionNote = ` (includes ${correctionUnits.toFixed(1)}u correction for glucose ${currentGlucose} mg/dL)`;
+        // Add helpful guidance if Nightscout failed
+        if (nightscoutError) {
+          safetyWarnings.push(`⚠️ Nightscout IOB unavailable: ${nightscoutError}`);
+          safetyWarnings.push('💡 Please check your Nightscout settings in Diabetes Profile');
         }
       }
       
-      const totalUnits = carbBolusUnits + correctionUnits;
+      console.log('🎯 Final IOB for calculations:', currentIOB);
       
-      insulinRecommendation = {
-        carb_bolus_units: Math.round(carbBolusUnits * 10) / 10, // Round to 1 decimal
-        correction_units: Math.round(correctionUnits * 10) / 10,
-        total_units: Math.round(totalUnits * 10) / 10,
-        carb_ratio: currentCarbRatio.value,
-        carb_ratio_time: currentCarbRatio.time,
-        current_glucose: currentGlucose,
-        calculation_note: `${analysis.carbs_grams}g ÷ ${currentCarbRatio.value} = ${carbBolusUnits.toFixed(1)}u${correctionNote}`,
-        warning: totalUnits > 10 ? "Large bolus calculated - please double-check carb estimate" : null
-      };
+      // Use the appropriate safe bolus calculation
+      if (currentGlucose && currentSensitivity && targetGlucose) {
+        let safeBolusResult;
+        
+        if (nightscoutIOB > 0) {
+          // Use Nightscout IOB calculation
+          safeBolusResult = calculateSafeBolusWithNightscoutIOB(
+            analysis.carbs_grams,
+            currentGlucose,
+            targetGlucose,
+            currentCarbRatio.value,
+            currentSensitivity.value,
+            currentIOB
+          );
+        } else {
+          // Use fallback calculation
+          safeBolusResult = calculateSafeBolus(
+            analysis.carbs_grams,
+            currentGlucose,
+            targetGlucose,
+            currentCarbRatio.value,
+            currentSensitivity.value,
+            currentIOB
+          );
+        }
+        
+        insulinRecommendation = {
+          carb_bolus_units: safeBolusResult.carbBolusUnits,
+          correction_units: safeBolusResult.correctionUnits,
+          total_units: safeBolusResult.totalInsulinNeeded,
+          safe_bolus: safeBolusResult.safeBolus,
+          current_iob: safeBolusResult.currentIOB,
+          iob_reduction: safeBolusResult.iobReduction,
+          carb_ratio: safeBolusResult.settings.carbRatio,
+          carb_ratio_time: safeBolusResult.settings.carbRatioTime,
+          current_glucose: currentGlucose,
+          calculation_note: safeBolusResult.calculationNote,
+          warning: safeBolusResult.safeBolus > 10 ? "Large bolus calculated - please double-check carb estimate and IOB" : null,
+          safety_warnings: [...safeBolusResult.safetyWarnings, ...safetyWarnings],
+          iob_breakdown: iobResult?.breakdown || []
+        };
+      } else {
+        // Fallback calculation without correction (carb bolus only)
+        const carbBolusUnits = analysis.carbs_grams / currentCarbRatio.value;
+        const totalUnits = carbBolusUnits;
+        const safeBolus = Math.max(0, totalUnits - currentIOB);
+        
+        insulinRecommendation = {
+          carb_bolus_units: Math.round(carbBolusUnits * 10) / 10,
+          correction_units: 0,
+          total_units: Math.round(totalUnits * 10) / 10,
+          safe_bolus: Math.round(safeBolus * 10) / 10,
+          current_iob: currentIOB,
+          iob_reduction: Math.min(currentIOB, totalUnits),
+          carb_ratio: currentCarbRatio.value,
+          carb_ratio_time: currentCarbRatio.time,
+          current_glucose: currentGlucose,
+          calculation_note: `${analysis.carbs_grams}g ÷ ${currentCarbRatio.value} = ${carbBolusUnits.toFixed(1)}u - ${currentIOB.toFixed(1)}u IOB = ${safeBolus.toFixed(1)}u`,
+          warning: safeBolus > 10 ? "Large bolus calculated - please double-check carb estimate" : null,
+          safety_warnings: safetyWarnings,
+          iob_breakdown: iobResult?.breakdown || []
+        };
+      }
     }
 
     // Add insulin recommendation to analysis (only for authenticated users)

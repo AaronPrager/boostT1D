@@ -132,6 +132,7 @@ export default function DiabetesProfilePage() {
   };
 
   const refreshProfileFromNightscout = async () => {
+    console.log('🔄 Starting Nightscout profile refresh...');
     setLoading(true);
     setError(null);
     setLoadingMessage('Fetching profile from Nightscout...');
@@ -168,15 +169,35 @@ export default function DiabetesProfilePage() {
         }
       } else {
         const errorData = await nsResponse.json().catch(() => null);
+        console.log('❌ Nightscout profile fetch failed:', {
+          status: nsResponse.status,
+          statusText: nsResponse.statusText,
+          errorData
+        });
+        
         if (nsResponse.status === 400) {
           // Do not set an error if Nightscout is not configured
+          console.log('ℹ️ Nightscout not configured (400)');
+          setLoadingMessage('');
+        } else if (nsResponse.status === 401) {
+          // Handle authentication errors with clear guidance
+          const errorMessage = errorData?.error || 'Authentication failed';
+          console.log('🔐 Authentication error (401):', errorMessage);
+          setError('Nightscout URL or API token may be incorrect.');
+        } else if (nsResponse.status === 404) {
+          console.log('📄 Profile not found (404)');
+          setError('Profile not found in Nightscout.');
         } else {
-          throw new Error(errorData?.error || 'Failed to fetch profile from Nightscout');
+          const errorMessage = errorData?.error || `HTTP ${nsResponse.status}: ${nsResponse.statusText}`;
+          console.log('🚫 Other error:', errorMessage);
+          setError('Failed to fetch profile from Nightscout.');
         }
       }
     } catch (err) {
-      console.error('Error refreshing profile:', err);
-      setError(err instanceof Error ? err.message : 'Failed to refresh profile from Nightscout');
+      console.error('❌ Error refreshing profile:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to refresh profile from Nightscout';
+      console.log('🚫 Setting error message:', errorMessage);
+      setError('Failed to connect to Nightscout. Check your URL and API token.');
       setLoadingMessage('');
     } finally {
       setLoading(false);
@@ -188,12 +209,15 @@ export default function DiabetesProfilePage() {
       ...prev,
       [name]: name === 'lowGlucose' || name === 'highGlucose' ? Number(value) : value,
     }));
+    // Clear errors when settings change
+    setError(null);
   };
 
   const handleSettingsSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSettingsError('');
     setSettingsSuccess('');
+    setError(null); // Clear any Nightscout error messages
     setSettingsLoading(true);
 
     try {
@@ -245,6 +269,7 @@ export default function DiabetesProfilePage() {
         
         if (response.ok) {
           setSettings(updatedSettings);
+          setError(null); // Clear any Nightscout error messages
           setSettingsSuccess('Settings updated - Nightscout disabled');
           setTimeout(() => setSettingsSuccess(''), 3000);
         }
@@ -348,7 +373,10 @@ export default function DiabetesProfilePage() {
             </p>
           )}
           <button
-            onClick={refreshProfileFromNightscout}
+            onClick={() => {
+              setError(null);
+              refreshProfileFromNightscout();
+            }}
             disabled={loading}
             className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
           >
@@ -415,7 +443,7 @@ export default function DiabetesProfilePage() {
                     Nightscout API Token
                   </label>
                   <input
-                    type="password"
+                    type="text"
                     id="nightscoutApiToken"
                     name="nightscoutApiToken"
                     value={settings.nightscoutApiToken ?? ''}
@@ -481,6 +509,24 @@ export default function DiabetesProfilePage() {
                 <div className="flex">
                   <div className="ml-3">
                     <h3 className="text-sm font-medium text-green-800">{settingsSuccess}</h3>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {error && (
+              <div className="rounded-md bg-red-50 p-4">
+                <div className="flex">
+                  <div className="flex-shrink-0">
+                    <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div className="ml-3">
+                    <h3 className="text-sm font-medium text-red-800">Nightscout Profile Error</h3>
+                    <div className="mt-2 text-sm text-red-700 whitespace-pre-line">
+                      {error}
+                    </div>
                   </div>
                 </div>
               </div>

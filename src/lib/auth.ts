@@ -25,40 +25,70 @@ export const authOptions: NextAuthOptions = {
         password: { label: 'Password', type: 'password' }
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
-          return null;
-        }
-
-        const user = await prisma.user.findUnique({
-          where: {
-            email: credentials.email
-          }
+        console.log('🔐 authorize() called with credentials:', { 
+          email: credentials?.email, 
+          hasPassword: !!credentials?.password 
         });
 
-        if (!user || !user.password) {
-          return null;
+        if (!credentials?.email || !credentials?.password) {
+          console.log('❌ Missing credentials:', { 
+            hasEmail: !!credentials?.email, 
+            hasPassword: !!credentials?.password 
+          });
+          throw new Error('Email and password are required');
         }
 
-        const isPasswordValid = await bcrypt.compare(
-          credentials.password,
-          user.password
-        );
+        try {
+          console.log('🔍 Looking up user in database...');
+          const user = await prisma.user.findUnique({
+            where: {
+              email: credentials.email
+            }
+          });
 
-        if (!isPasswordValid) {
-          return null;
+          if (!user) {
+            console.log('❌ User not found for email:', credentials.email);
+            throw new Error('User not found');
+          }
+
+          if (!user.password) {
+            console.log('❌ User found but has no password:', { userId: user.id, email: user.email });
+            throw new Error('Account not confirmed');
+          }
+
+          // Check if email is confirmed
+          if (!user.emailConfirmed) {
+            console.log('❌ User email not confirmed:', { userId: user.id, email: user.email });
+            throw new Error('Account not confirmed');
+          }
+
+          console.log('🔑 User found, comparing passwords...');
+          const isPasswordValid = await bcrypt.compare(
+            credentials.password,
+            user.password
+          );
+
+          if (!isPasswordValid) {
+            console.log('❌ Password validation failed for user:', { userId: user.id, email: user.email });
+            throw new Error('Invalid password');
+          }
+
+          console.log('✅ Authentication successful for user:', { userId: user.id, email: user.email, name: user.name });
+          return {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            image: user.image,
+          };
+        } catch (error) {
+          console.error('💥 Error during authentication:', error);
+          throw error; // Re-throw the error so NextAuth can handle it
         }
-
-        return {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          image: user.image,
-        };
       }
     })
   ],
   pages: {
-    signIn: '/auth/signin',
+    signIn: '/login',
     signOut: '/',
   },
   callbacks: {
@@ -79,7 +109,7 @@ export const authOptions: NextAuthOptions = {
       if (url.startsWith("/")) return `${baseUrl}${url}`
       // Allows callback URLs on the same origin
       else if (new URL(url).origin === baseUrl) return url
-      // Default redirect to home page instead of dashboard
+      // Default redirect to home page
       return `${baseUrl}/`
     },
   },

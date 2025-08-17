@@ -390,11 +390,9 @@ export default function PersonalProfile() {
       });
 
       if (response.ok) {
-        // Account deleted successfully - redirect to login
-        alert('Account deleted successfully. You will be redirected to the login page.');
-        
-        // Sign out and redirect to login
-        await signOut({ callbackUrl: '/login' });
+        // Account deleted successfully - redirect to home page
+        // Sign out and redirect to home page
+        await signOut({ callbackUrl: '/' });
       } else {
         alert('Failed to delete account');
       }

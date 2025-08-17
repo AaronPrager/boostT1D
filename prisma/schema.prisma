@@ -34,25 +34,25 @@ model Session {
 }
 
 model User {
-  id             String           @id @default(cuid())
+  id             String            @id @default(cuid())
   name           String?
-  email          String?          @unique
+  email          String?           @unique
   emailVerified  DateTime?
   password       String?
   image          String?
   country        String?
   dateOfBirth    DateTime?
-  emailConfirmed Boolean          @default(false)
+  emailConfirmed Boolean           @default(false)
   state          String?
   accounts       Account[]
   BasalProfile   BasalProfile?
+  buddyRequests  BuddyConnection[] @relation("BuddyConnectionRequester")
+  buddyResponses BuddyConnection[] @relation("BuddyConnectionTarget")
   GlucoseReading GlucoseReading[]
   profile        Profile?
   sessions       Session[]
   settings       Settings?
   treatments     Treatment[]
-  buddyRequests  BuddyConnection[] @relation("BuddyConnectionRequester")
-  buddyResponses BuddyConnection[] @relation("BuddyConnectionTarget")
 }
 
 model Profile {
@@ -64,9 +64,9 @@ model Profile {
   phoneNumber        String?
   occupation         String?
   userId             String    @unique
+  data               Json?
   diagnosisAge       Int?
   favoriteActivities String?
-  data               Json?
   Photo              Photo[]
   user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
@@ -77,28 +77,28 @@ model Treatment {
   type         String
   glucoseValue Float?
   carbsGrams   Float?
-  carbs        Float?   // Alias for carbsGrams for compatibility
   insulinUnits Float?
-  insulin      Float?   // Alias for insulinUnits for compatibility
   insulinType  String?
   notes        String?
   userId       String
+  carbs        Float?
+  insulin      Float?
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, timestamp])
 }
 
 model Settings {
-  id                 String   @id @default(cuid())
-  userId             String   @unique
-  createdAt          DateTime @default(now())
-  highGlucose        Int      @default(180)
-  lowGlucose         Int      @default(70)
-  nightscoutUrl      String?
-  updatedAt          DateTime @updatedAt
-  nightscoutApiToken String?
+  id                  String   @id @default(cuid())
+  userId              String   @unique
+  createdAt           DateTime @default(now())
+  highGlucose         Int      @default(180)
+  lowGlucose          Int      @default(70)
+  nightscoutUrl       String?
+  updatedAt           DateTime @updatedAt
+  nightscoutApiToken  String?
   nightscoutApiSecret String?
-  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model BasalProfile {
@@ -187,17 +187,28 @@ model BuddyConnection {
   id          String   @id @default(cuid())
   requesterId String
   targetId    String
-  status      String   @default("pending") // pending, approved, rejected
+  status      String   @default("pending")
   message     String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  
   requester   User     @relation("BuddyConnectionRequester", fields: [requesterId], references: [id], onDelete: Cascade)
   target      User     @relation("BuddyConnectionTarget", fields: [targetId], references: [id], onDelete: Cascade)
 
+  @@unique([requesterId, targetId])
   @@index([requesterId])
   @@index([targetId])
-  @@unique([requesterId, targetId])
+}
+
+model VerificationToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  email     String
+  type      String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([email])
+  @@index([token])
 }
 
 
