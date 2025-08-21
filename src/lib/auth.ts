@@ -106,11 +106,11 @@ export const authOptions: NextAuthOptions = {
     },
     async redirect({ url, baseUrl }) {
       // Allows relative callback URLs
-      if (url.startsWith("/")) return `${baseUrl}${url}`
+      if (url.startsWith("/")) return `http://192.168.1.8:3001${url}`
       // Allows callback URLs on the same origin
       else if (new URL(url).origin === baseUrl) return url
       // Default redirect to home page
-      return `${baseUrl}/`
+      return `http://192.168.1.8:3001/`
     },
   },
   session: {

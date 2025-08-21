@@ -126,6 +126,8 @@ export default function DashboardPage() {
     }
   }, [session, refreshTrigger]);
 
+
+
   const fetchSettings = async () => {
     try {
       const res = await fetch('/api/settings');
@@ -215,18 +217,18 @@ export default function DashboardPage() {
         else if (recentAvg > olderAvg + 10) trend = 'declining';
       }
 
-      setStats({
-        currentGlucose: currentReading?.sgv || null,
-        currentDirection: currentReading?.direction || null,
-        timeInRange: Math.round(timeInRange),
-        timeAboveRange: Math.round(timeAboveRange),
-        timeBelowRange: Math.round(timeBelowRange),
-        averageGlucose: Math.round(averageGlucose),
-        glucoseVariability: Math.round(glucoseVariability),
-        totalReadings,
-        lastUpdated: currentReading?.date || null,
-        trend
-      });
+              setStats({
+          currentGlucose: currentReading?.sgv || null,
+          currentDirection: currentReading?.direction || null,
+          timeInRange: Math.round(timeInRange),
+          timeAboveRange: Math.round(timeAboveRange),
+          timeBelowRange: Math.round(timeBelowRange),
+          averageGlucose: Math.round(averageGlucose),
+          glucoseVariability: Math.round(glucoseVariability),
+          totalReadings,
+          lastUpdated: currentReading?.date || null,
+          trend
+        });
 
       setRecentReadings(sortedReadings.slice(0, 6));
 
@@ -246,6 +248,8 @@ export default function DashboardPage() {
   const handleRefresh = async () => {
     await fetchDashboardData(startDate, endDate, true);
   };
+
+
 
   const getGlucoseStatus = (glucose: number) => {
     if (glucose < settings.lowGlucose) return { color: 'bg-red-100 text-red-800', status: 'Low' };
@@ -502,7 +506,7 @@ export default function DashboardPage() {
         )}
 
         {/* Enhanced Stats Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-8">
           <div className="bg-blue-50 p-4 rounded-lg text-center">
             <div className="text-2xl font-bold text-blue-600">
               {stats.timeInRange}%
@@ -527,6 +531,10 @@ export default function DashboardPage() {
             </div>
             <div className="text-sm text-gray-600">Avg Glucose</div>
           </div>
+        </div>
+
+        {/* A1C and Variability Row */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
           <div className="bg-purple-50 p-4 rounded-lg text-center">
             <div className="text-2xl font-bold text-purple-600">
               {((stats.averageGlucose + 46.7) / 28.7).toFixed(1)}%

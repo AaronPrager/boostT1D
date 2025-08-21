@@ -4,7 +4,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import crypto from 'crypto';
-import { calculateIOB, calculateSafeBolus, calculateSafeBolusWithNightscoutIOB, fetchRecentTreatments, fetchNightscoutIOB, Treatment } from '@/lib/insulinCalculations';
+import { calculateIOB, calculateCOB, calculateSafeBolus, calculateSafeBolusWithNightscoutIOB, fetchRecentTreatments, fetchNightscoutIOB, fetchNightscoutCOB, Treatment } from '@/lib/insulinCalculations';
 
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY || '');
 
@@ -315,6 +315,7 @@ Please be as accurate as possible and consider typical serving sizes. Respond in
     let profile = null;
     let currentGlucose = null;
     let nightscoutIOB = 0;
+    let nightscoutCOB = 0;
     let recentTreatments: Treatment[] = [];
     let nightscoutError: string | null = null;
     
@@ -356,6 +357,22 @@ Please be as accurate as possible and consider typical serving sizes. Respond in
             iob: nightscoutIOB,
             source: iobResult.source
           });
+
+          // Also fetch COB from Nightscout
+          try {
+            const cobResult = await fetchNightscoutCOB(
+              user.settings.nightscoutUrl,
+              token
+            );
+            
+            nightscoutCOB = cobResult.cob;
+            console.log('✅ Nightscout COB fetch successful:', {
+              cob: nightscoutCOB,
+              source: cobResult.source
+            });
+          } catch (cobError) {
+            console.log('⚠️ Failed to fetch Nightscout COB, will use manual calculation:', cobError);
+          }
         } catch (error) {
           console.error('❌ Failed to fetch Nightscout IOB, falling back to manual calculation:', error);
           console.error('❌ Error details:', {
@@ -365,17 +382,17 @@ Please be as accurate as possible and consider typical serving sizes. Respond in
           });
           nightscoutError = error instanceof Error ? error.message : 'Unknown error';
           
-          // Fallback: fetch recent treatments for manual IOB calculation
+          // Fallback: fetch recent treatments for manual IOB and COB calculation
           try {
-            console.log('🔄 Attempting fallback to manual IOB calculation...');
+            console.log('🔄 Attempting fallback to manual IOB and COB calculation...');
             recentTreatments = await fetchRecentTreatments(
               user.settings.nightscoutUrl,
               user.settings.nightscoutApiToken,
               6 // Look back 6 hours
             );
-            console.log('📊 Fetched recent treatments for manual IOB:', recentTreatments.length, 'treatments');
+            console.log('📊 Fetched recent treatments for manual IOB/COB:', recentTreatments.length, 'treatments');
           } catch (fallbackError) {
-            console.error('❌ Failed to fetch recent treatments for IOB:', fallbackError);
+            console.error('❌ Failed to fetch recent treatments for IOB/COB:', fallbackError);
           }
         }
       }
@@ -407,7 +424,6 @@ Please be as accurate as possible and consider typical serving sizes. Respond in
       if (nightscoutIOB > 0) {
         // Use Nightscout IOB
         console.log('✅ Using Nightscout IOB:', nightscoutIOB);
-        safetyWarnings.push(`Using Nightscout IOB: ${nightscoutIOB.toFixed(1)}u`);
       } else if (recentTreatments.length > 0) {
         // Fallback to manual IOB calculation
         console.log('🔄 Falling back to manual IOB calculation...');
@@ -427,6 +443,29 @@ Please be as accurate as possible and consider typical serving sizes. Respond in
       
       console.log('🎯 Final IOB for calculations:', currentIOB);
       
+      // Calculate COB (Carbs on Board)
+      let currentCOB = nightscoutCOB;
+      let cobResult = null;
+      
+      console.log('🧮 COB decision logic:');
+      console.log('  - Nightscout COB:', nightscoutCOB);
+      console.log('  - Recent treatments count:', recentTreatments.length);
+      
+      if (nightscoutCOB > 0) {
+        // Use Nightscout COB
+        console.log('✅ Using Nightscout COB:', nightscoutCOB);
+      } else if (recentTreatments.length > 0) {
+        // Fallback to manual COB calculation
+        console.log('🔄 Falling back to manual COB calculation...');
+        cobResult = calculateCOB(recentTreatments);
+        currentCOB = cobResult.totalCOB;
+        console.log('✅ Using calculated COB:', currentCOB);
+      } else {
+        console.log('⚠️ No COB data available - using 0');
+      }
+      
+      console.log('🎯 Final COB for calculations:', currentCOB);
+      
       // Use the appropriate safe bolus calculation
       if (currentGlucose && currentSensitivity && targetGlucose) {
         let safeBolusResult;
@@ -439,7 +478,8 @@ Please be as accurate as possible and consider typical serving sizes. Respond in
             targetGlucose,
             currentCarbRatio.value,
             currentSensitivity.value,
-            currentIOB
+            currentIOB,
+            currentCOB
           );
         } else {
           // Use fallback calculation
@@ -449,7 +489,8 @@ Please be as accurate as possible and consider typical serving sizes. Respond in
             targetGlucose,
             currentCarbRatio.value,
             currentSensitivity.value,
-            currentIOB
+            currentIOB,
+            currentCOB
           );
         }
         
@@ -459,14 +500,18 @@ Please be as accurate as possible and consider typical serving sizes. Respond in
           total_units: safeBolusResult.totalInsulinNeeded,
           safe_bolus: safeBolusResult.safeBolus,
           current_iob: safeBolusResult.currentIOB,
+          current_cob: currentCOB,
           iob_reduction: safeBolusResult.iobReduction,
           carb_ratio: safeBolusResult.settings.carbRatio,
           carb_ratio_time: safeBolusResult.settings.carbRatioTime,
           current_glucose: currentGlucose,
+          insulin_sensitivity: currentSensitivity.value,
+          target_glucose: targetGlucose,
           calculation_note: safeBolusResult.calculationNote,
           warning: safeBolusResult.safeBolus > 10 ? "Large bolus calculated - please double-check carb estimate and IOB" : null,
           safety_warnings: [...safeBolusResult.safetyWarnings, ...safetyWarnings],
-          iob_breakdown: iobResult?.breakdown || []
+          iob_breakdown: iobResult?.breakdown || [],
+          cob_breakdown: cobResult?.breakdown || []
         };
       } else {
         // Fallback calculation without correction (carb bolus only)
@@ -480,11 +525,14 @@ Please be as accurate as possible and consider typical serving sizes. Respond in
           total_units: Math.round(totalUnits * 10) / 10,
           safe_bolus: Math.round(safeBolus * 10) / 10,
           current_iob: currentIOB,
+          current_cob: currentCOB,
           iob_reduction: Math.min(currentIOB, totalUnits),
           carb_ratio: currentCarbRatio.value,
           carb_ratio_time: currentCarbRatio.time,
           current_glucose: currentGlucose,
-          calculation_note: `${analysis.carbs_grams}g ÷ ${currentCarbRatio.value} = ${carbBolusUnits.toFixed(1)}u - ${currentIOB.toFixed(1)}u IOB = ${safeBolus.toFixed(1)}u`,
+          insulin_sensitivity: currentSensitivity?.value,
+          target_glucose: targetGlucose,
+          calculation_note: `🍎 CARB CALCULATION:\n   ${analysis.carbs_grams}g ÷ ${currentCarbRatio.value} = ${carbBolusUnits.toFixed(1)}u\n\n💉 INSULIN ON BOARD (IOB):\n   Total IOB: ${currentIOB.toFixed(1)}u\n\n✅ SAFE BOLUS CALCULATION:\n   ${carbBolusUnits.toFixed(1)}u needed - ${currentIOB.toFixed(1)}u IOB = ${safeBolus.toFixed(1)}u`,
           warning: safeBolus > 10 ? "Large bolus calculated - please double-check carb estimate" : null,
           safety_warnings: safetyWarnings,
           iob_breakdown: iobResult?.breakdown || []

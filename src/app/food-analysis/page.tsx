@@ -11,10 +11,13 @@ type InsulinRecommendation = {
   total_units: number;
   safe_bolus: number;
   current_iob: number;
+  current_cob: number;
   iob_reduction: number;
   carb_ratio: number;
   carb_ratio_time: string;
   current_glucose?: number;
+  insulin_sensitivity?: number;
+  target_glucose?: number;
   calculation_note: string;
   warning?: string;
   safety_warnings: string[];
@@ -24,6 +27,14 @@ type InsulinRecommendation = {
     remainingIOB: number;
     timeSinceDose: number;
     percentageRemaining: number;
+  }>;
+  cob_breakdown?: Array<{
+    treatmentId: string;
+    originalCarbs: number;
+    remainingCOB: number;
+    timeSinceDose: number;
+    percentageRemaining: number;
+    needsInsulin: boolean;
   }>;
 };
 
@@ -42,6 +53,7 @@ export default function FoodAnalysisPage() {
   const [analysis, setAnalysis] = useState<FoodAnalysis | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showCalculationPopup, setShowCalculationPopup] = useState(false);
 
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -322,21 +334,29 @@ export default function FoodAnalysisPage() {
                             
                             {/* Main Bolus Recommendation */}
                             <div className="bg-blue-100 rounded-lg p-3 border">
-                              <p className="text-lg font-bold text-blue-900">
-                                Safe Bolus: <span className="text-xl">{analysis.insulin_recommendation.safe_bolus}u</span>
-                              </p>
-                              <p className="text-xs text-blue-600 mt-1">{analysis.insulin_recommendation.calculation_note}</p>
+                              <div className="flex items-center">
+                                <p className="text-lg font-bold text-blue-900">
+                                  Safe Bolus: <span className="text-xl">{analysis.insulin_recommendation.safe_bolus}u</span>
+                                </p>
+                                <button
+                                  onClick={() => setShowCalculationPopup(true)}
+                                  className="bg-blue-100 hover:bg-blue-200 text-blue-700 hover:text-blue-800 transition-all duration-200 px-3 py-1.5 ml-3 rounded-lg border border-blue-300 hover:border-blue-400 shadow-sm hover:shadow-md flex items-center space-x-1 text-sm font-medium transform hover:scale-105 active:scale-95"
+                                  title="View detailed calculation"
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                  </svg>
+                                  <span>Details</span>
+                                </button>
+                              </div>
                             </div>
 
                             {/* Breakdown */}
-                            <div className="grid grid-cols-3 gap-2 text-xs">
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
                               <div className="bg-white rounded p-2 border border-blue-200">
                                 <p className="font-medium">Carb Bolus</p>
                                 <p className="text-lg font-bold text-blue-900">{analysis.insulin_recommendation.carb_bolus_units}u</p>
                                 <p className="text-blue-600">For {analysis.carbs_grams}g carbs</p>
-                                <p className="text-blue-500 text-xs mt-1">
-                                  {analysis.carbs_grams}g ÷ {analysis.insulin_recommendation.carb_ratio} = {analysis.insulin_recommendation.carb_bolus_units}u
-                                </p>
                               </div>
                               
                               {analysis.insulin_recommendation.correction_units > 0 && (
@@ -344,9 +364,6 @@ export default function FoodAnalysisPage() {
                                   <p className="font-medium">Correction</p>
                                   <p className="text-lg font-bold text-blue-900">{analysis.insulin_recommendation.correction_units}u</p>
                                   <p className="text-blue-600">For high glucose</p>
-                                  <p className="text-blue-500 text-xs mt-1">
-                                    {analysis.insulin_recommendation.current_glucose} - target = {analysis.insulin_recommendation.correction_units}u
-                                  </p>
                                 </div>
                               )}
                               
@@ -354,15 +371,24 @@ export default function FoodAnalysisPage() {
                                 <p className="font-medium">Current IOB</p>
                                 <p className="text-lg font-bold text-orange-900">{analysis.insulin_recommendation.current_iob}u</p>
                                 <p className="text-orange-600">Active insulin</p>
-                                <p className="text-orange-500 text-xs mt-1">
-                                  From Nightscout
-                                </p>
+                              </div>
+                              
+                              <div className="bg-white rounded p-2 border border-green-200">
+                                <p className="font-medium">Current COB</p>
+                                <p className="text-lg font-bold text-green-900">{analysis.insulin_recommendation.current_cob}g</p>
+                                <p className="text-green-600">Active carbs</p>
                               </div>
                             </div>
 
                             {/* Settings Used */}
                             <div className="text-xs text-blue-600 border-t border-blue-200 pt-2">
                               <p><strong>Carb Ratio:</strong> 1:{analysis.insulin_recommendation.carb_ratio} (active at {analysis.insulin_recommendation.carb_ratio_time})</p>
+                              {analysis.insulin_recommendation.insulin_sensitivity && (
+                                <p><strong>Correction Factor:</strong> 1:{analysis.insulin_recommendation.insulin_sensitivity} mg/dL</p>
+                              )}
+                              {analysis.insulin_recommendation.target_glucose && (
+                                <p><strong>Target Glucose:</strong> {analysis.insulin_recommendation.target_glucose} mg/dL</p>
+                              )}
                               {analysis.insulin_recommendation.current_glucose && (
                                 <p><strong>Current Glucose:</strong> {analysis.insulin_recommendation.current_glucose} mg/dL</p>
                               )}
@@ -377,6 +403,21 @@ export default function FoodAnalysisPage() {
                                     <div key={index} className="text-xs text-gray-600 flex justify-between">
                                       <span>{dose.originalDose}u ({dose.timeSinceDose.toFixed(1)}h ago)</span>
                                       <span className="font-medium">{dose.remainingIOB.toFixed(1)}u remaining</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* COB Breakdown */}
+                            {analysis.insulin_recommendation.cob_breakdown && analysis.insulin_recommendation.cob_breakdown.length > 0 && (
+                              <div className="mt-3 bg-green-50 rounded p-3 border border-green-200">
+                                <p className="text-xs font-medium text-green-700 mb-2">🍎 COB Breakdown:</p>
+                                <div className="space-y-1">
+                                  {analysis.insulin_recommendation.cob_breakdown.map((dose, index) => (
+                                    <div key={index} className="text-xs text-green-600 flex justify-between">
+                                      <span>{dose.originalCarbs}g ({dose.timeSinceDose.toFixed(1)}h ago)</span>
+                                      <span className="font-medium">{dose.remainingCOB.toFixed(1)}g remaining</span>
                                     </div>
                                   ))}
                                 </div>
@@ -474,6 +515,84 @@ export default function FoodAnalysisPage() {
           </div>
         </div>
       </div>
+
+      {/* Calculation Details Popup */}
+      {showCalculationPopup && analysis?.insulin_recommendation && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <h2 className="text-xl font-bold text-gray-900">Detailed Insulin Calculation</h2>
+              <button
+                onClick={() => setShowCalculationPopup(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            <div className="p-6">
+              <div className="bg-blue-50 p-4 rounded-lg border border-blue-200 mb-6">
+                <h3 className="text-lg font-semibold text-blue-900 mb-3">Final Recommendation</h3>
+                <div className="text-center">
+                  <p className="text-3xl font-bold text-blue-600">
+                    {analysis.insulin_recommendation.safe_bolus}u
+                  </p>
+                  <p className="text-blue-700">Safe Bolus</p>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h4 className="font-semibold text-gray-900 mb-2">Calculation Breakdown</h4>
+                  <div className="text-sm text-gray-700 whitespace-pre-line font-mono">
+                    {analysis.insulin_recommendation.calculation_note}
+                  </div>
+                </div>
+
+                {analysis.insulin_recommendation.safety_warnings && analysis.insulin_recommendation.safety_warnings.length > 0 && (
+                  <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+                    <h4 className="font-semibold text-yellow-900 mb-2">⚠️ Safety Warnings</h4>
+                    <ul className="space-y-1">
+                      {analysis.insulin_recommendation.safety_warnings.map((warning, index) => (
+                        <li key={index} className="text-sm text-yellow-800">• {warning}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h4 className="font-semibold text-gray-900 mb-2">Settings Used</h4>
+                  <div className="text-sm text-gray-700 space-y-1">
+                    <p><strong>Carb Ratio:</strong> 1:{analysis.insulin_recommendation.carb_ratio} (active at {analysis.insulin_recommendation.carb_ratio_time})</p>
+                    {analysis.insulin_recommendation.insulin_sensitivity && (
+                      <p><strong>Correction Factor:</strong> 1:{analysis.insulin_recommendation.insulin_sensitivity} mg/dL</p>
+                    )}
+                    {analysis.insulin_recommendation.target_glucose && (
+                      <p><strong>Target Glucose:</strong> {analysis.insulin_recommendation.target_glucose} mg/dL</p>
+                    )}
+                    {analysis.insulin_recommendation.current_glucose && (
+                      <p><strong>Current Glucose:</strong> {analysis.insulin_recommendation.current_glucose} mg/dL</p>
+                    )}
+                    <p><strong>Current IOB:</strong> {analysis.insulin_recommendation.current_iob}u</p>
+                    <p><strong>Current COB:</strong> {analysis.insulin_recommendation.current_cob}g</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end p-6 border-t border-gray-200">
+              <button
+                onClick={() => setShowCalculationPopup(false)}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

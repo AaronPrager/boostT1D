@@ -17,13 +17,13 @@ export default function Navigation() {
   const handleSignOut = async () => {
     try {
       await signOut({ 
-        callbackUrl: '/',
+        callbackUrl: 'http://192.168.1.8:3001/',
         redirect: true 
       });
     } catch (error) {
       console.error('Sign out error:', error);
       // Fallback: manually redirect to home page
-      router.push('/');
+      router.push('http://192.168.1.8:3001/');
     }
   };
 
@@ -314,6 +314,7 @@ export default function Navigation() {
                     >
                       Treatments
                     </Link>
+                    
                     <hr className="my-2 border-gray-200" />
                     <Link 
                       href="/analysis" 

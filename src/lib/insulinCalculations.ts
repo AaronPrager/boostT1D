@@ -87,6 +87,19 @@ export interface IOBResult {
   safetyWarnings: string[];
 }
 
+export interface COBResult {
+  totalCOB: number;
+  breakdown: Array<{
+    treatmentId: string;
+    originalCarbs: number;
+    remainingCOB: number;
+    timeSinceDose: number; // in hours
+    percentageRemaining: number;
+    needsInsulin: boolean;
+  }>;
+  safetyWarnings: string[];
+}
+
 export interface BolusRecommendation {
   carbBolusUnits: number;
   correctionUnits: number;
@@ -208,10 +221,10 @@ export async function fetchNightscoutIOB(
     }
 
     const status: NightscoutStatus = await response.json();
-    console.log('📊 Raw Nightscout status response keys:', Object.keys(status));
+    console.log('Raw Nightscout status response keys:', Object.keys(status));
     
     // Log specific IOB-related fields for debugging
-    console.log('🔍 Checking IOB fields:');
+    console.log('Checking IOB fields:');
     console.log('  - status.iob:', status.iob);
     console.log('  - status.activity:', status.activity);
     console.log('  - status.openaps?.suggested?.iob:', status.openaps?.suggested?.iob);
@@ -246,7 +259,41 @@ export async function fetchNightscoutIOB(
       source = 'status.activity';
       console.log('✅ Found IOB in status.activity:', iob);
     } else {
-      console.log('❌ No IOB found in any expected location');
+      console.log('❌ No IOB found in status, trying devicestatus endpoint...');
+      
+      // Try to fetch from devicestatus endpoint as fallback
+      try {
+        const devicestatusUrl = `${baseUrl}/api/v1/devicestatus.json?count=1`;
+        console.log('🔍 Trying devicestatus endpoint:', devicestatusUrl);
+        
+        const devicestatusResponse = await fetch(devicestatusUrl, { headers });
+        if (devicestatusResponse.ok) {
+          const devicestatusData = await devicestatusResponse.json();
+          
+          if (devicestatusData.length > 0) {
+            const latestEntry = devicestatusData[0];
+            
+            // Check for IOB in devicestatus
+            if (latestEntry.openaps?.iob?.iob !== undefined && latestEntry.openaps.iob.iob !== null) {
+              iob = latestEntry.openaps.iob.iob;
+              source = 'devicestatus.openaps.iob.iob';
+              console.log('✅ Found IOB in devicestatus.openaps.iob.iob:', iob);
+            } else if (latestEntry.openaps?.iob?.bolusiob !== undefined && latestEntry.openaps.iob.bolusiob !== null) {
+              iob = latestEntry.openaps.iob.bolusiob;
+              source = 'devicestatus.openaps.iob.bolusiob';
+              console.log('✅ Found IOB in devicestatus.openaps.iob.bolusiob:', iob);
+            } else if (latestEntry.iob !== undefined && latestEntry.iob !== null) {
+              iob = latestEntry.iob;
+              source = 'devicestatus.iob';
+              console.log('✅ Found IOB in devicestatus.iob:', iob);
+            } else {
+              console.log('❌ No IOB found in devicestatus either');
+            }
+          }
+        }
+      } catch (devicestatusError) {
+        console.log('⚠️ Failed to fetch from devicestatus endpoint:', devicestatusError instanceof Error ? devicestatusError.message : 'Unknown error');
+      }
     }
 
     // Validate IOB value
@@ -361,6 +408,190 @@ export function calculateIOB(
 }
 
 /**
+ * Calculate Carbs on Board (COB) using exponential decay model
+ * @param treatments Array of recent treatments
+ * @param currentTime Current timestamp
+ * @returns COB calculation result
+ */
+export function calculateCOB(
+  treatments: Treatment[],
+  currentTime: Date = new Date()
+): COBResult {
+  let totalCOB = 0;
+  const breakdown: COBResult['breakdown'] = [];
+  const safetyWarnings: string[] = [];
+
+  // Filter for carb treatments in the last 4 hours (carbs digest faster than insulin)
+  const recentCarbTreatments = treatments.filter(treatment => {
+    if (treatment.eventType !== 'Meal Bolus' && treatment.eventType !== 'Carb Correction') {
+      return false;
+    }
+    
+    if (!treatment.carbs || treatment.carbs <= 0) {
+      return false;
+    }
+
+    const treatmentTime = new Date(treatment.created_at || treatment.timestamp || '');
+    const hoursSinceDose = (currentTime.getTime() - treatmentTime.getTime()) / (1000 * 60 * 60);
+    
+    // Only consider treatments from the last 4 hours
+    return hoursSinceDose >= 0 && hoursSinceDose <= 4;
+  });
+
+  // Sort by time (most recent first)
+  recentCarbTreatments.sort((a, b) => {
+    const timeA = new Date(a.created_at || a.timestamp || '').getTime();
+    const timeB = new Date(b.created_at || b.timestamp || '').getTime();
+    return timeB - timeA;
+  });
+
+  for (const treatment of recentCarbTreatments) {
+    const treatmentTime = new Date(treatment.created_at || treatment.timestamp || '');
+    const timeSinceDose = (currentTime.getTime() - treatmentTime.getTime()) / (1000 * 60 * 60); // hours
+    
+    // Carbs digest faster than insulin - use 2-3 hour half-life
+    const carbHalfLife = 2.5; // hours
+    if (timeSinceDose < (carbHalfLife * 2)) { // Consider carbs active for 2 half-lives
+      // Calculate remaining COB using exponential decay
+      const remainingCOB = treatment.carbs! * Math.exp(-timeSinceDose / carbHalfLife);
+      const percentageRemaining = (remainingCOB / treatment.carbs!) * 100;
+      
+      totalCOB += remainingCOB;
+      
+      breakdown.push({
+        treatmentId: treatment._id || treatment.id || 'unknown',
+        originalCarbs: treatment.carbs!,
+        remainingCOB,
+        timeSinceDose,
+        percentageRemaining,
+        needsInsulin: true // All carbs need insulin coverage
+      });
+
+      // Add safety warnings
+      if (timeSinceDose < 0.5 && treatment.carbs! > 50) {
+        safetyWarnings.push(`Large carb dose (${treatment.carbs}g) taken ${timeSinceDose.toFixed(1)}h ago - monitor glucose closely`);
+      }
+      
+      if (timeSinceDose < 1 && !treatment.insulin) {
+        safetyWarnings.push(`Carbs (${treatment.carbs}g) taken ${timeSinceDose.toFixed(1)}h ago without insulin - consider bolus`);
+      }
+    }
+  }
+
+  // Add general COB warnings
+  if (totalCOB > 30) {
+    safetyWarnings.push(`High COB detected: ${totalCOB.toFixed(1)}g active carbs`);
+  }
+  
+  if (totalCOB > 50) {
+    safetyWarnings.push(`Very high COB: ${totalCOB.toFixed(1)}g - consider extending bolus or monitoring closely`);
+  }
+
+  return {
+    totalCOB: Math.round(totalCOB * 10) / 10, // Round to 1 decimal
+    breakdown,
+    safetyWarnings
+  };
+}
+
+/**
+ * Fetch current COB from Nightscout
+ * @param nightscoutUrl Nightscout URL
+ * @param apiToken Nightscout API token
+ * @returns Current COB from Nightscout
+ */
+export async function fetchNightscoutCOB(
+  nightscoutUrl: string,
+  apiToken: string
+): Promise<{ cob: number; status: any; source: string }> {
+  try {
+    console.log('🔍 Starting Nightscout COB fetch...');
+    
+    // Clean and validate the Nightscout URL
+    let baseUrl = nightscoutUrl.trim();
+    if (!baseUrl.startsWith('http://') && !baseUrl.startsWith('https://')) {
+      baseUrl = 'https://' + baseUrl;
+    }
+    if (baseUrl.endsWith('/')) {
+      baseUrl = baseUrl.slice(0, -1);
+    }
+
+    // Try to fetch COB from devicestatus endpoint (where IOB is also stored)
+    const devicestatusUrl = `${baseUrl}/api/v1/devicestatus.json?count=1`;
+    console.log('🌐 Fetching COB from:', devicestatusUrl);
+    
+    const headers: HeadersInit = {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json'
+    };
+
+    if (apiToken) {
+      const crypto = await import('crypto');
+      const hashedToken = crypto.createHash('sha1').update(apiToken).digest('hex');
+      headers['api-secret'] = hashedToken;
+    }
+
+    const response = await fetch(devicestatusUrl, { headers });
+    
+    if (!response.ok) {
+      throw new Error(`Failed to fetch devicestatus: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    
+    if (data.length === 0) {
+      console.log('⚠️ No devicestatus entries found');
+      return { cob: 0, status: {}, source: 'no_data' };
+    }
+
+    const latestEntry = data[0];
+    console.log('📊 Raw devicestatus response keys:', Object.keys(latestEntry));
+    
+    // Look for COB in various locations
+    let cob = 0;
+    let source = 'not_found';
+
+    if (latestEntry.openaps?.suggested?.COB !== undefined && latestEntry.openaps.suggested.COB !== null) {
+      cob = latestEntry.openaps.suggested.COB;
+      source = 'openaps.suggested.COB';
+      console.log('✅ Found COB in openaps.suggested.COB:', cob);
+    } else if (latestEntry.openaps?.cob !== undefined && latestEntry.openaps.cob !== null) {
+      cob = latestEntry.openaps.cob;
+      source = 'openaps.cob';
+      console.log('✅ Found COB in openaps.cob:', cob);
+    } else if (latestEntry.cob !== undefined && latestEntry.cob !== null) {
+      cob = latestEntry.cob;
+      source = 'cob';
+      console.log('✅ Found COB in cob:', cob);
+    } else {
+      console.log('❌ No COB found in devicestatus');
+    }
+
+    // Validate COB value
+    if (isNaN(cob) || cob < 0) {
+      console.log('⚠️ Invalid COB value detected:', cob, '- setting to 0');
+      cob = 0;
+      source = 'invalid_value';
+    }
+
+    console.log(`🎯 Final Nightscout COB: ${cob}g (source: ${source})`);
+
+    return {
+      cob: Math.round(cob * 10) / 10, // Round to 1 decimal
+      status: latestEntry,
+      source
+    };
+  } catch (error) {
+    console.error('❌ Error fetching Nightscout COB:', error);
+    return {
+      cob: 0,
+      status: {},
+      source: 'error'
+    };
+  }
+}
+
+/**
  * Calculate safe bolus recommendation using Nightscout's IOB
  * @param carbs Grams of carbohydrates
  * @param currentGlucose Current blood glucose
@@ -376,9 +607,10 @@ export function calculateSafeBolusWithNightscoutIOB(
   targetGlucose: number,
   carbRatio: number,
   insulinSensitivity: number,
-  nightscoutIOB: number
+  nightscoutIOB: number,
+  nightscoutCOB: number = 0
 ): BolusRecommendation {
-  // Calculate carb bolus
+  // Calculate carb bolus for new food
   const carbBolusUnits = carbs / carbRatio;
   
   // Calculate correction bolus
@@ -391,30 +623,70 @@ export function calculateSafeBolusWithNightscoutIOB(
   const roundedCarbBolus = Math.round(carbBolusUnits * 10) / 10;
   const roundedCorrection = Math.round(correctionUnits * 10) / 10;
   
-  // Total insulin needed (calculated from rounded values)
+  // Total insulin needed for new food and correction
   const totalInsulinNeeded = roundedCarbBolus + roundedCorrection;
   
-  // Calculate IOB reduction (how much IOB covers the needed insulin)
-  const iobReduction = Math.min(nightscoutIOB, totalInsulinNeeded);
+  // Calculate how much IOB is needed to cover existing carbs on board
+  const iobNeededForCOB = nightscoutCOB / carbRatio;
   
-  // Safe bolus (total needed minus IOB)
-  const safeBolus = Math.max(0, totalInsulinNeeded - nightscoutIOB);
+  // Calculate how much IOB is available for new insulin needs
+  const availableIOB = Math.max(0, nightscoutIOB - iobNeededForCOB);
   
-  // Generate calculation note
-  let calculationNote = `${carbs}g ÷ ${carbRatio} = ${carbBolusUnits.toFixed(1)}u`;
+  // Calculate IOB reduction (how much available IOB covers the needed insulin)
+  const iobReduction = Math.min(availableIOB, totalInsulinNeeded);
+  
+  // Safe bolus (total needed minus available IOB)
+  const safeBolus = Math.max(0, totalInsulinNeeded - availableIOB);
+  
+  // Generate clear, formatted calculation note
+  let calculationNote = '';
+  
+  // Step 1: Carb calculation
+  calculationNote += `🍎 CARB CALCULATION:\n`;
+  calculationNote += `   ${carbs}g ÷ ${carbRatio} = ${carbBolusUnits.toFixed(1)}u\n`;
+  
+  // Step 2: Correction calculation (if needed)
   if (correctionUnits > 0) {
-    calculationNote += ` + ${correctionUnits.toFixed(1)}u correction`;
+    calculationNote += `\n📊 CORRECTION CALCULATION:\n`;
+    calculationNote += `   (${currentGlucose} - ${targetGlucose}) ÷ ${insulinSensitivity} = ${correctionUnits.toFixed(1)}u\n`;
   }
-  calculationNote += ` - ${nightscoutIOB.toFixed(1)}u IOB (from Nightscout) = ${safeBolus.toFixed(1)}u`;
+  
+  // Step 3: Total insulin needed
+  calculationNote += `\n🎯 TOTAL INSULIN NEEDED:\n`;
+  if (correctionUnits > 0) {
+    calculationNote += `   ${carbBolusUnits.toFixed(1)}u + ${correctionUnits.toFixed(1)}u = ${totalInsulinNeeded.toFixed(1)}u\n`;
+  } else {
+    calculationNote += `   ${carbBolusUnits.toFixed(1)}u\n`;
+  }
+  
+  // Step 4: COB calculation (if applicable)
+  if (nightscoutCOB > 0) {
+    calculationNote += `\n🍞 CARBS ON BOARD (COB):\n`;
+    calculationNote += `   ${nightscoutCOB}g ÷ ${carbRatio} = ${iobNeededForCOB.toFixed(1)}u needed\n`;
+  }
+  
+  // Step 5: IOB availability
+  calculationNote += `\n💉 INSULIN ON BOARD (IOB):\n`;
+  calculationNote += `   Total IOB: ${nightscoutIOB.toFixed(1)}u\n`;
+  if (nightscoutCOB > 0) {
+    calculationNote += `   IOB for COB: ${iobNeededForCOB.toFixed(1)}u\n`;
+    calculationNote += `   Available IOB: ${nightscoutIOB.toFixed(1)}u - ${iobNeededForCOB.toFixed(1)}u = ${availableIOB.toFixed(1)}u\n`;
+  }
+  
+  // Step 6: Final calculation
+  calculationNote += `\n✅ SAFE BOLUS CALCULATION:\n`;
+  if (nightscoutCOB > 0) {
+    calculationNote += `   ${totalInsulinNeeded.toFixed(1)}u needed - ${availableIOB.toFixed(1)}u available = ${safeBolus.toFixed(1)}u\n`;
+  } else {
+    calculationNote += `   ${totalInsulinNeeded.toFixed(1)}u needed - ${nightscoutIOB.toFixed(1)}u IOB = ${safeBolus.toFixed(1)}u\n`;
+  }
   
   // Safety warnings
   const safetyWarnings: string[] = [];
   
-  if (nightscoutIOB > 0) {
-    safetyWarnings.push(`Active insulin detected: ${nightscoutIOB.toFixed(1)}u IOB (from Nightscout)`);
-  }
+
   
-  if (safeBolus < 0.5 && totalInsulinNeeded > 0) {
+  if (availableIOB < 0.5 && totalInsulinNeeded > 0) {
     safetyWarnings.push('IOB covers most/all of needed insulin - consider delaying bolus');
   }
   
@@ -461,7 +733,8 @@ export function calculateSafeBolus(
   targetGlucose: number,
   carbRatio: number,
   insulinSensitivity: number,
-  currentIOB: number
+  currentIOB: number,
+  currentCOB: number = 0
 ): BolusRecommendation {
   // Calculate carb bolus
   const carbBolusUnits = carbs / carbRatio;
@@ -479,27 +752,67 @@ export function calculateSafeBolus(
   // Total insulin needed (calculated from rounded values)
   const totalInsulinNeeded = roundedCarbBolus + roundedCorrection;
   
-  // Calculate IOB reduction (how much IOB covers the needed insulin)
-  const iobReduction = Math.min(currentIOB, totalInsulinNeeded);
+  // Calculate how much IOB is needed to cover existing carbs on board
+  const iobNeededForCOB = currentCOB / carbRatio;
   
-  // Safe bolus (total needed minus IOB)
-  const safeBolus = Math.max(0, totalInsulinNeeded - currentIOB);
+  // Calculate how much IOB is available for new insulin needs
+  const availableIOB = Math.max(0, currentIOB - iobNeededForCOB);
   
-  // Generate calculation note
-  let calculationNote = `${carbs}g ÷ ${carbRatio} = ${carbBolusUnits.toFixed(1)}u`;
+  // Calculate IOB reduction (how much available IOB covers the needed insulin)
+  const iobReduction = Math.min(availableIOB, totalInsulinNeeded);
+  
+  // Safe bolus (total needed minus available IOB)
+  const safeBolus = Math.max(0, totalInsulinNeeded - availableIOB);
+  
+  // Generate clear, formatted calculation note
+  let calculationNote = '';
+  
+  // Step 1: Carb calculation
+  calculationNote += `🍎 CARB CALCULATION:\n`;
+  calculationNote += `   ${carbs}g ÷ ${carbRatio} = ${carbBolusUnits.toFixed(1)}u\n`;
+  
+  // Step 2: Correction calculation (if needed)
   if (correctionUnits > 0) {
-    calculationNote += ` + ${correctionUnits.toFixed(1)}u correction`;
+    calculationNote += `\n📊 CORRECTION CALCULATION:\n`;
+    calculationNote += `   (${currentGlucose} - ${targetGlucose}) ÷ ${insulinSensitivity} = ${correctionUnits.toFixed(1)}u\n`;
   }
-  calculationNote += ` - ${currentIOB.toFixed(1)}u IOB = ${safeBolus.toFixed(1)}u`;
+  
+  // Step 3: Total insulin needed
+  calculationNote += `\n🎯 TOTAL INSULIN NEEDED:\n`;
+  if (correctionUnits > 0) {
+    calculationNote += `   ${carbBolusUnits.toFixed(1)}u + ${correctionUnits.toFixed(1)}u = ${totalInsulinNeeded.toFixed(1)}u\n`;
+  } else {
+    calculationNote += `   ${carbBolusUnits.toFixed(1)}u\n`;
+  }
+  
+  // Step 4: COB calculation (if applicable)
+  if (currentCOB > 0) {
+    calculationNote += `\n🍞 CARBS ON BOARD (COB):\n`;
+    calculationNote += `   ${currentCOB}g ÷ ${carbRatio} = ${iobNeededForCOB.toFixed(1)}u needed\n`;
+  }
+  
+  // Step 5: IOB availability
+  calculationNote += `\n💉 INSULIN ON BOARD (IOB):\n`;
+  calculationNote += `   Total IOB: ${currentIOB.toFixed(1)}u\n`;
+  if (currentCOB > 0) {
+    calculationNote += `   IOB for COB: ${iobNeededForCOB.toFixed(1)}u\n`;
+    calculationNote += `   Available IOB: ${currentIOB.toFixed(1)}u - ${iobNeededForCOB.toFixed(1)}u = ${availableIOB.toFixed(1)}u\n`;
+  }
+  
+  // Step 6: Final calculation
+  calculationNote += `\n✅ SAFE BOLUS CALCULATION:\n`;
+  if (currentCOB > 0) {
+    calculationNote += `   ${totalInsulinNeeded.toFixed(1)}u needed - ${availableIOB.toFixed(1)}u available = ${safeBolus.toFixed(1)}u\n`;
+  } else {
+    calculationNote += `   ${totalInsulinNeeded.toFixed(1)}u needed - ${currentIOB.toFixed(1)}u IOB = ${safeBolus.toFixed(1)}u\n`;
+  }
   
   // Safety warnings
   const safetyWarnings: string[] = [];
   
-  if (currentIOB > 0) {
-    safetyWarnings.push(`Active insulin detected: ${currentIOB.toFixed(1)}u IOB`);
-  }
+
   
-  if (safeBolus < 0.5 && totalInsulinNeeded > 0) {
+  if (availableIOB < 0.5 && totalInsulinNeeded > 0) {
     safetyWarnings.push('IOB covers most/all of needed insulin - consider delaying bolus');
   }
   
