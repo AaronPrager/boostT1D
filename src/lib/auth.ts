@@ -1,6 +1,5 @@
 import { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
-import { PrismaAdapter } from '@auth/prisma-adapter';
 import { prisma } from '@/lib/prisma';
 import bcrypt from "bcryptjs";
 
@@ -16,7 +15,6 @@ declare module 'next-auth' {
 }
 
 export const authOptions: NextAuthOptions = {
-  adapter: PrismaAdapter(prisma),
   providers: [
     CredentialsProvider({
       name: 'credentials',
@@ -90,27 +88,51 @@ export const authOptions: NextAuthOptions = {
   pages: {
     signIn: '/login',
     signOut: '/',
+    error: '/login',
   },
   callbacks: {
-    async session({ session, user, token }) {
-      if (session.user) {
-        session.user.id = (user?.id || token?.sub) as string;
+    async session({ session, token }) {
+      console.log('NextAuth session callback:', { session, token });
+      if (session.user && token) {
+        session.user.id = token.sub as string;
+        console.log('Set session user ID:', token.sub);
       }
       return session;
     },
     async jwt({ token, user }) {
-        if (user) {
-        token.id = user.id;
-        }
-        return token;
+      if (user) {
+        token.sub = user.id;
+      }
+      return token;
     },
     async redirect({ url, baseUrl }) {
+      console.log('NextAuth redirect called:', { url, baseUrl });
+      
+      // Handle signin redirect specifically
+      if (url.includes('/auth/signin')) {
+        console.log('Signin redirect detected, redirecting to /login');
+        return '/login';
+      }
+      
+      // Handle any auth-related redirects
+      if (url.includes('/auth/')) {
+        console.log('Auth redirect detected, redirecting to /login');
+        return '/login';
+      }
+      
       // Allows relative callback URLs
-      if (url.startsWith("/")) return `http://192.168.1.8:3001${url}`
+      if (url.startsWith("/")) {
+        console.log('Relative URL, returning:', url);
+        return url;
+      }
       // Allows callback URLs on the same origin
-      else if (new URL(url).origin === baseUrl) return url
+      else if (new URL(url).origin === baseUrl) {
+        console.log('Same origin URL, returning:', url);
+        return url;
+      }
       // Default redirect to home page
-      return `http://192.168.1.8:3001/`
+      console.log('Default redirect to /');
+      return "/"
     },
   },
   session: {

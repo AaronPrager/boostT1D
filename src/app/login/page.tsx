@@ -68,8 +68,8 @@ function LoginForm() {
         
         setError(errorMessage);
       } else if (result?.ok) {
-        // Successful login - redirect to home page
-        router.push('/');
+        // Successful login - redirect to dashboard
+        router.replace('/dashboard');
         router.refresh();
       } else {
         setError('Unexpected response from authentication server');

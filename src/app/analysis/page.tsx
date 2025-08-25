@@ -36,20 +36,13 @@ export default function AnalysisPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [suggestions, setSuggestions] = useState<AdjustmentSuggestions | null>(null);
-  const [fromDate, setFromDate] = useState(() => {
-    const date = new Date();
-    date.setDate(date.getDate() - 14);
-    return date.toISOString().split('T')[0];
-  });
-  const [toDate, setToDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [analysisDateRange, setAnalysisDateRange] = useState(3);
 
   const fetchAdjustmentSuggestions = async () => {
     setLoading(true);
     setError(null);
 
     try {
-      const analysisDateRange = Math.ceil((new Date(toDate).getTime() - new Date(fromDate).getTime()) / (1000 * 60 * 60 * 24));
-      
       const response = await fetch('/api/therapy-adjustment', {
         method: 'POST',
         headers: {
@@ -60,21 +53,33 @@ export default function AnalysisPage() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
+        console.log('API returned error response:', {
+          status: response.status,
+          statusText: response.statusText,
+          errorData
+        });
         
         if (errorData.error === 'DIABETES_PROFILE_NOT_SETUP') {
           setError('Please set up your diabetes profile first before analyzing therapy adjustments. Go to Diabetes Profile to configure your settings.');
+        } else if (errorData.error && errorData.message) {
+          setError(errorData.message);
+        } else if (errorData.error) {
+          setError(errorData.error);
         } else {
-          throw new Error('Failed to fetch therapy adjustments');
+          setError(`HTTP ${response.status}: ${response.statusText}`);
         }
+        setSuggestions(null);
         return;
       }
 
       const data = await response.json();
       
       if (data.error) {
+        console.log('Response data contains error:', data.error);
         setError(data.message || data.error);
         setSuggestions(null);
       } else {
+        console.log('Setting suggestions successfully:', data);
         setSuggestions(data);
       }
     } catch (error) {
@@ -130,11 +135,19 @@ export default function AnalysisPage() {
     </div>
   );
 
+  // Auto-fetch when page loads with default 3-day analysis
   useEffect(() => {
     if (session) {
       fetchAdjustmentSuggestions();
     }
-  }, [session, fromDate, toDate]);
+  }, [session]);
+
+  // Fetch when analysis date range changes
+  useEffect(() => {
+    if (session && analysisDateRange) {
+      fetchAdjustmentSuggestions();
+    }
+  }, [analysisDateRange]);
 
   if (!session) {
     return (
@@ -174,21 +187,19 @@ export default function AnalysisPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Analysis Period
                 </label>
-                <div className="flex space-x-2">
-                  <input
-                    type="date"
-                    value={fromDate}
-                    onChange={(e) => setFromDate(e.target.value)}
-                    className="border border-gray-300 rounded-md px-3 py-2 text-sm"
-                  />
-                  <span className="flex items-center text-gray-500">to</span>
-                  <input
-                    type="date"
-                    value={toDate}
-                    onChange={(e) => setToDate(e.target.value)}
-                    className="border border-gray-300 rounded-md px-3 py-2 text-sm"
-                  />
-      </div>
+                <select
+                  value={analysisDateRange}
+                  onChange={(e) => {
+                    const newValue = Number(e.target.value);
+                    console.log('Dropdown changed from', analysisDateRange, 'to', newValue);
+                    setAnalysisDateRange(newValue);
+                  }}
+                  className="border border-gray-300 rounded-md px-3 py-2 text-sm"
+                >
+                  <option value={3}>3 days</option>
+                  <option value={7}>1 week</option>
+                </select>
+
               </div>
               <button
                 onClick={fetchAdjustmentSuggestions}
@@ -199,6 +210,8 @@ export default function AnalysisPage() {
               </button>
             </div>
           </div>
+
+
 
           {/* Manual Mode Section - Show when diabetes profile is not set up */}
           {error && error.includes('diabetes profile') && (

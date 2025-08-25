@@ -686,9 +686,6 @@ export function calculateSafeBolusWithNightscoutIOB(
   
 
   
-  if (availableIOB < 0.5 && totalInsulinNeeded > 0) {
-    safetyWarnings.push('IOB covers most/all of needed insulin - consider delaying bolus');
-  }
   
   if (safeBolus > 10) {
     safetyWarnings.push('Large bolus recommended - double-check carb estimate and IOB');
@@ -812,9 +809,7 @@ export function calculateSafeBolus(
   
 
   
-  if (availableIOB < 0.5 && totalInsulinNeeded > 0) {
-    safetyWarnings.push('IOB covers most/all of needed insulin - consider delaying bolus');
-  }
+
   
   if (safeBolus > 10) {
     safetyWarnings.push('Large bolus recommended - double-check carb estimate and IOB calculation');

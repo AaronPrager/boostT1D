@@ -443,7 +443,7 @@ export default function DiabetesProfilePage() {
                     Nightscout API Token
                   </label>
                   <input
-                    type="text"
+                    type="password"
                     id="nightscoutApiToken"
                     name="nightscoutApiToken"
                     value={settings.nightscoutApiToken ?? ''}

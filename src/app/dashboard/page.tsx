@@ -34,7 +34,7 @@ type DashboardStats = {
 };
 
 export default function DashboardPage() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [refreshMessage, setRefreshMessage] = useState<string | null>(null);
@@ -102,18 +102,9 @@ export default function DashboardPage() {
           if (settingsRes.ok) {
             const settingsData = await settingsRes.json();
             setSettings(settingsData);
-            
-            // If Nightscout is configured, sync data first
-            if (settingsData.nightscoutUrl) {
-              try {
-                await fetch('/api/nightscout/sync', { method: 'POST' });
-              } catch (syncError) {
-                console.warn('Nightscout sync failed, continuing with existing data:', syncError);
-              }
-            }
           }
           
-          // Then fetch dashboard data
+          // Then fetch dashboard data (without automatic sync)
           await fetchDashboardData(newStart, newEnd);
         } catch (error) {
           console.error('Error loading dashboard data:', error);
@@ -259,13 +250,22 @@ export default function DashboardPage() {
 
   const getDirectionIcon = (direction: string | null) => {
     switch (direction) {
-      case 'DoubleUp': return '↗️↗️';
-      case 'SingleUp': return '↗️';
-      case 'FortyFiveUp': return '↗️';
+      case 'NONE': return '⟷';
+      case 'DoubleUp': return '⇈';
+      case 'SingleUp': return '↑';
+      case 'FortyFiveUp': return '↗';
       case 'Flat': return '→';
-      case 'FortyFiveDown': return '↘️';
-      case 'SingleDown': return '↘️';
-      case 'DoubleDown': return '↘️↘️';
+      case 'FortyFiveDown': return '↘';
+      case 'SingleDown': return '↓';
+      case 'DoubleDown': return '⇊';
+      case 'NOT COMPUTABLE': return '-';
+      case 'RATE OUT OF RANGE': return '⚠️';
+      case 'Slight Rise': return '↗';
+      case 'Slight Fall': return '↘';
+      case 'Rise': return '↑';
+      case 'Fall': return '↓';
+      case 'Rapid Rise': return '⇈';
+      case 'Rapid Fall': return '⇊';
       default: return '→';
     }
   };
@@ -306,14 +306,31 @@ export default function DashboardPage() {
     return 'text-red-600';
   };
 
+
+
+  // Check if session is still loading
+  if (status === 'loading') {
+    console.log('Dashboard - Session loading...');
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+          <h1 className="text-2xl font-bold text-gray-900">Loading...</h1>
+          <p className="mt-2 text-gray-600">Checking your authentication status.</p>
+        </div>
+      </div>
+    );
+  }
+
   if (!session) {
+    console.log('Dashboard - No session found, showing access denied');
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-gray-900">Access Denied</h1>
           <p className="mt-2 text-gray-600">Please sign in to view your dashboard.</p>
           <Link 
-            href="/auth/signin"
+            href="/login"
             className="mt-4 inline-block bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700"
           >
             Sign In
@@ -322,6 +339,8 @@ export default function DashboardPage() {
       </div>
     );
   }
+
+  console.log('Dashboard - Session found, rendering dashboard');
 
   if (loading) {
     return (

@@ -354,10 +354,36 @@ export async function GET(request: Request) {
       }));
 
       allReadings = [...allReadings, ...mappedManualReadings, ...treatmentReadings];
+      
+      console.log('Data breakdown before deduplication:', {
+        nightscout: allReadings.length - mappedManualReadings.length - treatmentReadings.length,
+        manual: mappedManualReadings.length,
+        treatments: treatmentReadings.length,
+        total: allReadings.length
+      });
     }
 
-    // Sort all readings by timestamp, most recent first
-    const sortedReadings = allReadings.sort((a, b) => {
+    // Deduplicate readings based on timestamp and glucose value
+    const uniqueReadings = new Map<string, Reading>();
+    
+    allReadings.forEach(reading => {
+      if (!reading.date || !reading.sgv) return;
+      
+      // Create a unique key based on timestamp (rounded to nearest minute) and glucose value
+      const timestamp = new Date(reading.date);
+      const roundedTimestamp = new Date(timestamp.getFullYear(), timestamp.getMonth(), timestamp.getDate(), timestamp.getHours(), timestamp.getMinutes(), 0, 0);
+      const key = `${roundedTimestamp.getTime()}_${reading.sgv}`;
+      
+      // If we don't have this reading yet, or if this one has more information (like direction), keep it
+      if (!uniqueReadings.has(key) || 
+          (reading.direction && !uniqueReadings.get(key)?.direction) ||
+          (reading.source === 'nightscout' && uniqueReadings.get(key)?.source === 'manual')) {
+        uniqueReadings.set(key, reading);
+      }
+    });
+    
+    // Convert back to array and sort by timestamp, most recent first
+    const sortedReadings = Array.from(uniqueReadings.values()).sort((a, b) => {
       const timeA = a.date?.getTime();
       const timeB = b.date?.getTime();
       if (!timeA || !timeB) {
@@ -367,7 +393,13 @@ export async function GET(request: Request) {
       return timeB - timeA;
     });
 
-    console.log('Total readings after filtering:', sortedReadings.length);
+    console.log('Total readings after deduplication:', sortedReadings.length);
+    console.log('Readings breakdown:', {
+      total: allReadings.length,
+      unique: sortedReadings.length,
+      duplicates: allReadings.length - sortedReadings.length
+    });
+    
     return NextResponse.json(sortedReadings);
   } catch (error) {
     console.error('Failed to fetch readings:', error);

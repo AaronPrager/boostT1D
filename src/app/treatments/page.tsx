@@ -76,6 +76,42 @@ export default function TreatmentsPage() {
     }
   }
 
+  // CSV Export function for treatments
+  const exportTreatmentsToCSV = () => {
+    if (treatments.length === 0) return;
+
+    // Create CSV content
+    const csvHeaders = ['Date', 'Time', 'Event Type', 'Insulin', 'Carbs', 'Notes'];
+    const csvRows = treatments.map(treatment => [
+      (treatment.created_at ? new Date(treatment.created_at) : new Date(treatment.timestamp)).toLocaleDateString(),
+      (treatment.created_at ? new Date(treatment.created_at) : new Date(treatment.timestamp)).toLocaleTimeString('en-US', { 
+        hour: '2-digit', 
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false 
+      }),
+      treatment.eventType || treatment.type || '',
+      treatment.insulin || treatment.insulinUnits || '',
+      treatment.carbs || treatment.carbsGrams || '',
+      treatment.notes || treatment.reason || ''
+    ]);
+
+    const csvContent = [csvHeaders, ...csvRows]
+      .map(row => row.map(field => `"${field}"`).join(','))
+      .join('\n');
+
+    // Create and download file
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `treatments-${startDate}-to-${endDate}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   async function saveManualTreatment() {
     setLoading(true);
     setError(null);
@@ -340,32 +376,46 @@ export default function TreatmentsPage() {
         </div>
       )}
       {treatments.length > 0 && (
-        <div className="overflow-x-auto mt-4">
-          <table className="min-w-full border">
-            <thead>
-              <tr>
-                <th className="border px-2 py-1">Time</th>
-                <th className="border px-2 py-1">Event Type</th>
-                <th className="border px-2 py-1">Insulin</th>
-                <th className="border px-2 py-1">Carbs</th>
-                <th className="border px-2 py-1">Notes</th>
-              </tr>
-            </thead>
-            <tbody>
-              {treatments.map((t, i) => (
-                <tr key={t._id || t.id || i}>
-                  <td className="border px-2 py-1">
-                    {t.created_at ? new Date(t.created_at).toLocaleString() : 
-                     t.timestamp ? new Date(t.timestamp).toLocaleString() : ''}
-                  </td>
-                  <td className="border px-2 py-1">{t.eventType || t.type || ''}</td>
-                  <td className="border px-2 py-1">{t.insulin || t.insulinUnits || ''}</td>
-                  <td className="border px-2 py-1">{t.carbs || t.carbsGrams || ''}</td>
-                  <td className="border px-2 py-1">{t.notes || t.reason || ''}</td>
+        <div className="mt-4">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-semibold">Treatments Data</h3>
+            <button
+              onClick={exportTreatmentsToCSV}
+              className="inline-flex items-center px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors"
+            >
+              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              Export to CSV
+            </button>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="min-w-full border">
+              <thead>
+                <tr>
+                  <th className="border px-2 py-1">Time</th>
+                  <th className="border px-2 py-1">Event Type</th>
+                  <th className="border px-2 py-1">Insulin</th>
+                  <th className="border px-2 py-1">Carbs</th>
+                  <th className="border px-2 py-1">Notes</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {treatments.map((treatment, i) => (
+                  <tr key={treatment._id || treatment.id || i}>
+                    <td className="border px-2 py-1">
+                      {treatment.created_at ? new Date(treatment.created_at).toLocaleString() : 
+                       treatment.timestamp ? new Date(treatment.timestamp).toLocaleString() : ''}
+                    </td>
+                    <td className="border px-2 py-1">{treatment.eventType || treatment.type || ''}</td>
+                    <td className="border px-2 py-1">{treatment.insulin || treatment.insulinUnits || ''}</td>
+                    <td className="border px-2 py-1">{treatment.carbs || treatment.carbsGrams || ''}</td>
+                    <td className="border px-2 py-1">{treatment.notes || treatment.reason || ''}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
       {treatments.length === 0 && !loading && <div className="text-gray-500 mt-4">No treatments found for this range.</div>}

@@ -38,17 +38,21 @@ export default function TherapyAdjustmentPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [suggestions, setSuggestions] = useState<AdjustmentSuggestions | null>(null);
-  const [analysisDateRange, setAnalysisDateRange] = useState(14);
+  const [analysisDateRange, setAnalysisDateRange] = useState(3);
 
   useEffect(() => {
     if (status === 'unauthenticated') {
-      router.push('/auth/signin');
+      router.push('/login');
     }
   }, [status, router]);
 
   const fetchAdjustmentSuggestions = async () => {
     setLoading(true);
     setError(null);
+
+    console.log('Fetching therapy adjustments with date range:', analysisDateRange);
+    console.log('analysisDateRange type:', typeof analysisDateRange);
+    console.log('analysisDateRange value:', analysisDateRange);
 
     try {
       const response = await fetch('/api/therapy-adjustment', {
@@ -59,21 +63,60 @@ export default function TherapyAdjustmentPage() {
         body: JSON.stringify({ analysisDateRange }),
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch therapy adjustments');
-      }
-
+      console.log('Response status:', response.status);
+      console.log('Response ok:', response.ok);
+      console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+      
       const data = await response.json();
       
+      console.log('Therapy adjustment API response:', data);
+      console.log('Response data type:', typeof data);
+      console.log('Response data keys:', Object.keys(data || {}));
+      
+      if (!response.ok) {
+        // Handle API errors with detailed messages
+        if (data.error && data.message) {
+          setError(data.message);
+        } else if (data.error) {
+          setError(data.error);
+        } else {
+          setError(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        setSuggestions(null);
+        return;
+      }
+      
+      // Check if the response has the expected structure
       if (data.error) {
         setError(data.message || data.error);
         setSuggestions(null);
+      } else if (data && typeof data === 'object') {
+        // Validate that we have the expected structure
+        const hasRequiredFields = data.basalAdjustments !== undefined && 
+                                data.carbRatioAdjustments !== undefined && 
+                                data.sensitivityAdjustments !== undefined && 
+                                data.targetAdjustments !== undefined;
+        
+        if (hasRequiredFields) {
+          setSuggestions(data);
+          console.log('Suggestions set:', data);
+        } else {
+          console.error('Invalid response structure:', data);
+          setError('Invalid response format from server. Please try again.');
+          setSuggestions(null);
+        }
       } else {
-        setSuggestions(data);
+        console.error('Unexpected response format:', data);
+        setError('Unexpected response format from server. Please try again.');
+        setSuggestions(null);
       }
     } catch (error) {
-      setError('Failed to analyze therapy adjustments');
       console.error('Error:', error);
+      if (error instanceof Error) {
+        setError(`Failed to analyze therapy adjustments: ${error.message}`);
+      } else {
+        setError('Failed to analyze therapy adjustments');
+      }
     } finally {
       setLoading(false);
     }
@@ -84,6 +127,11 @@ export default function TherapyAdjustmentPage() {
       fetchAdjustmentSuggestions();
     }
   }, [session, analysisDateRange]);
+
+  // Debug: Monitor analysisDateRange changes
+  useEffect(() => {
+    console.log('analysisDateRange changed to:', analysisDateRange);
+  }, [analysisDateRange]);
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
@@ -175,8 +223,19 @@ export default function TherapyAdjustmentPage() {
             <div>
               <h1 className="text-3xl font-bold text-gray-900">Therapy Dose Adjustments</h1>
               <p className="text-gray-600 mt-2">
-                AI-powered suggestions based on your glucose patterns and current therapy settings
+                AI-powered suggestions based on recent glucose patterns (1 day to 1 week) and current therapy settings
               </p>
+              <div className="mt-3 bg-amber-50 border border-amber-200 rounded-md p-3">
+                <div className="flex">
+                  <div className="text-amber-400 text-lg">⚠️</div>
+                  <div className="ml-3">
+                    <p className="text-sm font-medium text-amber-800">
+                      <strong>Important:</strong> Adjusting therapy using data more than 1 week old is not recommended. 
+                      Use recent data for the most accurate and safe recommendations.
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
             <div className="flex items-center space-x-4">
               <div>
@@ -185,13 +244,19 @@ export default function TherapyAdjustmentPage() {
                 </label>
                 <select
                   value={analysisDateRange}
-                  onChange={(e) => setAnalysisDateRange(Number(e.target.value))}
+                  onChange={(e) => {
+                    const newValue = Number(e.target.value);
+                    console.log('Dropdown changed from', analysisDateRange, 'to', newValue);
+                    setAnalysisDateRange(newValue);
+                  }}
                   className="border border-gray-300 rounded-md px-3 py-2 text-sm"
                 >
-                  <option value={7}>7 days</option>
-                  <option value={14}>14 days</option>
-                  <option value={30}>30 days</option>
+                  <option value={3}>3 days</option>
+                  <option value={7}>1 week</option>
                 </select>
+                <p className="text-xs text-amber-600 mt-1">
+                  ⚠️ Adjusting therapy using data more than 1 week old is not recommended
+                </p>
               </div>
               <button
                 onClick={fetchAdjustmentSuggestions}
@@ -210,12 +275,65 @@ export default function TherapyAdjustmentPage() {
                 <div className="ml-3">
                   <h3 className="text-sm font-medium text-red-800">Analysis Error</h3>
                   <p className="text-sm text-red-700 mt-1">{error}</p>
+                  
+                  {/* Provide helpful guidance based on error type */}
+                  {error.includes('diabetes profile') && (
+                    <div className="mt-3 bg-blue-50 border border-blue-200 rounded-md p-3">
+                      <p className="text-sm text-blue-800">
+                        <strong>Next Steps:</strong> Go to{' '}
+                        <a href="/diabetes-profile" className="text-blue-600 hover:text-blue-800 underline">
+                          Diabetes Profile
+                        </a>{' '}
+                        to set up your basal rates, carb ratios, insulin sensitivity, and target ranges.
+                      </p>
+                    </div>
+                  )}
+                  
+                  {error.includes('glucose data') && (
+                    <div className="mt-3 bg-blue-50 border border-blue-200 rounded-md p-3">
+                      <p className="text-sm text-blue-800">
+                        <strong>Next Steps:</strong> Go to{' '}
+                        <a href="/readings" className="text-blue-600 hover:text-blue-800 underline">
+                          Blood Glucose Data
+                        </a>{' '}
+                        to add manual readings or sync from Nightscout.
+                      </p>
+                    </div>
+                  )}
+                  
+                  {error.includes('Insufficient data') && (
+                    <div className="mt-3 bg-blue-50 border border-blue-200 rounded-md p-3">
+                      <p className="text-sm text-blue-800">
+                        <strong>Next Steps:</strong> Try a shorter analysis period (1-3 days) or add more glucose readings.
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
           )}
 
-          {suggestions && (
+          {/* Debug Information */}
+          <div className="bg-gray-50 border border-gray-200 rounded-md p-4 mb-6">
+            <div className="text-sm text-gray-600">
+              <p><strong>Loading:</strong> {loading ? 'Yes' : 'No'}</p>
+              <p><strong>Analysis Date Range:</strong> {analysisDateRange} days</p>
+              <p><strong>Has Suggestions:</strong> {suggestions ? 'Yes' : 'No'}</p>
+              <p><strong>Suggestions Type:</strong> {suggestions ? typeof suggestions : 'N/A'}</p>
+              {suggestions && (
+                <>
+                  <p><strong>Basal Adjustments:</strong> {suggestions.basalAdjustments?.length || 0}</p>
+                  <p><strong>Carb Ratio Adjustments:</strong> {suggestions.carbRatioAdjustments?.length || 0}</p>
+                  <p><strong>Sensitivity Adjustments:</strong> {suggestions.sensitivityAdjustments?.length || 0}</p>
+                  <p><strong>Target Adjustments:</strong> {suggestions.targetAdjustments?.length || 0}</p>
+                  <p><strong>Overall Recommendations:</strong> {suggestions.overallRecommendations?.length || 0}</p>
+                  <p><strong>Safety Warnings:</strong> {suggestions.safetyWarnings?.length || 0}</p>
+                </>
+              )}
+            </div>
+          </div>
+
+          {suggestions ? (
             <>
               {/* Analysis Metrics */}
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
@@ -359,6 +477,16 @@ export default function TherapyAdjustmentPage() {
                 </div>
               </div>
             </>
+          ) : (
+            <div className="text-center py-8">
+              <div className="text-6xl mb-4">📊</div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                Ready to Analyze
+              </h3>
+              <p className="text-gray-600">
+                Click "Refresh Analysis" to generate therapy adjustment suggestions based on your recent glucose data.
+              </p>
+            </div>
           )}
         </div>
       </div>

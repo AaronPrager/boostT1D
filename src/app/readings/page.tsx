@@ -140,6 +140,7 @@ export default function ReadingsPage() {
   });
   const [stats, setStats] = useState<Statistics | null>(null);
   const [lastFetchTime, setLastFetchTime] = useState<Date | null>(null);
+  const [syncing, setSyncing] = useState(false);
 
   // Add the missing fetchSettings function
   const fetchSettings = async () => {
@@ -166,16 +167,7 @@ export default function ReadingsPage() {
           // First fetch settings
           await fetchSettings();
           
-          // If Nightscout is configured, sync data first
-          if (settings.nightscoutUrl) {
-            try {
-              await fetch('/api/nightscout/sync', { method: 'POST' });
-            } catch (syncError) {
-              console.warn('Nightscout sync failed, continuing with existing data:', syncError);
-            }
-          }
-          
-          // Then fetch readings data
+          // Fetch readings data (without automatic sync)
           await fetchReadings();
         } catch (error) {
           console.error('Error loading readings data:', error);
@@ -551,6 +543,43 @@ export default function ReadingsPage() {
 
   const currentGlucose = getCurrentGlucose();
 
+  // CSV Export function
+  const exportToCSV = () => {
+    if (filteredReadings.length === 0) return;
+
+    // Create CSV content
+    const csvHeaders = ['Date', 'Time', 'Glucose (mg/dL)', 'Direction', 'Source'];
+    const csvRows = filteredReadings
+      .sort((a, b) => b.date - a.date) // Sort by date descending
+      .map(reading => [
+        new Date(reading.date).toLocaleDateString(),
+        new Date(reading.date).toLocaleTimeString('en-US', { 
+          hour: '2-digit', 
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: false 
+        }),
+        reading.sgv.toString(),
+        reading.direction || '',
+        reading.source || 'unknown'
+      ]);
+
+    const csvContent = [csvHeaders, ...csvRows]
+      .map(row => row.map(field => `"${field}"`).join(','))
+      .join('\n');
+
+    // Create and download file
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `glucose-readings-${fromDate}-to-${toDate}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-8">
@@ -700,28 +729,33 @@ export default function ReadingsPage() {
                 <p>{lastFetchTime ? formatRelativeTime(lastFetchTime.toISOString()) : 'Never'}</p>
           </div>
             )}
-        <button
-          onClick={fetchReadings}
-              disabled={loading}
-              className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-indigo-400 disabled:cursor-not-allowed transition-colors"
-            >
-              {loading ? (
-                <div className="flex items-center">
-                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  Updating...
-                </div>
-              ) : (
-                <div className="flex items-center">
-                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
-                  Update
-                </div>
-              )}
-        </button>
+
+        
+        {/* Sync from Nightscout button */}
+        {settings.nightscoutUrl && (
+          <button
+            onClick={syncFromNightscout}
+            disabled={syncing}
+            className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-green-400 disabled:cursor-not-allowed transition-colors"
+          >
+            {syncing ? (
+              <div className="flex items-center">
+                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Syncing...
+              </div>
+            ) : (
+              <div className="flex items-center">
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
+                </svg>
+                Sync from Nightscout
+              </div>
+            )}
+          </button>
+        )}
           </div>
         </div>
       </div>
@@ -827,7 +861,19 @@ export default function ReadingsPage() {
         
           {activeTab === 'data' && (
             <div>
-              <h3 className="text-lg font-semibold mb-4">Raw Data</h3>
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold">Raw Data</h3>
+                <button
+                  onClick={exportToCSV}
+                  disabled={filteredReadings.length === 0}
+                  className="inline-flex items-center px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  Export to CSV
+                </button>
+              </div>
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
