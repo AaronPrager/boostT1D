@@ -254,7 +254,7 @@ export default function PersonalProfile() {
 
   useEffect(() => {
     if (status === 'unauthenticated') {
-      router.push('/auth/signin');
+              router.push('/login');
       return;
     }
     if (status === 'authenticated') {

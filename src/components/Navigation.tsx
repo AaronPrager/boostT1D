@@ -239,7 +239,7 @@ export default function Navigation() {
               </button>
             ) : (
               <div className="flex items-center space-x-2">
-                <Link href="/auth/signin" className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">
+                <Link href="/login" className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">
                   Sign In
                 </Link>
                 <Link href="/register" className="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-md text-sm font-medium">
@@ -381,7 +381,7 @@ export default function Navigation() {
                 ) : (
                   <>
                     <Link 
-                      href="/auth/signin" 
+                      href="/login" 
                       className="block px-3 py-2 rounded-md text-base font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100"
                       onClick={closeMobileMenu}
                     >

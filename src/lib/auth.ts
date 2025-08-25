@@ -108,18 +108,6 @@ export const authOptions: NextAuthOptions = {
     async redirect({ url, baseUrl }) {
       console.log('NextAuth redirect called:', { url, baseUrl });
       
-      // Handle signin redirect specifically
-      if (url.includes('/auth/signin')) {
-        console.log('Signin redirect detected, redirecting to /login');
-        return '/login';
-      }
-      
-      // Handle any auth-related redirects
-      if (url.includes('/auth/')) {
-        console.log('Auth redirect detected, redirecting to /login');
-        return '/login';
-      }
-      
       // Allows relative callback URLs
       if (url.startsWith("/")) {
         console.log('Relative URL, returning:', url);

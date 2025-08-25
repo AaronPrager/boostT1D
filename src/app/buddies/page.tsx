@@ -48,7 +48,7 @@ export default function BuddiesPage() {
   useEffect(() => {
     if (status === 'loading') return;
     if (!session) {
-      router.push('/auth/signin');
+              router.push('/login');
       return;
     }
     loadMatches();
