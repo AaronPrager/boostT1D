@@ -353,10 +353,10 @@ export default function DiabetesProfilePage() {
 
   if (!session) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-zinc-50 to-stone-50 flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900">Access Denied</h1>
-          <p className="mt-2 text-gray-600">Please sign in to view your diabetes profile settings.</p>
+          <h1 className="text-2xl font-bold text-slate-900">Access Denied</h1>
+          <p className="mt-2 text-slate-600">Please sign in to view your diabetes profile settings.</p>
         </div>
       </div>
     );
@@ -368,7 +368,7 @@ export default function DiabetesProfilePage() {
         <h1 className="text-3xl font-bold">Diabetes Profile & Settings</h1>
         <div className="flex flex-col items-end space-y-2">
           {lastSavedTime && (
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-slate-600">
               Last updated on: {lastSavedTime}
             </p>
           )}
@@ -378,7 +378,7 @@ export default function DiabetesProfilePage() {
               refreshProfileFromNightscout();
             }}
             disabled={loading}
-            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-gray-600 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -390,14 +390,14 @@ export default function DiabetesProfilePage() {
 
       <div className="max-w-4xl mx-auto">
         {isFirstTime && (
-          <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-6">
+          <div className="mb-6 bg-gray-50 border border-gray-200 rounded-lg p-6">
             <div className="flex items-start">
-              <svg className="w-6 h-6 text-blue-600 mr-4 mt-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-6 h-6 text-gray-600 mr-4 mt-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               <div className="flex-1">
-                <h3 className="text-blue-900 font-semibold text-lg mb-2">Welcome to Your Diabetes Profile! 📊</h3>
-                <p className="text-blue-800 mb-3">
+                <h3 className="text-gray-900 font-semibold text-lg mb-2">Welcome to Your Diabetes Profile! 📊</h3>
+                <p className="text-gray-700 mb-3">
                   This is your first time here. Set up your Nightscout connection or configure your diabetes settings manually to get started.
                 </p>
               </div>
@@ -405,7 +405,7 @@ export default function DiabetesProfilePage() {
           </div>
         )}
 
-        <div className="bg-gradient-to-br from-blue-50 to-indigo-100 border-2 border-blue-200 p-8 rounded-xl shadow-lg mb-8">
+        <div className="bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-gray-200 p-8 rounded-xl shadow-lg mb-8">
           <h2 className="text-2xl font-semibold mb-6">Nightscout & Glucose Settings</h2>
           
           <form onSubmit={handleSettingsSubmit} className="space-y-6">
@@ -415,16 +415,16 @@ export default function DiabetesProfilePage() {
                   type="checkbox"
                   checked={manualMode}
                   onChange={e => handleManualModeToggle(e.target.checked)}
-                  className="form-checkbox h-5 w-5 text-blue-600"
+                  className="form-checkbox h-5 w-5 text-gray-600"
                 />
-                <span className="ml-2 text-sm text-gray-700">Nightscout profile not available, I will proceed manually</span>
+                <span className="ml-2 text-sm text-slate-700">Nightscout profile not available, I will proceed manually</span>
               </label>
             </div>
 
             {!manualMode ? (
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                 <div>
-                  <label htmlFor="nightscoutUrl" className="block text-sm font-medium text-gray-700">
+                  <label htmlFor="nightscoutUrl" className="block text-sm font-medium text-slate-700">
                     Nightscout URL
                   </label>
                   <input
@@ -434,12 +434,12 @@ export default function DiabetesProfilePage() {
                     value={settings.nightscoutUrl ?? ''}
                     onChange={(e) => handleSettingsChange('nightscoutUrl', e.target.value)}
                     placeholder="https://your-site.herokuapp.com"
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-gray-500 focus:border-gray-500 sm:text-sm"
                   />
-                  <p className="mt-1 text-sm text-gray-500">Your Nightscout site URL</p>
+                  <p className="mt-1 text-sm text-slate-500">Your Nightscout site URL</p>
                 </div>
                 <div>
-                  <label htmlFor="nightscoutApiToken" className="block text-sm font-medium text-gray-700">
+                  <label htmlFor="nightscoutApiToken" className="block text-sm font-medium text-slate-700">
                     Nightscout API Token
                   </label>
                   <input
@@ -449,9 +449,9 @@ export default function DiabetesProfilePage() {
                     value={settings.nightscoutApiToken ?? ''}
                     onChange={(e) => handleSettingsChange('nightscoutApiToken', e.target.value)}
                     placeholder="Enter your API token"
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-gray-500 focus:border-gray-500 sm:text-sm"
                   />
-                  <p className="mt-1 text-sm text-gray-500">Your Nightscout API token (if required)</p>
+                  <p className="mt-1 text-sm text-slate-500">Your Nightscout API token (if required)</p>
                 </div>
               </div>
             ) : (
@@ -460,7 +460,7 @@ export default function DiabetesProfilePage() {
 
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
               <div>
-                <label htmlFor="lowGlucose" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="lowGlucose" className="block text-sm font-medium text-slate-700">
                   Low Glucose Threshold (mg/dL)
                 </label>
                 <input
@@ -471,13 +471,13 @@ export default function DiabetesProfilePage() {
                   max="100"
                   value={settings.lowGlucose ?? 70}
                   onChange={(e) => handleSettingsChange('lowGlucose', parseFloat(e.target.value))}
-                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  className="mt-1 block w-full border border-slate-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm"
                 />
-                <p className="mt-1 text-sm text-gray-500">Range: 40-100 mg/dL</p>
+                <p className="mt-1 text-sm text-slate-500">Range: 40-100 mg/dL</p>
               </div>
 
               <div>
-                <label htmlFor="highGlucose" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="highGlucose" className="block text-sm font-medium text-slate-700">
                   High Glucose Threshold (mg/dL)
                 </label>
                 <input
@@ -488,9 +488,9 @@ export default function DiabetesProfilePage() {
                   max="300"
                   value={settings.highGlucose ?? 180}
                   onChange={(e) => handleSettingsChange('highGlucose', parseFloat(e.target.value))}
-                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  className="mt-1 block w-full border border-slate-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm"
                 />
-                <p className="mt-1 text-sm text-gray-500">Range: 120-300 mg/dL</p>
+                <p className="mt-1 text-sm text-slate-500">Range: 120-300 mg/dL</p>
               </div>
             </div>
 
@@ -505,10 +505,10 @@ export default function DiabetesProfilePage() {
             )}
 
             {settingsSuccess && (
-              <div className="rounded-md bg-green-50 p-4">
+              <div className="rounded-md bg-gray-50 p-4">
                 <div className="flex">
                   <div className="ml-3">
-                    <h3 className="text-sm font-medium text-green-800">{settingsSuccess}</h3>
+                    <h3 className="text-sm font-medium text-gray-800">{settingsSuccess}</h3>
                   </div>
                 </div>
               </div>
@@ -536,7 +536,7 @@ export default function DiabetesProfilePage() {
               <button
                 type="submit"
                 disabled={settingsLoading}
-                className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
+                className="px-4 py-2 text-sm font-medium text-white bg-gray-600 rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 disabled:opacity-50"
               >
                 {settingsLoading ? 'Saving...' : 'Save Settings'}
               </button>
@@ -553,11 +553,11 @@ export default function DiabetesProfilePage() {
 
       {profile && (
         <div className="max-w-4xl mx-auto">
-          <div className="bg-gradient-to-br from-blue-50 to-indigo-100 border-2 border-blue-200 p-8 rounded-xl shadow-lg space-y-6">
+          <div className="bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-gray-200 p-8 rounded-xl shadow-lg space-y-6">
             <div className="flex justify-between items-center">
-              <h2 className="text-2xl font-semibold text-gray-800">Diabetes Profile Data</h2>
+              <h2 className="text-2xl font-semibold text-slate-800">Diabetes Profile Data</h2>
               {manualMode && !manualEditMode && (
-                <button type="button" onClick={() => setManualEditMode(true)} className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">Edit</button>
+                <button type="button" onClick={() => setManualEditMode(true)} className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700">Edit</button>
               )}
             </div>
           
@@ -567,16 +567,16 @@ export default function DiabetesProfilePage() {
                   <h3 className="text-xl font-semibold mb-4">General Settings</h3>
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700">DIA (hours)</label>
-                      <p className="mt-1 text-sm text-gray-900 bg-gray-50 p-2 rounded">{profile.dia}</p>
+                      <label className="block text-sm font-medium text-slate-700">DIA (hours)</label>
+                      <p className="mt-1 text-sm text-slate-900 bg-slate-50 p-2 rounded">{profile.dia}</p>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700">Units</label>
-                      <p className="mt-1 text-sm text-gray-900 bg-gray-50 p-2 rounded">{profile.units}</p>
+                      <label className="block text-sm font-medium text-slate-700">Units</label>
+                      <p className="mt-1 text-sm text-slate-900 bg-slate-50 p-2 rounded">{profile.units}</p>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700">Timezone</label>
-                      <p className="mt-1 text-sm text-gray-900 bg-gray-50 p-2 rounded">{profile.timezone}</p>
+                      <label className="block text-sm font-medium text-slate-700">Timezone</label>
+                      <p className="mt-1 text-sm text-slate-900 bg-slate-50 p-2 rounded">{profile.timezone}</p>
                     </div>
                   </div>
                 </div>
@@ -585,10 +585,10 @@ export default function DiabetesProfilePage() {
                   <h3 className="text-xl font-semibold mb-4">Insulin Sensitivity Factor (ISF)</h3>
                   <div className="space-y-2">
                     {profile.sens?.map((item, index) => (
-                      <div key={index} className="bg-gray-50 p-3 rounded border">
+                      <div key={index} className="bg-slate-50 p-3 rounded border">
                         {formatTimeValue(item)}
                       </div>
-                    )) || <p className="text-gray-500 italic">No ISF data available</p>}
+                    )) || <p className="text-slate-500 italic">No ISF data available</p>}
                   </div>
                 </div>
 
@@ -596,10 +596,10 @@ export default function DiabetesProfilePage() {
                   <h3 className="text-xl font-semibold mb-4">Carb Ratio (IC)</h3>
                   <div className="space-y-2">
                     {profile.carbratio?.map((item, index) => (
-                      <div key={index} className="bg-gray-50 p-3 rounded border">
+                      <div key={index} className="bg-slate-50 p-3 rounded border">
                         {formatTimeValue(item)}
                       </div>
-                    )) || <p className="text-gray-500 italic">No carb ratio data available</p>}
+                    )) || <p className="text-slate-500 italic">No carb ratio data available</p>}
                   </div>
                 </div>
 
@@ -607,10 +607,10 @@ export default function DiabetesProfilePage() {
                   <h3 className="text-xl font-semibold mb-4">Basal Rates</h3>
                   <div className="space-y-2">
                     {profile.basal?.map((item, index) => (
-                      <div key={index} className="bg-gray-50 p-3 rounded border">
+                      <div key={index} className="bg-slate-50 p-3 rounded border">
                         {formatTimeValue(item)}
                       </div>
-                    )) || <p className="text-gray-500 italic">No basal data available</p>}
+                    )) || <p className="text-slate-500 italic">No basal data available</p>}
                   </div>
                 </div>
 
@@ -618,23 +618,23 @@ export default function DiabetesProfilePage() {
                   <h3 className="text-xl font-semibold mb-4">Target Range</h3>
                   <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                     <div>
-                      <h4 className="text-lg font-medium mb-3 text-green-600">Low Targets</h4>
+                      <h4 className="text-lg font-medium mb-3 text-gray-700">Low Targets</h4>
                       <div className="space-y-2">
                         {profile.target_low?.map((item, index) => (
-                          <div key={index} className="bg-green-50 border border-green-200 p-3 rounded">
+                          <div key={index} className="bg-gray-50 border border-gray-200 p-3 rounded">
                             {item.value}
                           </div>
-                        )) || <p className="text-gray-500 italic">No low target data available</p>}
+                        )) || <p className="text-slate-500 italic">No low target data available</p>}
                       </div>
                     </div>
                     <div>
-                      <h4 className="text-lg font-medium mb-3 text-red-600">High Targets</h4>
+                      <h4 className="text-lg font-medium mb-3 text-gray-700">High Targets</h4>
                       <div className="space-y-2">
                         {profile.target_high?.map((item, index) => (
-                          <div key={index} className="bg-red-50 border border-red-200 p-3 rounded">
+                          <div key={index} className="bg-gray-50 border border-gray-200 p-3 rounded">
                             {item.value}
                           </div>
-                        )) || <p className="text-gray-500 italic">No high target data available</p>}
+                        )) || <p className="text-slate-500 italic">No high target data available</p>}
                       </div>
                     </div>
                   </div>
@@ -643,41 +643,41 @@ export default function DiabetesProfilePage() {
             ) : (
               <div className="space-y-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Units</label>
-                  <select value={manualProfile.units} onChange={e => handleManualChange('units', e.target.value)} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3">
+                  <label className="block text-sm font-medium text-slate-700">Units</label>
+                  <select value={manualProfile.units} onChange={e => handleManualChange('units', e.target.value)} className="mt-1 block w-full border border-slate-300 rounded-md shadow-sm py-2 px-3">
                     <option value="mg/dL">mg/dL</option>
                     <option value="mmol/L">mmol/L</option>
                   </select>
                 </div>
                 {['sens','carbratio','basal'].map((field) => (
                   <div key={field}>
-                    <label className="block text-sm font-medium text-gray-700">{
+                    <label className="block text-sm font-medium text-slate-700">{
                       field === 'sens' ? 'Insulin Sensitivity Factor' :
                       field === 'carbratio' ? 'Carb Ratio' :
                       field.replace('_',' ').replace(/\b\w/g, l => l.toUpperCase())
                     }</label>
                     {Array.isArray(manualProfile[field as keyof Profile]) && (manualProfile[field as keyof Profile] as TimeValue[]).map((item: TimeValue, idx: number) => (
                       <div key={idx} className="flex space-x-2 mb-2">
-                        <input type="time" value={item.time} onChange={e => handleManualTimeValueChange(field as keyof Profile, idx, 'time', e.target.value)} className="border border-gray-300 rounded-md py-2 px-3" />
-                        <input type="number" value={item.value} onChange={e => handleManualTimeValueChange(field as keyof Profile, idx, 'value', parseFloat(e.target.value))} className="border border-gray-300 rounded-md py-2 px-3" />
-                        <button type="button" onClick={() => removeManualTimeValue(field as keyof Profile, idx)} className="px-2 py-1 bg-red-100 text-red-700 rounded">Remove</button>
+                        <input type="time" value={item.time} onChange={e => handleManualTimeValueChange(field as keyof Profile, idx, 'time', e.target.value)} className="border border-slate-300 rounded-md py-2 px-3" />
+                        <input type="number" value={item.value} onChange={e => handleManualTimeValueChange(field as keyof Profile, idx, 'value', parseFloat(e.target.value))} className="border border-slate-300 rounded-md py-2 px-3" />
+                        <button type="button" onClick={() => removeManualTimeValue(field as keyof Profile, idx)} className="px-2 py-1 bg-gray-100 text-gray-700 rounded hover:bg-gray-200">Remove</button>
                       </div>
                     ))}
-                    <button type="button" onClick={() => addManualTimeValue(field as keyof Profile)} className="px-3 py-1 bg-blue-100 text-blue-700 rounded">Add</button>
+                    <button type="button" onClick={() => addManualTimeValue(field as keyof Profile)} className="px-3 py-1 bg-gray-100 text-gray-700 rounded hover:bg-gray-200">Add</button>
                   </div>
                 ))}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Low Target (mg/dL)</label>
-                  <input type="number" value={manualProfile.target_low[0]?.value ?? ''} onChange={e => setManualProfile(prev => ({ ...prev, target_low: [{ time: '00:00', value: parseFloat(e.target.value) }] }))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3" />
+                  <label className="block text-sm font-medium text-slate-700">Low Target (mg/dL)</label>
+                  <input type="number" value={manualProfile.target_low[0]?.value ?? ''} onChange={e => setManualProfile(prev => ({ ...prev, target_low: [{ time: '00:00', value: parseFloat(e.target.value) }] }))} className="mt-1 block w-full border border-slate-300 rounded-md shadow-sm py-2 px-3" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">High Target (mg/dL)</label>
-                  <input type="number" value={manualProfile.target_high[0]?.value ?? ''} onChange={e => setManualProfile(prev => ({ ...prev, target_high: [{ time: '00:00', value: parseFloat(e.target.value) }] }))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3" />
+                  <label className="block text-sm font-medium text-slate-700">High Target (mg/dL)</label>
+                  <input type="number" value={manualProfile.target_high[0]?.value ?? ''} onChange={e => setManualProfile(prev => ({ ...prev, target_high: [{ time: '00:00', value: parseFloat(e.target.value) }] }))} className="mt-1 block w-full border border-slate-300 rounded-md shadow-sm py-2 px-3" />
                 </div>
                 {manualProfileError && <div className="text-red-600">{manualProfileError}</div>}
-                {manualProfileSuccess && <div className="text-green-600">{manualProfileSuccess}</div>}
+                {manualProfileSuccess && <div className="text-gray-600">{manualProfileSuccess}</div>}
                 <div className="flex justify-end">
-                  <button type="button" onClick={async () => { await handleManualProfileSave(); setManualEditMode(false); }} className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">Save</button>
+                  <button type="button" onClick={async () => { await handleManualProfileSave(); setManualEditMode(false); }} className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700">Save</button>
                 </div>
               </div>
             )}
@@ -686,9 +686,9 @@ export default function DiabetesProfilePage() {
       )}
 
       {manualMode && !isFirstTime && (
-        <div className="mt-8 text-xs text-blue-700 text-center opacity-80">
-          <span className="inline-flex items-center px-3 py-1 bg-blue-50 border border-blue-200 rounded">
-            <svg className="w-4 h-4 mr-1 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="mt-8 text-xs text-gray-600 text-center opacity-80">
+          <span className="inline-flex items-center px-3 py-1 bg-gray-50 border border-gray-200 rounded">
+            <svg className="w-4 h-4 mr-1 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             Manual mode is active. You can switch to Nightscout at any time in settings.

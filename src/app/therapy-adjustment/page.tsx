@@ -135,9 +135,9 @@ export default function TherapyAdjustmentPage() {
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case 'high': return 'text-red-600 bg-red-50 border-red-200';
-      case 'medium': return 'text-yellow-600 bg-yellow-50 border-yellow-200';
-      case 'low': return 'text-green-600 bg-green-50 border-green-200';
+      case 'high': return 'text-red-700 bg-red-50 border-red-200';
+      case 'medium': return 'text-yellow-700 bg-yellow-50 border-yellow-200';
+      case 'low': return 'text-green-700 bg-green-50 border-green-200';
       default: return 'text-gray-600 bg-gray-50 border-gray-200';
     }
   };
@@ -173,11 +173,11 @@ export default function TherapyAdjustmentPage() {
 
   const renderAdjustmentCard = (adjustment: TherapyAdjustment) => (
     <div key={`${adjustment.type}-${adjustment.timeSlot}`} 
-         className={`p-4 border rounded-lg ${getPriorityColor(adjustment.priority)}`}>
+         className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 hover:shadow-md transition-shadow">
       <div className="flex justify-between items-start mb-2">
         <div>
-          <h4 className="font-semibold">{formatAdjustmentType(adjustment.type)} - {adjustment.timeSlot}</h4>
-          <div className="text-sm mt-1">
+          <h4 className="font-semibold text-gray-900">{formatAdjustmentType(adjustment.type)} - {adjustment.timeSlot}</h4>
+          <div className="text-sm mt-1 text-gray-700">
             <span className="font-medium">Current:</span> {adjustment.currentValue} →{' '}
             <span className="font-medium">Suggested:</span> {adjustment.suggestedValue}
             {adjustment.adjustmentPercentage !== 0 && (
@@ -204,7 +204,7 @@ export default function TherapyAdjustmentPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-600 mx-auto"></div>
           <p className="mt-4 text-gray-600">Loading...</p>
         </div>
       </div>
@@ -218,18 +218,18 @@ export default function TherapyAdjustmentPage() {
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
           <div className="flex justify-between items-center mb-6">
             <div>
               <h1 className="text-3xl font-bold text-gray-900">Therapy Dose Adjustments</h1>
               <p className="text-gray-600 mt-2">
                 AI-powered suggestions based on recent glucose patterns (1 day to 1 week) and current therapy settings
               </p>
-              <div className="mt-3 bg-amber-50 border border-amber-200 rounded-md p-3">
+              <div className="mt-3 bg-gray-50 border border-gray-200 rounded-md p-3">
                 <div className="flex">
-                  <div className="text-amber-400 text-lg">⚠️</div>
+                  <div className="text-gray-500 text-lg">⚠️</div>
                   <div className="ml-3">
-                    <p className="text-sm font-medium text-amber-800">
+                    <p className="text-sm font-medium text-gray-700">
                       <strong>Important:</strong> Adjusting therapy using data more than 1 week old is not recommended. 
                       Use recent data for the most accurate and safe recommendations.
                     </p>
@@ -254,14 +254,14 @@ export default function TherapyAdjustmentPage() {
                   <option value={3}>3 days</option>
                   <option value={7}>1 week</option>
                 </select>
-                <p className="text-xs text-amber-600 mt-1">
+                <p className="text-xs text-gray-600 mt-1">
                   ⚠️ Adjusting therapy using data more than 1 week old is not recommended
                 </p>
               </div>
               <button
                 onClick={fetchAdjustmentSuggestions}
                 disabled={loading}
-                className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
               >
                 {loading ? 'Analyzing...' : 'Refresh Analysis'}
               </button>
@@ -278,10 +278,10 @@ export default function TherapyAdjustmentPage() {
                   
                   {/* Provide helpful guidance based on error type */}
                   {error.includes('diabetes profile') && (
-                    <div className="mt-3 bg-blue-50 border border-blue-200 rounded-md p-3">
-                      <p className="text-sm text-blue-800">
+                    <div className="mt-3 bg-gray-50 border border-gray-200 rounded-md p-3">
+                      <p className="text-sm text-gray-700">
                         <strong>Next Steps:</strong> Go to{' '}
-                        <a href="/diabetes-profile" className="text-blue-600 hover:text-blue-800 underline">
+                        <a href="/diabetes-profile" className="text-gray-600 hover:text-gray-800 underline">
                           Diabetes Profile
                         </a>{' '}
                         to set up your basal rates, carb ratios, insulin sensitivity, and target ranges.
@@ -290,10 +290,10 @@ export default function TherapyAdjustmentPage() {
                   )}
                   
                   {error.includes('glucose data') && (
-                    <div className="mt-3 bg-blue-50 border border-blue-200 rounded-md p-3">
-                      <p className="text-sm text-blue-800">
+                    <div className="mt-3 bg-gray-50 border border-gray-200 rounded-md p-3">
+                      <p className="text-sm text-gray-700">
                         <strong>Next Steps:</strong> Go to{' '}
-                        <a href="/readings" className="text-blue-600 hover:text-blue-800 underline">
+                        <a href="/readings" className="text-gray-600 hover:text-gray-800 underline">
                           Blood Glucose Data
                         </a>{' '}
                         to add manual readings or sync from Nightscout.
@@ -302,8 +302,8 @@ export default function TherapyAdjustmentPage() {
                   )}
                   
                   {error.includes('Insufficient data') && (
-                    <div className="mt-3 bg-blue-50 border border-blue-200 rounded-md p-3">
-                      <p className="text-sm text-blue-800">
+                    <div className="mt-3 bg-gray-50 border border-gray-200 rounded-md p-3">
+                      <p className="text-sm text-gray-700">
                         <strong>Next Steps:</strong> Try a shorter analysis period (1-3 days) or add more glucose readings.
                       </p>
                     </div>
@@ -337,37 +337,37 @@ export default function TherapyAdjustmentPage() {
             <>
               {/* Analysis Metrics */}
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
-                <div className="bg-blue-50 p-4 rounded-lg text-center">
-                  <div className="text-2xl font-bold text-blue-600">
+                <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-lg text-center border border-green-200 shadow-sm">
+                  <div className="text-2xl font-bold text-green-700">
                     {suggestions.analysisMetrics.timeInRange}%
                   </div>
                   <div className="text-sm text-gray-600">Time in Range</div>
                 </div>
-                <div className="bg-red-50 p-4 rounded-lg text-center">
-                  <div className="text-2xl font-bold text-red-600">
+                <div className="bg-gradient-to-br from-orange-50 to-orange-100 p-4 rounded-lg text-center border border-orange-200 shadow-sm">
+                  <div className="text-2xl font-bold text-orange-700">
                     {suggestions.analysisMetrics.timeAboveRange}%
                   </div>
                   <div className="text-sm text-gray-600">Time Above</div>
                 </div>
-                <div className="bg-yellow-50 p-4 rounded-lg text-center">
-                  <div className="text-2xl font-bold text-yellow-600">
+                <div className="bg-gradient-to-br from-red-50 to-red-100 p-4 rounded-lg text-center border border-red-200 shadow-sm">
+                  <div className="text-2xl font-bold text-red-700">
                     {suggestions.analysisMetrics.timeBelowRange}%
                   </div>
                   <div className="text-sm text-gray-600">Time Below</div>
                 </div>
-                <div className="bg-green-50 p-4 rounded-lg text-center">
-                  <div className="text-2xl font-bold text-green-600">
+                <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-lg text-center border border-blue-200 shadow-sm">
+                  <div className="text-2xl font-bold text-blue-700">
                     {suggestions.analysisMetrics.averageGlucose}
                   </div>
                   <div className="text-sm text-gray-600">Avg Glucose</div>
                 </div>
-                <div className="bg-purple-50 p-4 rounded-lg text-center">
-                  <div className="text-2xl font-bold text-purple-600">
+                <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-lg text-center border border-purple-200 shadow-sm">
+                  <div className="text-2xl font-bold text-purple-700">
                     {suggestions.analysisMetrics.glucoseVariability}%
                   </div>
                   <div className="text-sm text-gray-600">Variability</div>
                 </div>
-                <div className="bg-gray-50 p-4 rounded-lg text-center">
+                <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 p-4 rounded-lg text-center border border-indigo-200 shadow-sm">
                   <div className={`text-2xl font-bold ${getDataQualityColor(suggestions.analysisMetrics.dataQuality)}`}>
                     {suggestions.analysisMetrics.dataQuality.toUpperCase()}
                   </div>
@@ -378,13 +378,19 @@ export default function TherapyAdjustmentPage() {
               {/* Safety Warnings */}
               {suggestions.safetyWarnings.length > 0 && (
                 <div className="mb-8">
-                  <h2 className="text-xl font-semibold text-gray-900 mb-4">⚠️ Safety Warnings</h2>
-                  <div className="space-y-3">
-                    {suggestions.safetyWarnings.map((warning, index) => (
-                      <div key={index} className="bg-red-50 border border-red-200 rounded-md p-4">
-                        <p className="text-red-800">{warning}</p>
+                  <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+                    <div className="p-6 border-b border-gray-200">
+                      <h2 className="text-xl font-semibold text-gray-900">⚠️ Safety Warnings</h2>
+                    </div>
+                    <div className="p-6">
+                      <div className="space-y-3">
+                        {suggestions.safetyWarnings.map((warning, index) => (
+                          <div key={index} className="bg-red-50 border border-red-200 rounded-md p-4">
+                            <p className="text-red-800">{warning}</p>
+                          </div>
+                        ))}
                       </div>
-                    ))}
+                    </div>
                   </div>
                 </div>
               )}
@@ -392,16 +398,22 @@ export default function TherapyAdjustmentPage() {
               {/* Overall Recommendations */}
               {suggestions.overallRecommendations.length > 0 && (
                 <div className="mb-8">
-                  <h2 className="text-xl font-semibold text-gray-900 mb-4">📋 Overall Recommendations</h2>
-                  <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
-                    <ul className="space-y-2">
-                      {suggestions.overallRecommendations.map((rec, index) => (
-                        <li key={index} className="text-blue-800 flex items-start">
-                          <span className="text-blue-600 mr-2">•</span>
-                          {rec}
-                        </li>
-                      ))}
-                    </ul>
+                  <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+                    <div className="p-6 border-b border-gray-200">
+                      <h2 className="text-xl font-semibold text-gray-900">📋 Overall Recommendations</h2>
+                    </div>
+                    <div className="p-6">
+                      <div className="bg-gray-50 border border-gray-200 rounded-md p-4">
+                        <ul className="space-y-2">
+                          {suggestions.overallRecommendations.map((rec, index) => (
+                            <li key={index} className="text-gray-700 flex items-start">
+                              <span className="text-gray-500 mr-2">•</span>
+                              {rec}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}
@@ -409,9 +421,15 @@ export default function TherapyAdjustmentPage() {
               {/* Basal Adjustments */}
               {suggestions.basalAdjustments.length > 0 && (
                 <div className="mb-8">
-                  <h2 className="text-xl font-semibold text-gray-900 mb-4">🕐 Basal Rate Adjustments</h2>
-                  <div className="grid gap-4 md:grid-cols-2">
-                    {suggestions.basalAdjustments.map(renderAdjustmentCard)}
+                  <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+                    <div className="p-6 border-b border-gray-200">
+                      <h2 className="text-xl font-semibold text-gray-900">🕐 Basal Rate Adjustments</h2>
+                    </div>
+                    <div className="p-6">
+                      <div className="grid gap-4 md:grid-cols-2">
+                        {suggestions.basalAdjustments.map(renderAdjustmentCard)}
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}
@@ -419,9 +437,15 @@ export default function TherapyAdjustmentPage() {
               {/* Carb Ratio Adjustments */}
               {suggestions.carbRatioAdjustments.length > 0 && (
                 <div className="mb-8">
-                  <h2 className="text-xl font-semibold text-gray-900 mb-4">🍽️ Carb Ratio Adjustments</h2>
-                  <div className="grid gap-4 md:grid-cols-2">
-                    {suggestions.carbRatioAdjustments.map(renderAdjustmentCard)}
+                  <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+                    <div className="p-6 border-b border-gray-200">
+                      <h2 className="text-xl font-semibold text-gray-900">🍽️ Carb Ratio Adjustments</h2>
+                    </div>
+                    <div className="p-6">
+                      <div className="grid gap-4 md:grid-cols-2">
+                        {suggestions.carbRatioAdjustments.map(renderAdjustmentCard)}
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}
@@ -429,9 +453,15 @@ export default function TherapyAdjustmentPage() {
               {/* Sensitivity Adjustments */}
               {suggestions.sensitivityAdjustments.length > 0 && (
                 <div className="mb-8">
-                  <h2 className="text-xl font-semibold text-gray-900 mb-4">💉 Insulin Sensitivity Adjustments</h2>
-                  <div className="grid gap-4 md:grid-cols-2">
-                    {suggestions.sensitivityAdjustments.map(renderAdjustmentCard)}
+                  <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+                    <div className="p-6 border-b border-gray-200">
+                      <h2 className="text-xl font-semibold text-gray-900">💉 Insulin Sensitivity Adjustments</h2>
+                    </div>
+                    <div className="p-6">
+                      <div className="grid gap-4 md:grid-cols-2">
+                        {suggestions.sensitivityAdjustments.map(renderAdjustmentCard)}
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}
@@ -439,9 +469,15 @@ export default function TherapyAdjustmentPage() {
               {/* Target Adjustments */}
               {suggestions.targetAdjustments.length > 0 && (
                 <div className="mb-8">
-                  <h2 className="text-xl font-semibold text-gray-900 mb-4">🎯 Target Range Adjustments</h2>
-                  <div className="grid gap-4 md:grid-cols-2">
-                    {suggestions.targetAdjustments.map(renderAdjustmentCard)}
+                  <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+                    <div className="p-6 border-b border-gray-200">
+                      <h2 className="text-xl font-semibold text-gray-900">🎯 Target Range Adjustments</h2>
+                    </div>
+                    <div className="p-6">
+                      <div className="grid gap-4 md:grid-cols-2">
+                        {suggestions.targetAdjustments.map(renderAdjustmentCard)}
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}
@@ -451,24 +487,28 @@ export default function TherapyAdjustmentPage() {
                suggestions.carbRatioAdjustments.length === 0 && 
                suggestions.sensitivityAdjustments.length === 0 && 
                suggestions.targetAdjustments.length === 0 && (
-                <div className="text-center py-8">
-                  <div className="text-6xl mb-4">✅</div>
-                  <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                    No Adjustments Needed
-                  </h3>
-                  <p className="text-gray-600">
-                    Your current therapy settings appear to be working well based on recent glucose patterns.
-                  </p>
+                <div className="mb-8">
+                  <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+                    <div className="p-6 text-center">
+                      <div className="text-6xl mb-4">✅</div>
+                      <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                        No Adjustments Needed
+                      </h3>
+                      <p className="text-gray-600">
+                        Your current therapy settings appear to be working well based on recent glucose patterns.
+                      </p>
+                    </div>
+                  </div>
                 </div>
               )}
 
               {/* Disclaimer */}
-              <div className="mt-8 bg-yellow-50 border border-yellow-200 rounded-md p-4">
+              <div className="mt-8 bg-gray-50 border border-gray-200 rounded-md p-4">
                 <div className="flex">
-                  <div className="text-yellow-400">⚠️</div>
+                  <div className="text-gray-500">⚠️</div>
                   <div className="ml-3">
-                    <h3 className="text-sm font-medium text-yellow-800">Important Disclaimer</h3>
-                    <p className="text-sm text-yellow-700 mt-1">
+                    <h3 className="text-sm font-medium text-gray-700">Important Disclaimer</h3>
+                    <p className="text-sm text-gray-600 mt-1">
                       These suggestions are for educational purposes only and should not replace professional medical advice. 
                       Always consult with your healthcare provider before making any changes to your diabetes therapy. 
                       Make only one adjustment at a time and monitor carefully for 3-5 days before making additional changes.
@@ -478,14 +518,16 @@ export default function TherapyAdjustmentPage() {
               </div>
             </>
           ) : (
-            <div className="text-center py-8">
-              <div className="text-6xl mb-4">📊</div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                Ready to Analyze
-              </h3>
-              <p className="text-gray-600">
-                Click "Refresh Analysis" to generate therapy adjustment suggestions based on your recent glucose data.
-              </p>
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+              <div className="p-6 text-center">
+                <div className="text-6xl mb-4">📊</div>
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                  Ready to Analyze
+                </h3>
+                <p className="text-gray-600">
+                  Click "Refresh Analysis" to generate therapy adjustment suggestions based on your recent glucose data.
+                </p>
+              </div>
             </div>
           )}
         </div>

@@ -6,19 +6,41 @@ function formatDate(date: Date) {
   return date.toISOString().slice(0, 10);
 }
 
+function formatRelativeTime(dateString: string) {
+  const now = new Date();
+  const date = new Date(dateString);
+  const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+  if (diffInSeconds < 60) {
+    return 'just now';
+  } else if (diffInSeconds < 3600) {
+    const minutes = Math.floor(diffInSeconds / 60);
+    return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
+  } else if (diffInSeconds < 86400) {
+    const hours = Math.floor(diffInSeconds / 3600);
+    return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+  } else {
+    const days = Math.floor(diffInSeconds / 86400);
+    return `${days} day${days > 1 ? 's' : ''} ago`;
+  }
+}
+
 export default function TreatmentsPage() {
   const [startDate, setStartDate] = useState(() => {
     const d = new Date();
-    d.setDate(d.getDate() - 7);
+    d.setDate(d.getDate() - 1);
     return formatDate(d);
   });
   const [endDate, setEndDate] = useState(() => formatDate(new Date()));
   const [treatments, setTreatments] = useState<any[]>([]);
+  const [filteredTreatments, setFilteredTreatments] = useState<any[]>([]);
+  const [treatmentTypeFilter, setTreatmentTypeFilter] = useState<string>('all');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [settings, setSettings] = useState<any>(null);
   const [isManualMode, setIsManualMode] = useState(false);
   const [showManualEntry, setShowManualEntry] = useState(false);
+  const [lastFetchTime, setLastFetchTime] = useState<Date | null>(null);
   const [manualTreatment, setManualTreatment] = useState({
     timestamp: new Date().toISOString().slice(0, 16),
     type: 'Bolus',
@@ -45,6 +67,13 @@ export default function TreatmentsPage() {
     fetchSettings();
   }, []);
 
+  // Auto-fetch treatments for last week on page load
+  useEffect(() => {
+    fetchTreatments();
+    // Auto-sync with Nightscout when page loads
+    syncWithNightscout();
+  }, []);
+
   async function fetchTreatments() {
     setLoading(true);
     setError(null);
@@ -69,6 +98,7 @@ export default function TreatmentsPage() {
       }
       const data = await res.json();
       setTreatments(data.treatments || data);
+      setLastFetchTime(new Date());
     } catch (err: any) {
       setError(err.message || 'Failed to fetch treatments');
     } finally {
@@ -76,13 +106,56 @@ export default function TreatmentsPage() {
     }
   }
 
+  const syncWithNightscout = async () => {
+    try {
+      console.log('Syncing treatments with Nightscout...');
+      const response = await fetch('/api/nightscout/sync', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        console.log('Nightscout sync completed successfully');
+        // Refresh treatments data after successful sync
+        await fetchTreatments();
+      } else {
+        const errorText = await response.text();
+        console.warn('Nightscout sync failed:', errorText);
+        // Don't show error to user for auto-sync, just log it
+      }
+    } catch (error) {
+      console.warn('Nightscout sync error:', error);
+      // Don't show error to user for auto-sync, just log it
+    }
+  };
+
+  // Get unique treatment types for filter dropdown
+  const getUniqueTreatmentTypes = () => {
+    const types = treatments.map(t => t.eventType || t.type || 'Unknown').filter(Boolean);
+    return [...new Set(types)].sort();
+  };
+
+  // Filter treatments based on selected type
+  const filterTreatments = (treatments: any[], filter: string) => {
+    if (filter === 'all') return treatments;
+    return treatments.filter(t => (t.eventType || t.type || 'Unknown') === filter);
+  };
+
+  // Update filtered treatments when treatments or filter changes
+  useEffect(() => {
+    const filtered = filterTreatments(treatments, treatmentTypeFilter);
+    setFilteredTreatments(filtered);
+  }, [treatments, treatmentTypeFilter]);
+
   // CSV Export function for treatments
   const exportTreatmentsToCSV = () => {
-    if (treatments.length === 0) return;
+    if (filteredTreatments.length === 0) return;
 
     // Create CSV content
     const csvHeaders = ['Date', 'Time', 'Event Type', 'Insulin', 'Carbs', 'Notes'];
-    const csvRows = treatments.map(treatment => [
+    const csvRows = filteredTreatments.map(treatment => [
       (treatment.created_at ? new Date(treatment.created_at) : new Date(treatment.timestamp)).toLocaleDateString(),
       (treatment.created_at ? new Date(treatment.created_at) : new Date(treatment.timestamp)).toLocaleTimeString('en-US', { 
         hour: '2-digit', 
@@ -159,14 +232,14 @@ export default function TreatmentsPage() {
       
               {/* Manual Mode Section - Show when Nightscout is not configured */}
         {isManualMode && (
-          <div className="mb-4 bg-gray-50 border border-gray-200 rounded-lg p-4">
+          <div className="mb-4 bg-slate-50 border border-slate-200 rounded-lg p-4">
             <div className="flex items-start">
-              <svg className="w-5 h-5 text-gray-600 mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5 text-slate-600 mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               <div className="flex-1">
-                <h3 className="text-gray-900 font-medium text-base mb-2">Manual Mode Active 💊</h3>
-                <p className="text-gray-600 text-sm mb-3">
+                <h3 className="text-slate-900 font-medium text-base mb-2">Manual Mode Active 💊</h3>
+                <p className="text-slate-600 text-sm mb-3">
                   {settings.nightscoutUrl && !settings.nightscoutApiToken 
                     ? "Nightscout URL is configured but API token is missing. You can continue in manual mode or add your API token."
                     : "Nightscout is not configured. You can continue in manual mode or set up Nightscout for automatic sync."
@@ -175,7 +248,7 @@ export default function TreatmentsPage() {
                 <div className="flex flex-wrap gap-2">
                   <a 
                     href="/diabetes-profile" 
-                    className="inline-flex items-center px-3 py-1.5 bg-gray-700 text-white text-xs font-medium rounded-md hover:bg-gray-800 transition-colors"
+                    className="inline-flex items-center px-3 py-1.5 bg-slate-700 text-white text-xs font-medium rounded-md hover:bg-slate-800 transition-colors"
                   >
                     <svg className="w-3 h-3 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
@@ -185,7 +258,7 @@ export default function TreatmentsPage() {
                   </a>
                   <button
                     onClick={() => setShowManualEntry(true)}
-                    className="inline-flex items-center px-3 py-1.5 bg-emerald-600 text-white text-xs font-medium rounded-md hover:bg-emerald-700 transition-colors"
+                    className="inline-flex items-center px-3 py-1.5 bg-gray-600 text-white text-xs font-medium rounded-md hover:bg-gray-700 transition-colors"
                   >
                     <svg className="w-3 h-3 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
@@ -200,12 +273,12 @@ export default function TreatmentsPage() {
 
       {/* Manual Treatment Entry Form */}
       {showManualEntry && (
-        <div className="mb-6 bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+        <div className="mb-6 bg-white border border-slate-200 rounded-lg p-6 shadow-sm">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">Add Treatment Manually</h3>
+            <h3 className="text-lg font-semibold text-slate-900">Add Treatment Manually</h3>
             <button
               onClick={() => setShowManualEntry(false)}
-              className="text-gray-400 hover:text-gray-600"
+              className="text-slate-400 hover:text-slate-600"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -215,21 +288,21 @@ export default function TreatmentsPage() {
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Date & Time</label>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Date & Time</label>
               <input
                 type="datetime-local"
                 value={manualTreatment.timestamp}
                 onChange={(e) => setManualTreatment(prev => ({ ...prev, timestamp: e.target.value }))}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-gray-500 focus:border-gray-500"
+                className="w-full border border-slate-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-gray-500 focus:border-gray-500"
               />
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Treatment Type</label>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Treatment Type</label>
               <select
                 value={manualTreatment.type}
                 onChange={(e) => setManualTreatment(prev => ({ ...prev, type: e.target.value }))}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-gray-500 focus:border-gray-500"
+                className="w-full border border-slate-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-gray-500 focus:border-gray-500"
               >
                 <option value="Bolus">Bolus</option>
                 <option value="Meal">Meal</option>
@@ -242,49 +315,49 @@ export default function TreatmentsPage() {
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Insulin (units)</label>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Insulin (units)</label>
               <input
                 type="number"
                 step="0.1"
                 placeholder="0.0"
                 value={manualTreatment.insulin}
                 onChange={(e) => setManualTreatment(prev => ({ ...prev, insulin: e.target.value }))}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-gray-500 focus:border-gray-500"
+                className="w-full border border-slate-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-gray-500 focus:border-gray-500"
               />
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Carbs (grams)</label>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Carbs (grams)</label>
               <input
                 type="number"
                 step="1"
                 placeholder="0"
                 value={manualTreatment.carbs}
                 onChange={(e) => setManualTreatment(prev => ({ ...prev, carbs: e.target.value }))}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-gray-500 focus:border-gray-500"
+                className="w-full border border-slate-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-gray-500 focus:border-gray-500"
               />
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Blood Glucose (mg/dL)</label>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Blood Glucose (mg/dL)</label>
               <input
                 type="number"
                 step="1"
                 placeholder="100"
                 value={manualTreatment.glucoseValue}
                 onChange={(e) => setManualTreatment(prev => ({ ...prev, glucoseValue: e.target.value }))}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-gray-500 focus:border-gray-500"
+                className="w-full border border-slate-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-gray-500 focus:border-gray-500"
               />
             </div>
             
             <div className="md:col-span-1">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Notes</label>
               <textarea
                 rows={3}
                 placeholder="Optional notes..."
                 value={manualTreatment.notes}
                 onChange={(e) => setManualTreatment(prev => ({ ...prev, notes: e.target.value }))}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-gray-500 focus:border-gray-500"
+                className="w-full border border-slate-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-gray-500 focus:border-gray-500"
               />
             </div>
           </div>
@@ -293,7 +366,7 @@ export default function TreatmentsPage() {
             <button
               onClick={saveManualTreatment}
               disabled={loading}
-              className="inline-flex items-center px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-md hover:bg-emerald-700 focus:ring-2 focus:ring-emerald-500 disabled:opacity-50 transition-colors"
+              className="inline-flex items-center px-4 py-2 bg-gray-600 text-white text-sm font-medium rounded-md hover:bg-gray-700 focus:ring-2 focus:ring-gray-500 disabled:opacity-50 transition-colors"
             >
               {loading ? (
                 <>
@@ -323,7 +396,7 @@ export default function TreatmentsPage() {
                   notes: ''
                 });
               }}
-              className="inline-flex items-center px-4 py-2 bg-gray-600 text-white text-sm font-medium rounded-md hover:bg-gray-700 focus:ring-2 focus:ring-gray-500 transition-colors"
+              className="inline-flex items-center px-4 py-2 bg-slate-600 text-white text-sm font-medium rounded-md hover:bg-slate-700 focus:ring-2 focus:ring-slate-500 transition-colors"
             >
               <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -334,16 +407,116 @@ export default function TreatmentsPage() {
         </div>
       )}
       
-      <div className="flex gap-4 mb-4 items-end">
-        <div>
-          <label className="block text-sm font-medium">Start Date</label>
-          <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="border rounded px-2 py-1" />
+      {/* Filter and Date Range Section */}
+      <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6 shadow-sm">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Filter Treatments</h3>
+        <div className="space-y-6">
+          {/* Date Range */}
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-gray-700">Date Range</label>
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">From</label>
+                  <input 
+                    type="date" 
+                    value={startDate} 
+                    onChange={e => setStartDate(e.target.value)} 
+                    className="w-full border border-gray-300 rounded-md px-2 py-1.5 text-xs focus:ring-2 focus:ring-gray-500 focus:border-gray-500" 
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">To</label>
+                  <input 
+                    type="date" 
+                    value={endDate} 
+                    onChange={e => setEndDate(e.target.value)} 
+                    className="w-full border border-gray-300 rounded-md px-2 py-1.5 text-xs focus:ring-2 focus:ring-gray-500 focus:border-gray-500" 
+                  />
+                </div>
+              </div>
+              
+              {/* Quick Filter Buttons */}
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-500 mr-2">Quick:</span>
+                <button
+                  onClick={() => {
+                    const today = new Date();
+                    setStartDate(formatDate(today));
+                    setEndDate(formatDate(today));
+                    setTreatmentTypeFilter('all');
+                    fetchTreatments();
+                  }}
+                  className="px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded-full hover:bg-gray-200 transition-colors whitespace-nowrap"
+                >
+                  1 day
+                </button>
+                <button
+                  onClick={() => {
+                    const yesterday = new Date();
+                    yesterday.setDate(yesterday.getDate() - 1);
+                    const today = new Date();
+                    setStartDate(formatDate(yesterday));
+                    setEndDate(formatDate(today));
+                    setTreatmentTypeFilter('all');
+                    fetchTreatments();
+                  }}
+                  className="px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded-full hover:bg-gray-200 transition-colors whitespace-nowrap"
+                >
+                  2 days
+                </button>
+                <button
+                  onClick={() => {
+                    const d = new Date();
+                    d.setDate(d.getDate() - 7);
+                    setStartDate(formatDate(d));
+                    setEndDate(formatDate(new Date()));
+                    setTreatmentTypeFilter('all');
+                    fetchTreatments();
+                  }}
+                  className="px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded-full hover:bg-gray-200 transition-colors whitespace-nowrap"
+                >
+                  1 week
+                </button>
+              </div>
+            </div>
+          </div>
+          
+          {/* Treatment Type Filter */}
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-gray-700">Treatment Type</label>
+            <select
+              value={treatmentTypeFilter}
+              onChange={(e) => setTreatmentTypeFilter(e.target.value)}
+              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-gray-500 focus:border-gray-500"
+            >
+              <option value="all">All Types</option>
+              {getUniqueTreatmentTypes().map(type => (
+                <option key={type} value={type}>{type}</option>
+              ))}
+            </select>
+          </div>
+          
+          {/* Fetch Button Row - Bottom Right */}
+          <div className="flex justify-end">
+            <div className="flex flex-col items-end space-y-1">
+              <button 
+                onClick={fetchTreatments} 
+                className="bg-gray-600 text-white px-3 py-2 rounded-md hover:bg-gray-700 transition-colors text-sm font-medium flex items-center"
+              >
+                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Fetch
+              </button>
+              {lastFetchTime && (
+                <div className="text-xs text-gray-500 text-right">
+                  Last updated: {formatRelativeTime(lastFetchTime.toISOString())}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
-        <div>
-          <label className="block text-sm font-medium">End Date</label>
-          <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="border rounded px-2 py-1" />
-        </div>
-        <button onClick={fetchTreatments} className="bg-blue-600 text-white px-4 py-2 rounded">Fetch</button>
       </div>
       {loading && <div>Loading...</div>}
       {error && (
@@ -381,13 +554,18 @@ export default function TreatmentsPage() {
             <h3 className="text-lg font-semibold">Treatments Data</h3>
             <button
               onClick={exportTreatmentsToCSV}
-              className="inline-flex items-center px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors"
+              className="inline-flex items-center px-4 py-2 bg-gray-600 text-white text-sm font-medium rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors"
             >
               <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
               Export to CSV
             </button>
+          </div>
+          {/* Treatment Count */}
+          <div className="mb-3 text-sm text-gray-600">
+            Showing {filteredTreatments.length} of {treatments.length} treatments
+            {treatmentTypeFilter !== 'all' && ` (filtered by ${treatmentTypeFilter})`}
           </div>
           <div className="overflow-x-auto">
             <table className="min-w-full border">
@@ -401,7 +579,7 @@ export default function TreatmentsPage() {
                 </tr>
               </thead>
               <tbody>
-                {treatments.map((treatment, i) => (
+                {filteredTreatments.map((treatment, i) => (
                   <tr key={treatment._id || treatment.id || i}>
                     <td className="border px-2 py-1">
                       {treatment.created_at ? new Date(treatment.created_at).toLocaleString() : 
@@ -418,7 +596,13 @@ export default function TreatmentsPage() {
           </div>
         </div>
       )}
-      {treatments.length === 0 && !loading && <div className="text-gray-500 mt-4">No treatments found for this range.</div>}
+              {filteredTreatments.length === 0 && !loading && (
+                <div className="text-slate-500 mt-4">
+                  {treatments.length === 0 
+                    ? "No treatments found for this range." 
+                    : `No treatments of type "${treatmentTypeFilter}" found.`}
+                </div>
+              )}
     </div>
   );
 } 

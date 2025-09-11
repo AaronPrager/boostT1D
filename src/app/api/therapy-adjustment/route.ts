@@ -682,20 +682,11 @@ function analyzeSensitivity(
 ): TherapyAdjustment[] {
   const adjustments: TherapyAdjustment[] = [];
   
+  // Only suggest sensitivity adjustments if there's high variability AND we can make a meaningful suggestion
   if (glucoseVariability > 40) {
-    // High variability might indicate sensitivity issues
-    currentSens.forEach(sens => {
-      adjustments.push({
-        type: 'sens',
-        timeSlot: sens.time,
-        currentValue: sens.value,
-        suggestedValue: sens.value, // Keep same for now
-        adjustmentPercentage: 0,
-        reasoning: `High glucose variability (${glucoseVariability.toFixed(1)}%). Consider reviewing insulin sensitivity with healthcare provider.`,
-        confidence: 'low',
-        priority: 'low',
-      });
-    });
+    // For now, we don't have enough data to make specific sensitivity adjustments
+    // Just return empty array - the high variability will be mentioned in overall recommendations
+    // TODO: Implement proper sensitivity analysis when we have meal/insulin data
   }
 
   return adjustments;

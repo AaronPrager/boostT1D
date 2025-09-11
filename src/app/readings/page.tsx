@@ -494,10 +494,10 @@ export default function ReadingsPage() {
 
   if (!session) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-zinc-50 to-stone-50 flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900">Access Denied</h1>
-          <p className="mt-2 text-gray-600">Please sign in to view your readings and analysis.</p>
+          <h1 className="text-2xl font-bold text-slate-900">Access Denied</h1>
+          <p className="mt-2 text-slate-600">Please sign in to view your readings and analysis.</p>
         </div>
       </div>
     );
@@ -505,10 +505,10 @@ export default function ReadingsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-zinc-50 to-stone-50 flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900">Loading Blood Glucose Data...</h1>
-          <p className="mt-2 text-gray-600">Fetching your latest readings and statistics.</p>
+          <h1 className="text-2xl font-bold text-slate-900">Loading Blood Glucose Data...</h1>
+          <p className="mt-2 text-slate-600">Fetching your latest readings and statistics.</p>
         </div>
       </div>
     );
@@ -516,10 +516,10 @@ export default function ReadingsPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-zinc-50 to-stone-50 flex items-center justify-center">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-red-600">Error</h1>
-          <p className="mt-2 text-gray-600">{error}</p>
+          <p className="mt-2 text-slate-600">{error}</p>
         </div>
       </div>
     );
@@ -586,66 +586,136 @@ export default function ReadingsPage() {
         <h1 className="text-3xl font-bold">Blood Glucose Data</h1>
       </div>
 
-      {/* Current Glucose Value Display */}
-      {currentGlucose && (
-        <div className="mb-6 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-6 shadow-sm">
+      {/* Combined Current Status and Date Range Card */}
+      <div className="mb-8">
+        <div className="bg-gradient-to-r from-gray-50 to-blue-50 rounded-lg shadow-sm border border-blue-200 p-6">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className="flex flex-col">
-                <span className="text-sm font-medium text-gray-600">Current Glucose</span>
-                <div className="flex items-center space-x-2">
-                  <span className={`text-4xl font-bold ${
-                    currentGlucose.value < settings.lowGlucose ? 'text-red-600' :
-                    currentGlucose.value > settings.highGlucose ? 'text-orange-500' :
-                    'text-green-600'
-                  }`}>
-                    {currentGlucose.value}
-                  </span>
-                  <span className="text-gray-500 text-sm">mg/dL</span>
-                  <span className="text-2xl">
-                    {DIRECTION_ARROWS[currentGlucose.direction] || '→'}
-                  </span>
+            <div className="flex-1">
+              {/* Current Glucose Section */}
+              {currentGlucose ? (
+                <div className="flex items-center space-x-6">
+                  <div>
+                    <h2 className="text-lg font-semibold text-gray-900 mb-2">Current Glucose</h2>
+                    <div className="flex items-center space-x-3">
+                      <span className={`text-4xl font-bold px-4 py-2 rounded-lg ${
+                        currentGlucose.value < settings.lowGlucose ? 'bg-red-100 text-red-700' :
+                        currentGlucose.value > settings.highGlucose ? 'bg-orange-100 text-orange-700' :
+                        'bg-green-100 text-green-700'
+                      }`}>
+                        {currentGlucose.value}
+                      </span>
+                      <span className="text-2xl">
+                        {DIRECTION_ARROWS[currentGlucose.direction] || '→'}
+                      </span>
+                    </div>
+                    {currentGlucose.timestamp && (
+                      <p className="text-sm text-gray-600 mt-2">
+                        Last updated {formatRelativeTime(currentGlucose.timestamp.toISOString())}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-900 mb-2">Date Range</h2>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Date Range</label>
+                      <div className="flex space-x-4">
+                        <div>
+                          <label className="block text-xs text-gray-500">From</label>
+                          <input
+                            type="date"
+                            value={fromDate}
+                            onChange={(e) => setFromDate(e.target.value)}
+                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-500">To</label>
+                          <input
+                            type="date"
+                            value={toDate}
+                            onChange={(e) => setToDate(e.target.value)}
+                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-end space-x-4">
+                      {readings.length > 0 && (
+                        <div className="text-sm text-gray-500">
+                          <p>Last updated</p>
+                          <p>{lastFetchTime ? formatRelativeTime(lastFetchTime.toISOString()) : 'Never'}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            {/* Date Range and Sync Controls */}
+            <div className="flex items-center space-x-6">
+              {/* Date Range Controls */}
+              <div className="flex items-center space-x-4">
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">From</label>
+                  <input
+                    type="date"
+                    value={fromDate}
+                    onChange={(e) => setFromDate(e.target.value)}
+                    className="block w-32 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">To</label>
+                  <input
+                    type="date"
+                    value={toDate}
+                    onChange={(e) => setToDate(e.target.value)}
+                    className="block w-32 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm"
+                  />
                 </div>
               </div>
+              
+              {/* Last Updated Info */}
+              {readings.length > 0 && (
+                <div className="text-sm text-gray-500">
+                  <p>Last updated</p>
+                  <p>{lastFetchTime ? formatRelativeTime(lastFetchTime.toISOString()) : 'Never'}</p>
+                </div>
+              )}
+              
+              {/* Sync Button */}
+              {settings.nightscoutUrl && (
+                <button
+                  onClick={syncFromNightscout}
+                  disabled={syncing}
+                  className="flex items-center px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                >
+                  {syncing ? (
+                    <div className="flex items-center">
+                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Syncing...
+                    </div>
+                  ) : (
+                    <div className="flex items-center">
+                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                      Sync from Nightscout
+                    </div>
+                  )}
+                </button>
+              )}
             </div>
-            <div className="text-right">
-              <div className="text-sm text-gray-500">
-                {currentGlucose.timestamp.toLocaleTimeString([], { 
-                  hour: '2-digit', 
-                  minute: '2-digit' 
-                })}
-              </div>
-              <div className="text-xs text-gray-400 capitalize">
-                {currentGlucose.source} reading
-              </div>
-              <div className="text-xs text-gray-400">
-                {currentGlucose.timestamp.toLocaleDateString()}
-              </div>
-            </div>
-          </div>
-          
-          {/* Status indicator */}
-          <div className="mt-3 flex items-center space-x-2">
-            <div className={`w-3 h-3 rounded-full ${
-              currentGlucose.value < settings.lowGlucose ? 'bg-red-500' :
-              currentGlucose.value > settings.highGlucose ? 'bg-orange-500' :
-              'bg-green-500'
-            }`}></div>
-            <span className={`text-sm font-medium ${
-              currentGlucose.value < settings.lowGlucose ? 'text-red-700' :
-              currentGlucose.value > settings.highGlucose ? 'text-orange-700' :
-              'text-green-700'
-            }`}>
-              {currentGlucose.value < settings.lowGlucose ? 'Below Range' :
-               currentGlucose.value > settings.highGlucose ? 'Above Range' :
-               'In Range'}
-            </span>
-            <span className="text-xs text-gray-500">
-              (Target: {settings.lowGlucose}-{settings.highGlucose} mg/dL)
-            </span>
           </div>
         </div>
-      )}
+      </div>
       
       {/* Nightscout Information Message */}
       {!settings.nightscoutUrl && (
@@ -695,70 +765,6 @@ export default function ReadingsPage() {
         </div>
       )}
 
-      {/* Date Range Controls */}
-      <div className="bg-white p-4 rounded-lg shadow mb-8">
-        <h2 className="text-xl font-semibold mb-4">Date Range</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Date Range</label>
-            <div className="mt-1 flex space-x-4">
-              <div>
-                <label className="block text-xs text-gray-500">From</label>
-                <input
-                  type="date"
-                  value={fromDate}
-                  onChange={(e) => setFromDate(e.target.value)}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-gray-500">To</label>
-                <input
-                  type="date"
-                  value={toDate}
-                  onChange={(e) => setToDate(e.target.value)}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                />
-              </div>
-            </div>
-          </div>
-          <div className="flex items-end space-x-4">
-            {readings.length > 0 && (
-              <div className="text-sm text-gray-500">
-                <p>Last updated</p>
-                <p>{lastFetchTime ? formatRelativeTime(lastFetchTime.toISOString()) : 'Never'}</p>
-          </div>
-            )}
-
-        
-        {/* Sync from Nightscout button */}
-        {settings.nightscoutUrl && (
-          <button
-            onClick={syncFromNightscout}
-            disabled={syncing}
-            className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-green-400 disabled:cursor-not-allowed transition-colors"
-          >
-            {syncing ? (
-              <div className="flex items-center">
-                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Syncing...
-              </div>
-            ) : (
-              <div className="flex items-center">
-                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
-                </svg>
-                Sync from Nightscout
-              </div>
-            )}
-          </button>
-        )}
-          </div>
-        </div>
-      </div>
 
 
 
@@ -804,49 +810,49 @@ export default function ReadingsPage() {
           <div className="mb-8">
             <h2 className="text-xl font-semibold mb-4">Statistics ({filteredReadings.length} readings)</h2>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-          <div>
-            <p className="text-sm text-gray-500">Estimated A1C</p>
-            <p className="text-lg font-semibold">{statistics.estimatedA1C}%</p>
+          <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-lg border border-purple-200">
+            <p className="text-sm text-purple-600 font-medium">Estimated A1C</p>
+            <p className="text-lg font-bold text-purple-700">{statistics.estimatedA1C}%</p>
           </div>
-          <div>
-            <p className="text-sm text-gray-500">GMI</p>
-            <p className="text-lg font-semibold">{statistics.gmi}%</p>
+          <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 p-4 rounded-lg border border-indigo-200">
+            <p className="text-sm text-indigo-600 font-medium">GMI</p>
+            <p className="text-lg font-bold text-indigo-700">{statistics.gmi}%</p>
           </div>
-          <div>
-            <p className="text-sm text-gray-500">Average Glucose</p>
-            <p className="text-lg font-semibold">{statistics.averageGlucose} mg/dL</p>
+          <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-lg border border-blue-200">
+            <p className="text-sm text-blue-600 font-medium">Average Glucose</p>
+            <p className="text-lg font-bold text-blue-700">{statistics.averageGlucose} mg/dL</p>
           </div>
-          <div>
-            <p className="text-sm text-gray-500">Standard Deviation</p>
-            <p className="text-lg font-semibold">{statistics.standardDeviation} mg/dL</p>
+          <div className="bg-gradient-to-br from-gray-50 to-gray-100 p-4 rounded-lg border border-gray-200">
+            <p className="text-sm text-gray-600 font-medium">Standard Deviation</p>
+            <p className="text-lg font-bold text-gray-700">{statistics.standardDeviation} mg/dL</p>
           </div>
-          <div>
-            <p className="text-sm text-gray-500">Coefficient of Variation</p>
-            <p className="text-lg font-semibold">{statistics.coefficientOfVariation}%</p>
+          <div className="bg-gradient-to-br from-slate-50 to-slate-100 p-4 rounded-lg border border-slate-200">
+            <p className="text-sm text-slate-600 font-medium">Coefficient of Variation</p>
+            <p className="text-lg font-bold text-slate-700">{statistics.coefficientOfVariation}%</p>
           </div>
-          <div>
-            <p className="text-sm text-gray-500">Total Readings</p>
-            <p className="text-lg font-semibold">{statistics.totalReadings}</p>
+          <div className="bg-gradient-to-br from-cyan-50 to-cyan-100 p-4 rounded-lg border border-cyan-200">
+            <p className="text-sm text-cyan-600 font-medium">Total Readings</p>
+            <p className="text-lg font-bold text-cyan-700">{statistics.totalReadings}</p>
           </div>
         </div>
 
         <div className="mt-6">
-          <h3 className="text-lg font-semibold mb-2">Time in Range</h3>
-          <div className="grid grid-cols-3 gap-2">
-            <div className="text-center p-2 bg-red-100 rounded">
-              <p className="text-sm text-red-800">Below</p>
-              <p className="font-semibold">{statistics.timeBelowRange}%</p>
+          <h3 className="text-lg font-semibold mb-4">Time in Range</h3>
+          <div className="grid grid-cols-3 gap-4">
+            <div className="text-center p-4 bg-gradient-to-br from-red-50 to-red-100 rounded-lg border border-red-200">
+              <p className="text-sm text-red-600 font-medium">Below</p>
+              <p className="text-xl font-bold text-red-700">{statistics.timeBelowRange}%</p>
             </div>
-            <div className="text-center p-2 bg-green-100 rounded">
-              <p className="text-sm text-green-800">In Range</p>
-              <p className="font-semibold">{statistics.timeInRange}%</p>
+            <div className="text-center p-4 bg-gradient-to-br from-green-50 to-green-100 rounded-lg border border-green-200">
+              <p className="text-sm text-green-600 font-medium">In Range</p>
+              <p className="text-xl font-bold text-green-700">{statistics.timeInRange}%</p>
             </div>
-            <div className="text-center p-2 bg-yellow-100 rounded">
-              <p className="text-sm text-yellow-800">Above</p>
-              <p className="font-semibold">{statistics.timeAboveRange}%</p>
-                </div>
+            <div className="text-center p-4 bg-gradient-to-br from-orange-50 to-orange-100 rounded-lg border border-orange-200">
+              <p className="text-sm text-orange-600 font-medium">Above</p>
+              <p className="text-xl font-bold text-orange-700">{statistics.timeAboveRange}%</p>
             </div>
           </div>
+        </div>
         </div>
 
           {/* Tab Content */}
@@ -866,7 +872,7 @@ export default function ReadingsPage() {
                 <button
                   onClick={exportToCSV}
                   disabled={filteredReadings.length === 0}
-                  className="inline-flex items-center px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="inline-flex items-center px-4 py-2 bg-gray-600 text-white text-sm font-medium rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -875,21 +881,21 @@ export default function ReadingsPage() {
                 </button>
               </div>
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+            <table className="min-w-full divide-y divide-slate-200">
+              <thead className="bg-slate-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Glucose</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Direction</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Time</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Glucose</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Direction</th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-white divide-y divide-slate-200">
                     {[...filteredReadings].sort((a, b) => b.date - a.date).map((reading, index) => (
                   <tr key={index}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
                           <div>
                             <div className="font-medium">{new Date(reading.date).toLocaleDateString()}</div>
-                            <div className="text-xs text-gray-400">
+                            <div className="text-xs text-slate-400">
                               {new Date(reading.date).toLocaleTimeString('en-US', { 
                                 hour: '2-digit', 
                                 minute: '2-digit',
@@ -899,10 +905,10 @@ export default function ReadingsPage() {
                             </div>
                           </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
                       {reading.sgv} mg/dL
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
                       {reading.direction ? DIRECTION_ARROWS[reading.direction] || reading.direction : '-'}
                     </td>
                   </tr>

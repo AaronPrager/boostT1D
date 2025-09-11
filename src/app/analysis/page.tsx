@@ -92,9 +92,9 @@ export default function AnalysisPage() {
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case 'high': return 'text-red-600 bg-red-50 border-red-200';
-      case 'medium': return 'text-yellow-600 bg-yellow-50 border-yellow-200';
-      case 'low': return 'text-green-600 bg-green-50 border-green-200';
+      case 'high': return 'text-red-700 bg-red-50 border-red-200';
+      case 'medium': return 'text-yellow-700 bg-yellow-50 border-yellow-200';
+      case 'low': return 'text-green-700 bg-green-50 border-green-200';
       default: return 'text-gray-600 bg-gray-50 border-gray-200';
     }
   };
@@ -204,7 +204,7 @@ export default function AnalysisPage() {
               <button
                 onClick={fetchAdjustmentSuggestions}
                 disabled={loading}
-                className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? 'Analyzing...' : 'Refresh Analysis'}
               </button>
@@ -215,19 +215,19 @@ export default function AnalysisPage() {
 
           {/* Manual Mode Section - Show when diabetes profile is not set up */}
           {error && error.includes('diabetes profile') && (
-            <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-6">
+            <div className="mb-6 bg-gray-50 border border-gray-200 rounded-lg p-6">
               <div className="flex items-start">
-                <svg className="w-6 h-6 text-blue-600 mr-4 mt-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-6 h-6 text-gray-600 mr-4 mt-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 <div className="flex-1">
-                  <h3 className="text-blue-900 font-semibold text-lg mb-2">Manual Mode Active 📊</h3>
-                  <p className="text-blue-800 mb-3">
+                  <h3 className="text-gray-900 font-semibold text-lg mb-2">Manual Mode Active 📊</h3>
+                  <p className="text-gray-700 mb-3">
                     You're currently in manual mode. To get AI-powered therapy adjustment suggestions, you need to set up your diabetes profile with your current therapy settings.
                   </p>
-                  <div className="bg-blue-100 rounded-lg p-4 mb-3">
-                    <h4 className="text-blue-900 font-medium mb-2">To enable therapy analysis:</h4>
-                    <ul className="text-blue-800 text-sm space-y-1">
+                  <div className="bg-gray-100 rounded-lg p-4 mb-3">
+                    <h4 className="text-gray-900 font-medium mb-2">To enable therapy analysis:</h4>
+                    <ul className="text-gray-700 text-sm space-y-1">
                       <li>• <strong>Configure your diabetes profile</strong> with current basal rates, carb ratios, and sensitivity factors</li>
                       <li>• <strong>Set up Nightscout</strong> for automatic real-time data sync (optional)</li>
                       <li>• <strong>Add glucose readings</strong> manually or via Nightscout</li>
@@ -237,7 +237,7 @@ export default function AnalysisPage() {
                   <div className="flex flex-wrap gap-3">
                     <a 
                       href="/diabetes-profile" 
-                      className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors"
+                      className="inline-flex items-center px-4 py-2 bg-gray-600 text-white text-sm font-medium rounded-md hover:bg-gray-700 transition-colors"
                     >
                       <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
@@ -249,7 +249,7 @@ export default function AnalysisPage() {
                       href="https://nightscout.github.io/" 
                       target="_blank" 
                       rel="noopener noreferrer"
-                      className="inline-flex items-center px-4 py-2 bg-white text-blue-600 text-sm font-medium rounded-md border border-blue-300 hover:bg-blue-50 transition-colors"
+                      className="inline-flex items-center px-4 py-2 bg-white text-gray-600 text-sm font-medium rounded-md border border-gray-300 hover:bg-gray-50 transition-colors"
                     >
                       <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
@@ -266,32 +266,32 @@ export default function AnalysisPage() {
             <>
               {/* Analysis Metrics */}
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
-                <div className="bg-blue-50 p-4 rounded-lg text-center">
-                  <div className="text-2xl font-bold text-blue-600">
+                <div className="bg-green-50 p-4 rounded-lg text-center border border-green-200">
+                  <div className="text-2xl font-bold text-green-700">
                     {suggestions.analysisMetrics.timeInRange}%
                   </div>
                   <div className="text-sm text-gray-600">Time in Range</div>
                 </div>
-                <div className="bg-red-50 p-4 rounded-lg text-center">
-                  <div className="text-2xl font-bold text-red-600">
+                <div className="bg-red-50 p-4 rounded-lg text-center border border-red-200">
+                  <div className="text-2xl font-bold text-red-700">
                     {suggestions.analysisMetrics.timeAboveRange}%
                   </div>
                   <div className="text-sm text-gray-600">Time Above</div>
           </div>
-                <div className="bg-yellow-50 p-4 rounded-lg text-center">
-                  <div className="text-2xl font-bold text-yellow-600">
+                <div className="bg-yellow-50 p-4 rounded-lg text-center border border-yellow-200">
+                  <div className="text-2xl font-bold text-yellow-700">
                     {suggestions.analysisMetrics.timeBelowRange}%
                   </div>
                   <div className="text-sm text-gray-600">Time Below</div>
                 </div>
-                <div className="bg-green-50 p-4 rounded-lg text-center">
-                  <div className="text-2xl font-bold text-green-600">
+                <div className="bg-blue-50 p-4 rounded-lg text-center border border-blue-200">
+                  <div className="text-2xl font-bold text-blue-700">
                     {suggestions.analysisMetrics.averageGlucose}
                   </div>
                   <div className="text-sm text-gray-600">Avg Glucose</div>
             </div>
-                <div className="bg-purple-50 p-4 rounded-lg text-center">
-                  <div className="text-2xl font-bold text-purple-600">
+                <div className="bg-purple-50 p-4 rounded-lg text-center border border-purple-200">
+                  <div className="text-2xl font-bold text-purple-700">
                     {((suggestions.analysisMetrics.averageGlucose + 46.7) / 28.7).toFixed(1)}%
           </div>
                   <div className="text-sm text-gray-600">Est. A1C</div>
@@ -299,12 +299,12 @@ export default function AnalysisPage() {
               </div>
 
               {/* Important Disclaimer */}
-              <div className="mb-8 bg-yellow-50 border border-yellow-200 rounded-md p-4">
+              <div className="mb-8 bg-gray-50 border border-gray-200 rounded-md p-4">
                 <div className="flex">
-                  <div className="text-yellow-400">⚠️</div>
+                  <div className="text-gray-500">⚠️</div>
                   <div className="ml-3">
-                    <h2 className="text-xl font-semibold text-yellow-800 mb-2">Important Disclaimer</h2>
-                    <p className="text-yellow-700">
+                    <h2 className="text-xl font-semibold text-gray-700 mb-2">Important Disclaimer</h2>
+                    <p className="text-gray-600">
                       These suggestions are for educational purposes only and should not replace professional medical advice. 
                       Always consult with your healthcare provider before making any changes to your diabetes therapy. 
                       Make only one adjustment at a time and monitor carefully for 3-5 days before making additional changes.
@@ -317,11 +317,11 @@ export default function AnalysisPage() {
               {suggestions.overallRecommendations.length > 0 && (
                 <div className="mb-8">
                   <h2 className="text-xl font-semibold text-gray-900 mb-4">📋 Overall Recommendations</h2>
-                  <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
+                  <div className="bg-gray-50 border border-gray-200 rounded-md p-4">
                     <ul className="space-y-2">
                       {suggestions.overallRecommendations.map((rec, index) => (
-                        <li key={index} className="text-blue-800 flex items-start">
-                          <span className="text-blue-600 mr-2">•</span>
+                        <li key={index} className="text-gray-700 flex items-start">
+                          <span className="text-gray-500 mr-2">•</span>
                           {rec}
                         </li>
                   ))}

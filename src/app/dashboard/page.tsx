@@ -77,6 +77,8 @@ export default function DashboardPage() {
   useEffect(() => {
     if (pathname === '/dashboard') {
       setRefreshTrigger((t) => t + 1);
+      // Auto-sync with Nightscout when navigating to dashboard
+      syncWithNightscout();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
@@ -131,6 +133,31 @@ export default function DashboardPage() {
     }
   };
 
+  const syncWithNightscout = async () => {
+    try {
+      console.log('Syncing with Nightscout...');
+      const response = await fetch('/api/nightscout/sync', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        console.log('Nightscout sync completed successfully');
+        // Refresh dashboard data after successful sync
+        await fetchDashboardData();
+      } else {
+        const errorText = await response.text();
+        console.warn('Nightscout sync failed:', errorText);
+        // Don't show error to user for auto-sync, just log it
+      }
+    } catch (error) {
+      console.warn('Nightscout sync error:', error);
+      // Don't show error to user for auto-sync, just log it
+    }
+  };
+
   const fetchDashboardData = async (customStart?: Date, customEnd?: Date, showRefreshFeedback = false) => {
     if (showRefreshFeedback) {
       setRefreshing(true);
@@ -168,7 +195,8 @@ export default function DashboardPage() {
         if (loading || refreshing) {
           setError('Please wait, loading your data...');
         } else {
-          setError('No readings found for the selected period');
+          // No readings is not an error - just clear any existing error
+          setError(null);
         }
         setLoading(false);
         setRefreshing(false);
@@ -314,7 +342,7 @@ export default function DashboardPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-400 mx-auto mb-4"></div>
           <h1 className="text-2xl font-bold text-gray-900">Loading...</h1>
           <p className="mt-2 text-gray-600">Checking your authentication status.</p>
         </div>
@@ -331,7 +359,7 @@ export default function DashboardPage() {
           <p className="mt-2 text-gray-600">Please sign in to view your dashboard.</p>
           <Link 
             href="/login"
-            className="mt-4 inline-block bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700"
+            className="mt-4 inline-block bg-gray-900 text-white px-4 py-2 rounded-md hover:bg-gray-800 transition-colors"
           >
             Sign In
           </Link>
@@ -370,57 +398,25 @@ export default function DashboardPage() {
                 Showing data from {startDate.toLocaleDateString()} to {endDate.toLocaleDateString()}
               </p>
             </div>
-            <div className="flex items-center space-x-4">
-              {stats.lastUpdated && (
-                <div className="text-right text-sm text-gray-500">
-                  <p>Last updated</p>
-                  <p>{formatRelativeTime(stats.lastUpdated)}</p>
-                </div>
-              )}
-              {settings.nightscoutUrl && (
-                <button
-                  onClick={handleRefresh}
-                  disabled={refreshing}
-                  className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-indigo-400 disabled:cursor-not-allowed transition-colors"
-                >
-                  {refreshing ? (
-                    <div className="flex items-center">
-                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      Syncing...
-                    </div>
-                  ) : (
-                    <div className="flex items-center">
-                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                      </svg>
-                      Sync from Nightscout
-                    </div>
-                  )}
-                </button>
-              )}
-            </div>
           </div>
         </div>
 
         {/* Nightscout Information Message */}
         {!settings.nightscoutUrl && (
-          <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-6">
+          <div className="mb-6 bg-gray-100 border border-gray-200 rounded-lg p-6">
             <div className="flex items-start">
-              <svg className="w-6 h-6 text-blue-600 mr-4 mt-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-6 h-6 text-gray-600 mr-4 mt-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               <div className="flex-1">
-                <h3 className="text-blue-900 font-semibold text-lg mb-2">Welcome to BoostT1D! 🎉</h3>
-                <p className="text-blue-800 mb-3">
+                <h3 className="text-gray-900 font-semibold text-lg mb-2">Welcome to BoostT1D! 🎉</h3>
+                <p className="text-gray-700 mb-3">
                   You're currently in <strong>manual mode</strong>, which means you can manually enter your glucose readings and treatments. 
                   This is perfect for getting started and testing the system.
                 </p>
-                <div className="bg-blue-100 rounded-lg p-4 mb-3">
-                  <h4 className="text-blue-900 font-medium mb-2">To unlock full features, you can:</h4>
-                  <ul className="text-blue-800 text-sm space-y-1">
+                <div className="bg-gray-200 rounded-lg p-4 mb-3">
+                  <h4 className="text-gray-900 font-medium mb-2">To unlock full features, you can:</h4>
+                  <ul className="text-gray-700 text-sm space-y-1">
                     <li>• <strong>Set up Nightscout</strong> for real-time data sync from your CGM/pump</li>
                     <li>• <strong>Use manual entry</strong> for glucose readings and treatments</li>
                     <li>• <strong>Explore the dashboard</strong> with sample data to see how it works</li>
@@ -429,7 +425,7 @@ export default function DashboardPage() {
                 <div className="flex flex-wrap gap-3">
                   <Link 
                     href="/diabetes-profile" 
-                    className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors"
+                    className="inline-flex items-center px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-md hover:bg-gray-800 transition-colors"
                   >
                     <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
@@ -439,7 +435,7 @@ export default function DashboardPage() {
                   </Link>
                   <Link 
                     href="/readings" 
-                    className="inline-flex items-center px-4 py-2 bg-white text-blue-600 text-sm font-medium rounded-md border border-blue-300 hover:bg-blue-50 transition-colors"
+                    className="inline-flex items-center px-4 py-2 bg-white text-gray-900 text-sm font-medium rounded-md border border-gray-300 hover:bg-gray-50 transition-colors"
                   >
                     <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
@@ -450,7 +446,7 @@ export default function DashboardPage() {
                     href="https://nightscout.github.io/" 
                     target="_blank" 
                     rel="noopener noreferrer"
-                    className="inline-flex items-center px-4 py-2 bg-white text-blue-600 text-sm font-medium rounded-md border border-blue-300 hover:bg-blue-50 transition-colors"
+                    className="inline-flex items-center px-4 py-2 bg-white text-gray-900 text-sm font-medium rounded-md border border-gray-300 hover:bg-gray-50 transition-colors"
                   >
                     <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
@@ -495,9 +491,9 @@ export default function DashboardPage() {
         {/* Current Status Card */}
         {stats.currentGlucose && (
           <div className="mb-8">
-            <div className="bg-white rounded-lg shadow-sm border p-6">
+            <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg shadow-sm border border-gray-200 p-6">
               <div className="flex items-center justify-between">
-                <div>
+                <div className="flex-1">
                   <h2 className="text-lg font-semibold text-gray-900 mb-2">Current Glucose</h2>
                   <div className="flex items-center space-x-3">
                     <span className={`text-4xl font-bold px-4 py-2 rounded-lg ${getGlucoseStatus(stats.currentGlucose).color}`}>
@@ -508,70 +504,102 @@ export default function DashboardPage() {
                     </span>
                   </div>
                   {stats.lastUpdated && (
-                    <p className="text-sm text-gray-500 mt-2">
+                    <p className="text-sm text-gray-600 mt-2">
                       Last updated {formatRelativeTime(stats.lastUpdated)}
                     </p>
                   )}
                 </div>
-                <div className="text-right">
-                  <p className="text-sm text-gray-500">Target Range</p>
-                  <p className="text-lg font-medium">
-                    {settings.lowGlucose} - {settings.highGlucose} mg/dL
-                  </p>
+                
+                {/* Sync Button and Last Updated Info */}
+                <div className="flex items-center space-x-4">
+                  {stats.lastUpdated && (
+                    <div className="text-sm text-gray-500">
+                      <p>Last updated</p>
+                      <p>{formatRelativeTime(stats.lastUpdated)}</p>
+                    </div>
+                  )}
+                  {settings.nightscoutUrl && (
+                    <button
+                      onClick={handleRefresh}
+                      disabled={refreshing}
+                      className="flex items-center px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                    >
+                      {refreshing ? (
+                        <div className="flex items-center">
+                          <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          Syncing...
+                        </div>
+                      ) : (
+                        <div className="flex items-center">
+                          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                          </svg>
+                          Sync from Nightscout
+                        </div>
+                      )}
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
           </div>
         )}
 
-        {/* Enhanced Stats Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-8">
-          <div className="bg-blue-50 p-4 rounded-lg text-center">
-            <div className="text-2xl font-bold text-blue-600">
-              {stats.timeInRange}%
+        {/* Enhanced Stats Grid - Only show if we have data */}
+        {stats.totalReadings > 0 && (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-8">
+            <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-lg text-center border border-green-200 shadow-sm">
+              <div className="text-2xl font-bold text-green-700">
+                {stats.timeInRange}%
+              </div>
+              <div className="text-sm text-green-600 font-medium">Time in Range</div>
             </div>
-            <div className="text-sm text-gray-600">Time in Range</div>
-          </div>
-          <div className="bg-red-50 p-4 rounded-lg text-center">
-            <div className="text-2xl font-bold text-red-600">
-              {stats.timeAboveRange}%
+            <div className="bg-gradient-to-br from-orange-50 to-orange-100 p-4 rounded-lg text-center border border-orange-200 shadow-sm">
+              <div className="text-2xl font-bold text-orange-700">
+                {stats.timeAboveRange}%
+              </div>
+              <div className="text-sm text-orange-600 font-medium">Time Above</div>
             </div>
-            <div className="text-sm text-gray-600">Time Above</div>
-          </div>
-          <div className="bg-yellow-50 p-4 rounded-lg text-center">
-            <div className="text-2xl font-bold text-yellow-600">
-              {stats.timeBelowRange}%
+            <div className="bg-gradient-to-br from-red-50 to-red-100 p-4 rounded-lg text-center border border-red-200 shadow-sm">
+              <div className="text-2xl font-bold text-red-700">
+                {stats.timeBelowRange}%
+              </div>
+              <div className="text-sm text-red-600 font-medium">Time Below</div>
             </div>
-            <div className="text-sm text-gray-600">Time Below</div>
-          </div>
-          <div className="bg-green-50 p-4 rounded-lg text-center">
-            <div className="text-2xl font-bold text-green-600">
-              {stats.averageGlucose}
+            <div className="bg-gradient-to-br from-gray-50 to-gray-100 p-4 rounded-lg text-center border border-gray-200 shadow-sm">
+              <div className="text-2xl font-bold text-gray-700">
+                {stats.averageGlucose}
+              </div>
+              <div className="text-sm text-gray-600 font-medium">Avg Glucose</div>
             </div>
-            <div className="text-sm text-gray-600">Avg Glucose</div>
           </div>
-        </div>
+        )}
 
-        {/* A1C and Variability Row */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-          <div className="bg-purple-50 p-4 rounded-lg text-center">
-            <div className="text-2xl font-bold text-purple-600">
-              {((stats.averageGlucose + 46.7) / 28.7).toFixed(1)}%
+        {/* A1C and Variability Row - Only show if we have data */}
+        {stats.totalReadings > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+            <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-lg text-center border border-purple-200 shadow-sm">
+              <div className="text-2xl font-bold text-purple-700">
+                {((stats.averageGlucose + 46.7) / 28.7).toFixed(1)}%
+              </div>
+              <div className="text-sm text-purple-600 font-medium">Est. A1C</div>
             </div>
-            <div className="text-sm text-gray-600">Est. A1C</div>
-          </div>
-          <div className="bg-gray-50 p-4 rounded-lg text-center">
-            <div className={`text-2xl font-bold ${getVariabilityColor(stats.glucoseVariability)}`}>
-              {stats.glucoseVariability}%
+            <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 p-4 rounded-lg text-center border border-indigo-200 shadow-sm">
+              <div className="text-2xl font-bold text-indigo-700">
+                {stats.glucoseVariability}%
+              </div>
+              <div className="text-sm text-indigo-600 font-medium">Variability</div>
             </div>
-            <div className="text-sm text-gray-600">Variability</div>
           </div>
-        </div>
+        )}
 
         {/* Two Column Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Recent Readings */}
-          <div className="bg-white rounded-lg shadow-sm border">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200">
             <div className="p-6 border-b border-gray-200">
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-semibold text-gray-900">Recent Readings</h3>
@@ -579,7 +607,7 @@ export default function DashboardPage() {
                   <button
                     onClick={handleRefresh}
                     disabled={refreshing}
-                    className="flex items-center text-sm text-gray-600 hover:text-indigo-600 disabled:text-gray-400"
+                    className="flex items-center text-sm text-gray-600 hover:text-gray-800 disabled:text-gray-400"
                     title="Sync fresh data from Nightscout"
                   >
                     <svg className={`w-4 h-4 mr-1 ${refreshing ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -589,7 +617,7 @@ export default function DashboardPage() {
                   </button>
                   <Link 
                     href="/readings"
-                    className="text-indigo-600 hover:text-indigo-800 text-sm font-medium"
+                    className="text-gray-900 hover:text-gray-700 text-sm font-medium"
                   >
                     View All →
                   </Link>
@@ -600,17 +628,17 @@ export default function DashboardPage() {
               {recentReadings.length > 0 ? (
                 <div className="space-y-3">
                   {recentReadings.slice(0, 6).map((reading) => (
-                    <div key={reading.id} className="flex items-center justify-between p-3 rounded-lg bg-gray-50">
+                    <div key={reading.id} className="flex items-center justify-between p-3 rounded-lg bg-gray-100">
                       <div className="flex items-center space-x-3">
-                        <span className={`px-3 py-1 rounded-full text-sm font-medium ${getGlucoseStatus(reading.sgv).color}`}>
+                        <span className="px-3 py-1 rounded-full text-sm font-medium bg-gray-200 text-gray-900">
                           {reading.sgv}
                         </span>
-                        <span className="text-lg">
+                        <span className="text-lg text-gray-600">
                           {getDirectionIcon(reading.direction || null)}
                         </span>
                       </div>
                       <div className="text-right">
-                        <p className="text-sm font-medium">{formatTime(reading.date)}</p>
+                        <p className="text-sm font-medium text-gray-900">{formatTime(reading.date)}</p>
                         <p className="text-xs text-gray-500">{formatRelativeTime(reading.date)}</p>
                       </div>
                     </div>
@@ -623,7 +651,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Quick Actions */}
-          <div className="bg-white rounded-lg shadow-sm border">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200">
             <div className="p-6 border-b border-gray-200">
               <h3 className="text-lg font-semibold text-gray-900">Quick Actions</h3>
             </div>
@@ -631,7 +659,7 @@ export default function DashboardPage() {
               <div className="grid grid-cols-1 gap-4">
                 <Link 
                   href="/diabetes-profile"
-                  className="flex items-center p-4 rounded-lg border border-gray-200 hover:border-purple-300 hover:bg-purple-50 transition-colors"
+                  className="flex items-center p-4 rounded-lg border border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-colors"
                 >
                   <div className="text-2xl mr-4">⚙️</div>
                   <div>
@@ -642,7 +670,7 @@ export default function DashboardPage() {
 
                 <Link 
                   href="/treatments"
-                  className="flex items-center p-4 rounded-lg border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-colors"
+                  className="flex items-center p-4 rounded-lg border border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-colors"
                 >
                   <div className="text-2xl mr-4">💊</div>
                   <div>
@@ -653,7 +681,7 @@ export default function DashboardPage() {
 
                 <Link 
                   href="/readings"
-                  className="flex items-center p-4 rounded-lg border border-gray-200 hover:border-green-300 hover:bg-green-50 transition-colors"
+                  className="flex items-center p-4 rounded-lg border border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-colors"
                 >
                   <div className="text-2xl mr-4">📊</div>
                   <div>
@@ -664,7 +692,7 @@ export default function DashboardPage() {
 
                 <Link 
                   href="/analysis"
-                  className="flex items-center p-4 rounded-lg border border-gray-200 hover:border-indigo-300 hover:bg-indigo-50 transition-colors"
+                  className="flex items-center p-4 rounded-lg border border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-colors"
                 >
                   <div className="text-2xl mr-4">🔍</div>
                   <div>
