@@ -96,6 +96,22 @@ export const authOptions: NextAuthOptions = {
       if (session.user && token) {
         session.user.id = token.sub as string;
         console.log('Set session user ID:', token.sub);
+        
+        // Fetch user details from database to get the name
+        try {
+          const user = await prisma.user.findUnique({
+            where: { id: token.sub as string },
+            select: { name: true, email: true }
+          });
+          
+          if (user) {
+            session.user.name = user.name;
+            session.user.email = user.email;
+            console.log('Set session user name:', user.name);
+          }
+        } catch (error) {
+          console.error('Error fetching user details for session:', error);
+        }
       }
       return session;
     },
@@ -114,9 +130,11 @@ export const authOptions: NextAuthOptions = {
         return url;
       }
       
-      // Default to baseUrl
-      console.log('Redirecting to baseUrl:', baseUrl);
-      return baseUrl;
+      // Use the current request URL to get the correct port
+      const currentUrl = process.env.NEXTAUTH_URL || baseUrl;
+      console.log('Current URL:', currentUrl);
+      console.log('Redirecting to welcome page:', `${currentUrl}/welcome`);
+      return `${currentUrl}/welcome`;
     },
   },
   session: {

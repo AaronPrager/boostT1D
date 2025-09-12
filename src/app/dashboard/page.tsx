@@ -389,7 +389,7 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold text-gray-900">
-                Welcome back, {session.user?.email?.split('@')[0] || 'User'}!
+                Welcome back, {session.user?.name || session.user?.email?.split('@')[0] || 'User'}!
               </h1>
               <p className="mt-2 text-gray-600">
                 Here&apos;s an overview of your diabetes management

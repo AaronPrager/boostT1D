@@ -12,15 +12,19 @@ export default function WelcomePage() {
 
   useEffect(() => {
     console.log('Welcome page useEffect - status:', status, 'session:', !!session);
+    console.log('Session details:', session);
     
-    if (status === 'loading') return; // Still loading, wait
+    if (status === 'loading') {
+      console.log('Still loading session...');
+      return; // Still loading, wait
+    }
     
     if (!session) {
-      console.log('No session, redirecting to home');
-      // User is not logged in, redirect to home
+      console.log('No session found, redirecting to home');
       router.replace('/');
     } else {
       console.log('Session found, staying on welcome page');
+      console.log('User:', session.user);
     }
   }, [session, status, router]);
 
