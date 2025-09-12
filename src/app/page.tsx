@@ -88,7 +88,7 @@ export default function Home() {
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <a href="/register" className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-8 py-4 rounded-xl text-lg font-semibold hover:from-blue-700 hover:to-blue-800 transition-all duration-200 shadow-xl hover:shadow-2xl">
-              Start Free Trial
+              Get Started
             </a>
             <a href="/login" className="border-2 border-gray-300 text-gray-700 px-8 py-4 rounded-xl text-lg font-semibold hover:border-blue-600 hover:text-blue-600 transition-all duration-200">
               Sign In
@@ -176,16 +176,13 @@ export default function Home() {
                   className="w-32 h-32 rounded-full object-cover border-4 border-blue-200 shadow-2xl"
                   onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
                 />
-                <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center">
-                  <span className="text-white text-sm">👨‍💻</span>
-                </div>
               </div>
             </div>
             
             <h3 className="text-3xl font-bold text-gray-900 mb-4 text-center" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}>Aaron Prager</h3>
             <p className="text-xl text-blue-600 font-semibold mb-4 text-center" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}>Student Developer & Creator</p>
             <p className="text-lg text-gray-700 text-center leading-relaxed mb-8 max-w-2xl" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}>
-              Aaron is a junior at the British International School of Boston, dedicated to revolutionizing diabetes management through innovative technology solutions and cutting-edge AI development.
+              Hey! I'm Aaron, a junior at the British International School of Boston. I'm passionate about using tech to make diabetes management easier and more effective. I built this platform to help people like you take control of their health with smart tools and AI-powered insights.
             </p>
           </div>
           
