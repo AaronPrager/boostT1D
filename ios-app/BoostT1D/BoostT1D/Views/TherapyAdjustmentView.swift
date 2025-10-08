@@ -14,22 +14,138 @@ struct TherapyAdjustmentView: View {
     @State private var aiConfidence: Double = 0.0
     @State private var keyFindings: [String] = []
     @State private var safetyNotes: [String] = []
+    @State private var showDisclaimer = true
     
     private let timeRangeOptions = [3, 7]
     private let timeRangeLabels = ["3 days", "7 days"]
     
     var body: some View {
+        ZStack {
+            if showDisclaimer {
+                // Disclaimer Popup
+                Color.black.opacity(0.8)
+                    .ignoresSafeArea()
+                
+                VStack(spacing: 16) {
+                    // Warning Icon
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.system(size: 50))
+                        .foregroundColor(.red)
+                    
+                    // Title
+                    Text("⚠️ MEDICAL DISCLAIMER")
+                        .font(.title3)
+                        .fontWeight(.bold)
+                        .foregroundColor(.red)
+                        .multilineTextAlignment(.center)
+                    
+                    // Scrollable Disclaimer Text
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("The therapy adjustment suggestions provided by this app are:")
+                                .font(.subheadline)
+                                .fontWeight(.semibold)
+                                .foregroundColor(.primary)
+                            
+                            VStack(alignment: .leading, spacing: 6) {
+                                HStack(alignment: .top, spacing: 6) {
+                                    Text("•")
+                                        .foregroundColor(.red)
+                                        .fontWeight(.bold)
+                                    Text("FOR INFORMATIONAL PURPOSES ONLY")
+                                        .fontWeight(.semibold)
+                                        .foregroundColor(.red)
+                                        .font(.caption)
+                                }
+                                
+                                HStack(alignment: .top, spacing: 6) {
+                                    Text("•")
+                                        .foregroundColor(.red)
+                                        .fontWeight(.bold)
+                                    Text("NOT a substitute for professional medical advice")
+                                        .foregroundColor(.primary)
+                                        .font(.caption)
+                                }
+                                
+                                HStack(alignment: .top, spacing: 6) {
+                                    Text("•")
+                                        .foregroundColor(.red)
+                                        .fontWeight(.bold)
+                                    Text("NOT intended to replace consultation with your healthcare provider")
+                                        .foregroundColor(.primary)
+                                        .font(.caption)
+                                }
+                                
+                                HStack(alignment: .top, spacing: 6) {
+                                    Text("•")
+                                        .foregroundColor(.red)
+                                        .fontWeight(.bold)
+                                    Text("Based on general patterns and may not apply to your specific situation")
+                                        .foregroundColor(.primary)
+                                        .font(.caption)
+                                }
+                            }
+                            
+                            Text("Always consult with your healthcare provider before making any changes to your diabetes management plan.")
+                                .font(.subheadline)
+                                .fontWeight(.semibold)
+                                .foregroundColor(.red)
+                                .multilineTextAlignment(.center)
+                                .padding(.top, 8)
+                        }
+                        .padding(16)
+                    }
+                    .frame(maxHeight: 300)
+                    .background(Color(.systemBackground))
+                    .cornerRadius(12)
+                    .shadow(radius: 10)
+                    
+                    // Action Buttons
+                    VStack(spacing: 10) {
+                        Button(action: {
+                            showDisclaimer = false
+                            loadSuggestions()
+                        }) {
+                            Text("I UNDERSTAND AND AGREE")
+                                .font(.subheadline)
+                                .fontWeight(.bold)
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 12)
+                                .background(Color.red)
+                                .cornerRadius(8)
+                        }
+                        
+                        Button(action: {
+                            // Dismiss the view
+                            if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                               let window = windowScene.windows.first {
+                                window.rootViewController?.dismiss(animated: true)
+                            }
+                        }) {
+                            Text("CANCEL")
+                                .font(.subheadline)
+                                .fontWeight(.semibold)
+                                .foregroundColor(.red)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 12)
+                                .background(Color(.systemGray5))
+                                .cornerRadius(8)
+                        }
+                    }
+                }
+                .padding(20)
+                .background(Color(.systemBackground))
+                .cornerRadius(16)
+                .shadow(radius: 20)
+                .padding(.horizontal, 20)
+            } else {
+                // Main Content
         ScrollView {
             VStack(spacing: 20) {
                 // Header
                 VStack(spacing: 16) {
-                    Image(systemName: "slider.horizontal.3")
-                        .font(.system(size: 50))
-                        .foregroundColor(.orange)
-                    
-                    Text("Therapy Dose Adjustments")
-                        .font(.title)
-                        .fontWeight(.semibold)
+                    AppIconView(size: 30)
                 }
                 .padding(.top, 20)
                 
@@ -160,8 +276,6 @@ struct TherapyAdjustmentView: View {
                 
                 // Adjustment Suggestions
                 VStack(spacing: 16) {
-                    Text("Adjustment Suggestions")
-                        .font(.headline)
                     
                     if isLoading {
                         VStack(spacing: 12) {
@@ -229,7 +343,7 @@ struct TherapyAdjustmentView: View {
                                     
                                     // Suggestions for this type
                                     ForEach(group.suggestions, id: \.id) { suggestion in
-                                        AdjustmentCard(suggestion: suggestion)
+                                AdjustmentCard(suggestion: suggestion)
                                     }
                                 }
                                 .padding(12)
@@ -270,10 +384,16 @@ struct TherapyAdjustmentView: View {
                 .foregroundColor(.blue)
         })
         .onAppear {
+                    if !showDisclaimer {
             loadSuggestions()
+                    }
         }
         .onChange(of: selectedTimeRange) {
+                    if !showDisclaimer {
             loadSuggestions()
+                    }
+                }
+            }
         }
     }
     

@@ -187,6 +187,28 @@ struct FoodAnalysisView: View {
                 }
             }
             .navigationTitle("Food Analysis")
+            .navigationBarItems(
+                leading: AppIconView(size: 24),
+                trailing: NavigationLink(destination: ProfileView()) {
+                    Group {
+                        if let photo = UserProfileService.shared.currentProfile?.photo {
+                            Image(uiImage: photo)
+                                .resizable()
+                                .scaledToFill()
+                                .frame(width: 32, height: 32)
+                                .clipShape(Circle())
+                                .overlay(
+                                    Circle()
+                                        .stroke(Color.white, lineWidth: 2)
+                                )
+                        } else {
+                            Image(systemName: "person.circle.fill")
+                                .font(.title2)
+                                .foregroundColor(.blue)
+                        }
+                    }
+                }
+            )
         }
         .sheet(isPresented: $showingImagePicker) {
             ImagePicker(selectedImage: $selectedImage)

@@ -46,6 +46,12 @@ struct BloodGlucoseDataView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 20) {
+                // Header
+                VStack(spacing: 16) {
+                    AppIconView(size: 30)
+                }
+                .padding(.top, 20)
+                
                 // Current Glucose Status Card
                 if !glucoseEntries.isEmpty {
                     let nightscoutSettings = nightscoutService.getSettings()

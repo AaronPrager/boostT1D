@@ -243,12 +243,37 @@ struct DiabetesProfileView: View {
             }
         }
         .navigationTitle("Diabetes Profile")
-        .navigationBarItems(trailing: Button(action: {
-            loadProfile()
-        }) {
-            Image(systemName: "arrow.clockwise")
-                .foregroundColor(.blue)
-        })
+        .navigationBarItems(
+            leading: AppIconView(size: 24),
+            trailing: HStack(spacing: 12) {
+                Button(action: {
+                    loadProfile()
+                }) {
+                    Image(systemName: "arrow.clockwise")
+                        .foregroundColor(.blue)
+                }
+                
+                NavigationLink(destination: ProfileView()) {
+                    Group {
+                        if let photo = UserProfileService.shared.currentProfile?.photo {
+                            Image(uiImage: photo)
+                                .resizable()
+                                .scaledToFill()
+                                .frame(width: 32, height: 32)
+                                .clipShape(Circle())
+                                .overlay(
+                                    Circle()
+                                        .stroke(Color.white, lineWidth: 2)
+                                )
+                        } else {
+                            Image(systemName: "person.circle.fill")
+                                .font(.title2)
+                                .foregroundColor(.blue)
+                        }
+                    }
+                }
+            }
+        )
         .onAppear {
             loadProfile()
         }

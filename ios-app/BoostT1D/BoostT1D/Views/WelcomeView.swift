@@ -25,60 +25,98 @@ struct WelcomeView: View {
                 // Menu List
                 ScrollView {
                     VStack(spacing: 8) {
-                        // Blood Glucose Data
-                        NavigationLink(destination: BloodGlucoseDataView()) {
-                            MenuButtonContent(
-                                icon: "heart.fill",
-                                title: "Blood Glucose Data",
-                                subtitle: "View your glucose readings and trends",
-                                color: .red
-                            )
+                        // Group 1: Core Diabetes Management
+                        VStack(spacing: 8) {
+                            // Diabetes Profile
+                            NavigationLink(destination: DiabetesProfileView()) {
+                                MenuButtonContent(
+                                    icon: "person.circle.fill",
+                                    title: "Diabetes Profile",
+                                    subtitle: "Configure your diabetes settings",
+                                    color: .blue
+                                )
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                            
+                            // Blood Glucose Data
+                            NavigationLink(destination: BloodGlucoseDataView()) {
+                                MenuButtonContent(
+                                    icon: "heart.fill",
+                                    title: "Blood Glucose Data",
+                                    subtitle: "View your glucose readings and trends",
+                                    color: .red
+                                )
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                            
+                            // Treatments
+                            NavigationLink(destination: TreatmentsView()) {
+                                MenuButtonContent(
+                                    icon: "syringe.fill",
+                                    title: "Treatments",
+                                    subtitle: "Track insulin and medication doses",
+                                    color: .purple
+                                )
+                            }
+                            .buttonStyle(PlainButtonStyle())
                         }
-                        .buttonStyle(PlainButtonStyle())
                         
-                        // Treatments
-                        NavigationLink(destination: TreatmentsView()) {
-                            MenuButtonContent(
-                                icon: "syringe.fill",
-                                title: "Treatments",
-                                subtitle: "Track insulin and medication doses",
-                                color: .purple
-                            )
-                        }
-                        .buttonStyle(PlainButtonStyle())
+                        // Divider
+                        Divider()
+                            .padding(.vertical, 8)
                         
-                        // Therapy Adjustment
-                        NavigationLink(destination: TherapyAdjustmentView()) {
-                            MenuButtonContent(
-                                icon: "slider.horizontal.3",
-                                title: "Therapy Adjustment",
-                                subtitle: "AI dose recommendations",
-                                color: .orange
-                            )
+                        // Group 2: AI-Powered Features
+                        VStack(spacing: 8) {
+                            // Therapy Adjustment
+                            NavigationLink(destination: TherapyAdjustmentView()) {
+                                MenuButtonContent(
+                                    icon: "slider.horizontal.3",
+                                    title: "Therapy Adjustment",
+                                    subtitle: "AI dose recommendations",
+                                    color: .orange
+                                )
+                            }
+                            .buttonStyle(PlainButtonStyle())
                         }
-                        .buttonStyle(PlainButtonStyle())
                         
-                        // Food Analysis
-                        NavigationLink(destination: FoodAnalysisView()) {
-                            MenuButtonContent(
-                                icon: "camera.fill",
-                                title: "Food Analysis",
-                                subtitle: "AI carb estimation",
-                                color: .green
-                            )
-                        }
-                        .buttonStyle(PlainButtonStyle())
+                        // Divider
+                        Divider()
+                            .padding(.vertical, 8)
                         
-                        // Diabetes Profile
-                        NavigationLink(destination: DiabetesProfileView()) {
-                            MenuButtonContent(
-                                icon: "person.circle.fill",
-                                title: "Diabetes Profile",
-                                subtitle: "Configure your diabetes settings",
-                                color: .green
-                            )
+                        // Group 3: Additional Tools
+                        VStack(spacing: 8) {
+                            // Food Analysis
+                            NavigationLink(destination: FoodAnalysisView()) {
+                                MenuButtonContent(
+                                    icon: "camera.fill",
+                                    title: "Food Analysis",
+                                    subtitle: "AI carb estimation",
+                                    color: .green
+                                )
+                            }
+                            .buttonStyle(PlainButtonStyle())
                         }
-                        .buttonStyle(PlainButtonStyle())
+                        
+                        // Divider
+                        Divider()
+                            .padding(.vertical, 8)
+                        
+                        // Group 4: Social Features
+                        VStack(spacing: 8) {
+                            // Buddies (Placeholder - will show coming soon)
+                            Button(action: {
+                                // TODO: Implement BuddiesView
+                            }) {
+                                MenuButtonContent(
+                                    icon: "person.2.fill",
+                                    title: "Buddies",
+                                    subtitle: "Connect with diabetes community (Coming Soon)",
+                                    color: .gray
+                                )
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                            .disabled(true)
+                        }
                     }
                     .padding(.horizontal, 20)
                     

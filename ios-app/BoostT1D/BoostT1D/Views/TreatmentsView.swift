@@ -25,13 +25,7 @@ struct TreatmentsView: View {
             VStack(spacing: 20) {
                 // Header
                 VStack(spacing: 16) {
-                    Image(systemName: "syringe.fill")
-                        .font(.system(size: 50))
-                        .foregroundColor(.purple)
-                    
-                    Text("Treatments")
-                        .font(.title)
-                        .fontWeight(.semibold)
+                    AppIconView(size: 30)
                 }
                 .padding(.top, 20)
                 
@@ -117,9 +111,6 @@ struct TreatmentsView: View {
                 } else {
                     // Treatments List
                     VStack(spacing: 16) {
-                        Text("Treatments")
-                            .font(.headline)
-                        
                         LazyVStack(spacing: 8) {
                             ForEach(Array(filteredTreatments.enumerated()), id: \.offset) { index, treatment in
                                 TreatmentRow(treatment: treatment)
