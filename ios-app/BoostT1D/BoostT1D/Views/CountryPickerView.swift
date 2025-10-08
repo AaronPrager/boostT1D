@@ -23,34 +23,32 @@ struct CountryPickerView: View {
     }
     
     var body: some View {
-        NavigationView {
-            VStack {
-                SearchBar(text: $searchText)
-                
-                List(filteredCountries, id: \.self) { country in
-                    Button(action: {
-                        selectedCountry = country
-                        presentationMode.wrappedValue.dismiss()
-                    }) {
-                        HStack {
-                            Text(country)
-                                .foregroundColor(.primary)
-                            Spacer()
-                            if selectedCountry == country {
-                                Image(systemName: "checkmark")
-                                    .foregroundColor(.blue)
-                            }
+        VStack {
+            SearchBar(text: $searchText)
+            
+            List(filteredCountries, id: \.self) { country in
+                Button(action: {
+                    selectedCountry = country
+                    presentationMode.wrappedValue.dismiss()
+                }) {
+                    HStack {
+                        Text(country)
+                            .foregroundColor(.primary)
+                        Spacer()
+                        if selectedCountry == country {
+                            Image(systemName: "checkmark")
+                                .foregroundColor(.blue)
                         }
                     }
                 }
             }
-            .navigationTitle("Select Country")
-            .navigationBarItems(
-                leading: Button("Cancel") {
-                    presentationMode.wrappedValue.dismiss()
-                }
-            )
         }
+        .navigationTitle("Select Country")
+        .navigationBarItems(
+            trailing: Button("Done") {
+                presentationMode.wrappedValue.dismiss()
+            }
+        )
     }
 }
 

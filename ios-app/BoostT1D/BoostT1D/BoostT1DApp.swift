@@ -1,9 +1,3 @@
-//
-//  BoostT1DApp.swift
-//  BoostT1D
-//
-//  Created by Faina on 10/7/25.
-//
 
 import SwiftUI
 

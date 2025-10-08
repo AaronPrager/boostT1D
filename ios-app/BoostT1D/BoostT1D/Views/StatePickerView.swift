@@ -24,34 +24,32 @@ struct StatePickerView: View {
     }
     
     var body: some View {
-        NavigationView {
-            VStack {
-                SearchBar(text: $searchText)
-                
-                List(filteredStates, id: \.self) { state in
-                    Button(action: {
-                        selectedState = state
-                        presentationMode.wrappedValue.dismiss()
-                    }) {
-                        HStack {
-                            Text(state)
-                                .foregroundColor(.primary)
-                            Spacer()
-                            if selectedState == state {
-                                Image(systemName: "checkmark")
-                                    .foregroundColor(.blue)
-                            }
+        VStack {
+            SearchBar(text: $searchText)
+            
+            List(filteredStates, id: \.self) { state in
+                Button(action: {
+                    selectedState = state
+                    presentationMode.wrappedValue.dismiss()
+                }) {
+                    HStack {
+                        Text(state)
+                            .foregroundColor(.primary)
+                        Spacer()
+                        if selectedState == state {
+                            Image(systemName: "checkmark")
+                                .foregroundColor(.blue)
                         }
                     }
                 }
             }
-            .navigationTitle("Select State")
-            .navigationBarItems(
-                leading: Button("Cancel") {
-                    presentationMode.wrappedValue.dismiss()
-                }
-            )
         }
+        .navigationTitle("Select State")
+        .navigationBarItems(
+            trailing: Button("Done") {
+                presentationMode.wrappedValue.dismiss()
+            }
+        )
     }
 }
 

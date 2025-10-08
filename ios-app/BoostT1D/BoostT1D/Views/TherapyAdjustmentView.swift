@@ -149,7 +149,7 @@ struct TherapyAdjustmentView: View {
         .onAppear {
             loadSuggestions()
         }
-        .onChange(of: selectedTimeRange) { _ in
+        .onChange(of: selectedTimeRange) {
             loadSuggestions()
         }
     }
@@ -334,10 +334,10 @@ enum AdjustmentType {
     }
 }
 
-enum Priority {
-    case high
-    case medium
-    case low
+enum Priority: String, CaseIterable {
+    case high = "High"
+    case medium = "Medium"
+    case low = "Low"
 }
 
 struct AnalysisMetrics {

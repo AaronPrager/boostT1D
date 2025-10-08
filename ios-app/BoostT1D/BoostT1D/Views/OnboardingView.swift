@@ -3,7 +3,6 @@ import SwiftUI
 struct OnboardingView: View {
     @StateObject private var profileService = UserProfileService.shared
     @State private var currentStep = 0
-    @State private var showingMainApp = false
     
     // Step 1 data
     @State private var name = ""
@@ -30,6 +29,8 @@ struct OnboardingView: View {
     @State private var isTestingConnection = false
     @State private var showingConnectionAlert = false
     @State private var connectionAlertMessage = ""
+    @State private var lowGlucose = 70.0
+    @State private var highGlucose = 180.0
     
     private let totalSteps = 4
     
@@ -84,6 +85,8 @@ struct OnboardingView: View {
                         isTestingConnection: $isTestingConnection,
                         showingConnectionAlert: $showingConnectionAlert,
                         connectionAlertMessage: $connectionAlertMessage,
+                        lowGlucose: $lowGlucose,
+                        highGlucose: $highGlucose,
                         onComplete: completeOnboarding,
                         onBack: { currentStep = 2 }
                     )
@@ -125,9 +128,6 @@ struct OnboardingView: View {
         } message: {
             Text(connectionAlertMessage)
         }
-        .fullScreenCover(isPresented: $showingMainApp) {
-            WelcomeView()
-        }
     }
     
     private func completeOnboarding() {
@@ -154,17 +154,10 @@ struct OnboardingView: View {
         )
         
         // Save Nightscout settings
-        if isManualMode {
-            NightscoutService.shared.saveSettings(url: "", token: "")
-        } else {
-            NightscoutService.shared.saveSettings(url: nightscoutUrl, token: nightscoutApiToken)
-        }
+        NightscoutService.shared.saveSettings(url: nightscoutUrl, token: nightscoutApiToken, isManualMode: isManualMode, lowGlucose: lowGlucose, highGlucose: highGlucose)
         
         // Mark profile as complete
         profileService.completeProfile()
-        
-        // Show main app
-        showingMainApp = true
     }
     
     private func getYearsSinceDiagnosisValue() -> Int {

@@ -59,7 +59,7 @@ class UserProfileService: ObservableObject {
         isFirstTimeUser = false
     }
     
-    func isProfileComplete() -> Bool {
+    var isProfileComplete: Bool {
         guard let profile = currentProfile else { return false }
         return profile.isProfileComplete && !profile.name.isEmpty && !profile.country.isEmpty
     }

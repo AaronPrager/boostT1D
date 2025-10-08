@@ -1,7 +1,7 @@
 import Foundation
 
 struct Config {
-    // MARK: - API Keys
+    // API Keys
     static let geminiAPIKey: String = {
         // Try to get from environment variable first (for development)
         if let envKey = ProcessInfo.processInfo.environment["GEMINI_API_KEY"] {
@@ -13,10 +13,10 @@ struct Config {
         return "REDACTED_API_KEY"
     }()
     
-    // MARK: - API URLs
+    // API URLs
     static let geminiBaseURL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
     
-    // MARK: - App Configuration
+    // App Configuration
     static let appName = "BoostT1D"
     static let appVersion = "1.0.0"
 }

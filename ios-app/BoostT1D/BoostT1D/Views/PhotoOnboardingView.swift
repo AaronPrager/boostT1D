@@ -12,28 +12,28 @@ struct PhotoOnboardingView: View {
     var body: some View {
         VStack(spacing: 0) {
             // Header
-            VStack(spacing: 20) {
+            VStack(spacing: 16) {
                 Image(systemName: "camera.fill")
-                    .font(.system(size: 80))
+                    .font(.system(size: 50))
                     .foregroundColor(.blue)
                 
-                VStack(spacing: 8) {
+                VStack(spacing: 6) {
                     Text("Add a photo")
-                        .font(.title)
-                        .fontWeight(.bold)
+                        .font(.title2)
+                        .fontWeight(.semibold)
                     
                     Text("This helps personalize your experience")
-                        .font(.body)
+                        .font(.subheadline)
                         .foregroundColor(.secondary)
                 }
             }
-            .padding(.top, 60)
+            .padding(.top, 40)
             .padding(.horizontal, 20)
             
             Spacer()
             
             // Photo Section
-            VStack(spacing: 24) {
+            VStack(spacing: 18) {
                 ZStack {
                     if let selectedImage = selectedImage {
                         Image(uiImage: selectedImage)
@@ -47,13 +47,13 @@ struct PhotoOnboardingView: View {
                             .fill(Color(.systemGray5))
                             .frame(width: 200, height: 200)
                             .overlay(
-                                VStack(spacing: 12) {
+                                VStack(spacing: 8) {
                                     Image(systemName: "person.fill")
-                                        .font(.system(size: 60))
+                                        .font(.system(size: 40))
                                         .foregroundColor(.gray)
                                     
                                     Text("Tap to add photo")
-                                        .font(.headline)
+                                        .font(.subheadline)
                                         .foregroundColor(.gray)
                                 }
                             )
@@ -63,26 +63,27 @@ struct PhotoOnboardingView: View {
                     if selectedImage != nil {
                         Circle()
                             .fill(Color.blue)
-                            .frame(width: 40, height: 40)
+                            .frame(width: 32, height: 32)
                             .overlay(
                                 Image(systemName: "pencil")
-                                    .font(.system(size: 20, weight: .medium))
+                                    .font(.system(size: 16, weight: .medium))
                                     .foregroundColor(.white)
                             )
-                            .offset(x: 70, y: 70)
+                            .offset(x: 60, y: 60)
                     }
                 }
                 .onTapGesture {
                     showingPhotoActionSheet = true
                 }
                 
-                VStack(spacing: 8) {
+                VStack(spacing: 6) {
                     Text("Optional")
-                        .font(.headline)
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
                         .foregroundColor(.primary)
                     
                     Text("You can always add or change your photo later")
-                        .font(.body)
+                        .font(.caption)
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
                 }
@@ -92,49 +93,49 @@ struct PhotoOnboardingView: View {
             Spacer()
             
             // Navigation Buttons
-            VStack(spacing: 16) {
-                HStack(spacing: 16) {
+            VStack(spacing: 12) {
+                HStack(spacing: 12) {
                     // Back Button
                     Button(action: onBack) {
                         HStack {
                             Image(systemName: "arrow.left")
-                                .font(.headline)
+                                .font(.subheadline)
                             
                             Text("Back")
-                                .font(.headline)
+                                .font(.subheadline)
                                 .fontWeight(.semibold)
                         }
                         .foregroundColor(.blue)
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 16)
+                        .padding(.vertical, 12)
                         .background(Color(.systemGray6))
-                        .cornerRadius(12)
+                        .cornerRadius(8)
                     }
                     
                     // Next Button
                     Button(action: onNext) {
                         HStack {
                             Text("Continue")
-                                .font(.headline)
+                                .font(.subheadline)
                                 .fontWeight(.semibold)
                             
                             Image(systemName: "arrow.right")
-                                .font(.headline)
+                                .font(.subheadline)
                         }
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 16)
+                        .padding(.vertical, 12)
                         .background(Color.blue)
-                        .cornerRadius(12)
+                        .cornerRadius(8)
                     }
                 }
                 
                 Text("Step 2 of 4")
-                    .font(.caption)
+                    .font(.caption2)
                     .foregroundColor(.secondary)
             }
             .padding(.horizontal, 20)
-            .padding(.bottom, 40)
+            .padding(.bottom, 30)
         }
     }
 }

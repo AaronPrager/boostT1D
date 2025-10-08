@@ -6,6 +6,9 @@ struct BasicInfoOnboardingView: View {
     @Binding var gender: String
     @Binding var yearsSinceDiagnosis: String
     
+    @State private var showingValidationAlert = false
+    @State private var validationMessage = ""
+    
     let onNext: () -> Void
     
     private let genderOptions = ["Male", "Female", "Prefer not to say"]
@@ -47,6 +50,14 @@ struct BasicInfoOnboardingView: View {
                         .textFieldStyle(RoundedBorderTextFieldStyle())
                         .font(.subheadline)
                         .autocapitalization(.words)
+                        .toolbar {
+                            ToolbarItemGroup(placement: .keyboard) {
+                                Spacer()
+                                Button("Done") {
+                                    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                                }
+                            }
+                        }
                 }
                 
                 // Age Field
@@ -60,6 +71,14 @@ struct BasicInfoOnboardingView: View {
                         .textFieldStyle(RoundedBorderTextFieldStyle())
                         .font(.subheadline)
                         .keyboardType(.numberPad)
+                        .toolbar {
+                            ToolbarItemGroup(placement: .keyboard) {
+                                Spacer()
+                                Button("Done") {
+                                    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                                }
+                            }
+                        }
                 }
                 
                 // Gender Field
@@ -112,7 +131,7 @@ struct BasicInfoOnboardingView: View {
             
             // Next Button
             VStack(spacing: 12) {
-                Button(action: onNext) {
+                Button(action: validateAndProceed) {
                     HStack {
                         Text("Continue")
                             .font(.subheadline)
@@ -136,10 +155,55 @@ struct BasicInfoOnboardingView: View {
             .padding(.horizontal, 20)
             .padding(.bottom, 40)
         }
+        .onTapGesture {
+            // Dismiss keyboard when tapping outside text fields
+            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+        }
+        .alert("Invalid Information", isPresented: $showingValidationAlert) {
+            Button("OK") { }
+        } message: {
+            Text(validationMessage)
+        }
     }
     
     private var canProceed: Bool {
         !name.isEmpty && !age.isEmpty && !gender.isEmpty && !yearsSinceDiagnosis.isEmpty
+    }
+    
+    private func validateAndProceed() {
+        guard let ageValue = Int(age) else {
+            validationMessage = "Please enter a valid age."
+            showingValidationAlert = true
+            return
+        }
+        
+        // Validate age is greater than 13
+        if ageValue <= 13 {
+            validationMessage = "You must be at least 14 years old to use this app."
+            showingValidationAlert = true
+            return
+        }
+        
+        // Validate years since diagnosis is not more than age
+        let yearsSinceDiagnosisValue = getYearsSinceDiagnosisValue()
+        if yearsSinceDiagnosisValue > ageValue {
+            validationMessage = "Years with diabetes cannot be more than your age. Please check your information."
+            showingValidationAlert = true
+            return
+        }
+        
+        // If validation passes, proceed to next step
+        onNext()
+    }
+    
+    private func getYearsSinceDiagnosisValue() -> Int {
+        switch yearsSinceDiagnosis {
+        case "<1": return 0
+        case "1-2": return 1
+        case "3-10": return 5
+        case "10+": return 10
+        default: return 0
+        }
     }
 }
 

@@ -1,4 +1,12 @@
 import Foundation
+import CryptoKit
+
+// SHA1 hashing function to match web app
+func sha1(_ string: String) -> String {
+    let data = Data(string.utf8)
+    let hash = Insecure.SHA1.hash(data: data)
+    return hash.map { String(format: "%02hhx", $0) }.joined()
+}
 
 class NightscoutService: ObservableObject {
     static let shared = NightscoutService()
@@ -27,8 +35,8 @@ class NightscoutService: ObservableObject {
         }
     }
     
-    func saveSettings(url: String, token: String, isManualMode: Bool) {
-        settings = NightscoutSettings(url: url, apiToken: token, isManualMode: isManualMode)
+    func saveSettings(url: String, token: String, isManualMode: Bool, lowGlucose: Double = 70.0, highGlucose: Double = 180.0) {
+        settings = NightscoutSettings(url: url, apiToken: token, isManualMode: isManualMode, lowGlucose: lowGlucose, highGlucose: highGlucose)
         if let data = try? JSONEncoder().encode(settings) {
             userDefaults.set(data, forKey: settingsKey)
         }
@@ -44,10 +52,42 @@ class NightscoutService: ObservableObject {
             return
         }
         
-        let testURL = URL(string: "\(url)/api/v1/status")!
-        var request = URLRequest(url: testURL)
-        request.setValue(token, forHTTPHeaderField: "api-secret")
+        // Clean up URL - remove trailing slash and ensure proper format
+        var cleanURL = url.trimmingCharacters(in: .whitespacesAndNewlines)
+        if cleanURL.hasSuffix("/") {
+            cleanURL = String(cleanURL.dropLast())
+        }
+        
+        let testURL = URL(string: "\(cleanURL)/api/v1/status")!
+        
+        print("Testing Nightscout connection to: \(testURL)")
+        print("Using token: [HIDDEN]")
+        
+        // Try api-secret header first (most common)
+        testConnectionWithHeader(url: testURL, token: token, headerField: "api-secret") { success, message in
+            if success {
+                completion(true, message)
+            } else {
+                // Try X-API-Key header if api-secret failed
+                self.testConnectionWithHeader(url: testURL, token: token, headerField: "X-API-Key") { success, message in
+                    if success {
+                        completion(true, message)
+                    } else {
+                        // Try query parameter authentication as last resort
+                        self.testConnectionWithQueryParam(url: cleanURL, token: token, completion: completion)
+                    }
+                }
+            }
+        }
+    }
+    
+    private func testConnectionWithHeader(url: URL, token: String, headerField: String, completion: @escaping (Bool, String) -> Void) {
+        var request = URLRequest(url: url)
+        request.setValue(sha1(token), forHTTPHeaderField: headerField)
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        
+        print("Trying authentication with header: \(headerField)")
         
         URLSession.shared.dataTask(with: request) { data, response, error in
             DispatchQueue.main.async {
@@ -57,10 +97,58 @@ class NightscoutService: ObservableObject {
                 }
                 
                 if let httpResponse = response as? HTTPURLResponse {
+                    print("Nightscout response status with \(headerField): \(httpResponse.statusCode)")
+                    
                     if httpResponse.statusCode == 200 {
-                        completion(true, "Connection successful!")
+                        completion(true, "Connected!")
+                    } else if httpResponse.statusCode == 401 {
+                        completion(false, "Authentication failed with \(headerField)")
+                    } else if httpResponse.statusCode == 404 {
+                        completion(false, "API endpoint not found (404). Please check:\n• URL is correct\n• Nightscout instance is running\n• API is enabled")
                     } else {
                         completion(false, "Connection failed with status: \(httpResponse.statusCode)")
+                    }
+                } else {
+                    completion(false, "Invalid response from server")
+                }
+            }
+        }.resume()
+    }
+    
+    func testConnectionWithQueryParam(url: String, token: String, completion: @escaping (Bool, String) -> Void) {
+        guard !url.isEmpty && !token.isEmpty else {
+            completion(false, "Please enter both URL and API token")
+            return
+        }
+        
+        // Clean up URL - remove trailing slash and ensure proper format
+        var cleanURL = url.trimmingCharacters(in: .whitespacesAndNewlines)
+        if cleanURL.hasSuffix("/") {
+            cleanURL = String(cleanURL.dropLast())
+        }
+        
+        // Try with query parameter authentication
+        let testURL = URL(string: "\(cleanURL)/api/v1/status?token=\(token)")!
+        var request = URLRequest(url: testURL)
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        
+        print("Testing Nightscout connection with query param to: \(testURL)")
+        
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            DispatchQueue.main.async {
+                if let error = error {
+                    completion(false, "Connection failed: \(error.localizedDescription)")
+                    return
+                }
+                
+                if let httpResponse = response as? HTTPURLResponse {
+                    print("Nightscout query param response status: \(httpResponse.statusCode)")
+                    
+                    if httpResponse.statusCode == 200 {
+                        completion(true, "Connected!")
+                    } else {
+                        completion(false, "Query parameter authentication failed with status: \(httpResponse.statusCode)")
                     }
                 } else {
                     completion(false, "Invalid response from server")
@@ -78,6 +166,10 @@ class NightscoutService: ObservableObject {
         let endTime = Int(Date().timeIntervalSince1970 * 1000)
         let startTime = endTime - (hours * 60 * 60 * 1000)
         
+        print("Date range: \(startTime) to \(endTime) (hours: \(hours))")
+        print("Start date: \(Date(timeIntervalSince1970: Double(startTime) / 1000))")
+        print("End date: \(Date(timeIntervalSince1970: Double(endTime) / 1000))")
+        
         var urlComponents = URLComponents(string: "\(settings.url)/api/v1/entries/sgv")
         urlComponents?.queryItems = [
             URLQueryItem(name: "find[date][$gte]", value: "\(startTime)"),
@@ -90,14 +182,38 @@ class NightscoutService: ObservableObject {
             return
         }
         
+        // Try multiple authentication methods
+        self.fetchGlucoseWithHeader(url: url, settings: settings, completion: completion)
+    }
+    
+    private func fetchGlucoseWithHeader(url: URL, settings: NightscoutSettings, completion: @escaping (Result<[NightscoutGlucoseEntry], Error>) -> Void) {
         var request = URLRequest(url: url)
-        request.setValue(settings.apiToken, forHTTPHeaderField: "api-secret")
+        // Use SHA1 hashed token like the web app
+        let hashedToken = sha1(settings.apiToken)
+        request.setValue(hashedToken, forHTTPHeaderField: "api-secret")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        print("Fetching glucose data from: \(url)")
+        print("Using token: [HIDDEN]")
         
         URLSession.shared.dataTask(with: request) { data, response, error in
             DispatchQueue.main.async {
                 if let error = error {
-                    completion(.failure(error))
+                    print("Glucose API Error: \(error)")
+                    // Try X-API-Key header
+                    self.fetchGlucoseWithXAPIKey(url: url, settings: settings, completion: completion)
+                    return
+                }
+                
+                guard let httpResponse = response as? HTTPURLResponse else {
+                    completion(.failure(NightscoutError.connectionFailed))
+                    return
+                }
+                
+                if httpResponse.statusCode == 401 {
+                    print("Glucose API 401 with api-secret, trying X-API-Key")
+                    self.fetchGlucoseWithXAPIKey(url: url, settings: settings, completion: completion)
                     return
                 }
                 
@@ -107,13 +223,209 @@ class NightscoutService: ObservableObject {
                 }
                 
                 do {
+                    // Debug: Print the raw response
+                    if let jsonString = String(data: data, encoding: .utf8) {
+                        print("Glucose API Response: \(String(jsonString.prefix(500)))...")
+                    }
+                    
                     let glucoseEntries = try JSONDecoder().decode([NightscoutGlucoseEntry].self, from: data)
+                    print("Successfully decoded \(glucoseEntries.count) glucose entries")
                     completion(.success(glucoseEntries))
                 } catch {
-                    completion(.failure(error))
+                    print("JSON Decoding Error: \(error)")
+                    // Try parsing as TSV format
+                    if let responseString = String(data: data, encoding: .utf8) {
+                        let glucoseEntries = self.parseTSVGlucoseData(responseString)
+                        if !glucoseEntries.isEmpty {
+                            print("Successfully parsed \(glucoseEntries.count) glucose entries from TSV format")
+                            completion(.success(glucoseEntries))
+                        } else {
+                            completion(.failure(error))
+                        }
+                    } else {
+                        completion(.failure(error))
+                    }
                 }
             }
         }.resume()
+    }
+    
+    private func fetchGlucoseWithXAPIKey(url: URL, settings: NightscoutSettings, completion: @escaping (Result<[NightscoutGlucoseEntry], Error>) -> Void) {
+        var request = URLRequest(url: url)
+        // Try with SHA1 hashed token
+        let hashedToken = sha1(settings.apiToken)
+        request.setValue(hashedToken, forHTTPHeaderField: "X-API-Key")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        print("Trying X-API-Key header for glucose data")
+        
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            DispatchQueue.main.async {
+                if let error = error {
+                    print("Glucose API Error with X-API-Key: \(error)")
+                    // Try query parameter
+                    self.fetchGlucoseWithQueryParam(url: url, settings: settings, completion: completion)
+                    return
+                }
+                
+                guard let httpResponse = response as? HTTPURLResponse else {
+                    completion(.failure(NightscoutError.connectionFailed))
+                    return
+                }
+                
+                if httpResponse.statusCode == 401 {
+                    print("Glucose API 401 with X-API-Key, trying query parameter")
+                    self.fetchGlucoseWithQueryParam(url: url, settings: settings, completion: completion)
+                    return
+                }
+                
+                guard let data = data else {
+                    completion(.failure(NightscoutError.noData))
+                    return
+                }
+                
+                // Debug: Print the raw response for X-API-Key
+                if let responseString = String(data: data, encoding: .utf8) {
+                    print("X-API-Key Response: \(String(responseString.prefix(200)))...")
+                }
+                
+                do {
+                    let glucoseEntries = try JSONDecoder().decode([NightscoutGlucoseEntry].self, from: data)
+                    print("Successfully decoded \(glucoseEntries.count) glucose entries with X-API-Key")
+                    completion(.success(glucoseEntries))
+                } catch {
+                    print("JSON Decoding Error with X-API-Key: \(error)")
+                    // Try parsing as TSV format
+                    if let responseString = String(data: data, encoding: .utf8) {
+                        let glucoseEntries = self.parseTSVGlucoseData(responseString)
+                        if !glucoseEntries.isEmpty {
+                            print("Successfully parsed \(glucoseEntries.count) glucose entries from TSV format with X-API-Key")
+                            completion(.success(glucoseEntries))
+                        } else {
+                            // Try query parameter
+                            self.fetchGlucoseWithQueryParam(url: url, settings: settings, completion: completion)
+                        }
+                    } else {
+                        // Try query parameter
+                        self.fetchGlucoseWithQueryParam(url: url, settings: settings, completion: completion)
+                    }
+                }
+            }
+        }.resume()
+    }
+    
+    private func fetchGlucoseWithQueryParam(url: URL, settings: NightscoutSettings, completion: @escaping (Result<[NightscoutGlucoseEntry], Error>) -> Void) {
+        var urlComponents = URLComponents(url: url, resolvingAgainstBaseURL: false)
+        // Try with SHA1 hashed token
+        let hashedToken = sha1(settings.apiToken)
+        urlComponents?.queryItems?.append(URLQueryItem(name: "token", value: hashedToken))
+        
+        guard let finalUrl = urlComponents?.url else {
+            completion(.failure(NightscoutError.invalidURL))
+            return
+        }
+        
+        var request = URLRequest(url: finalUrl)
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        print("Trying query parameter for glucose data")
+        
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            DispatchQueue.main.async {
+                if let error = error {
+                    print("Glucose API Error with query param: \(error)")
+                    completion(.failure(error))
+                    return
+                }
+                
+                guard let data = data else {
+                    completion(.failure(NightscoutError.noData))
+                    return
+                }
+                
+                // Debug: Print the raw response for query param
+                if let responseString = String(data: data, encoding: .utf8) {
+                    print("Query Param Response: \(String(responseString.prefix(200)))...")
+                }
+                
+                do {
+                    let glucoseEntries = try JSONDecoder().decode([NightscoutGlucoseEntry].self, from: data)
+                    print("Successfully decoded \(glucoseEntries.count) glucose entries with query param")
+                    completion(.success(glucoseEntries))
+                } catch {
+                    print("JSON Decoding Error with query param: \(error)")
+                    // Try parsing as TSV format
+                    if let responseString = String(data: data, encoding: .utf8) {
+                        let glucoseEntries = self.parseTSVGlucoseData(responseString)
+                        if !glucoseEntries.isEmpty {
+                            print("Successfully parsed \(glucoseEntries.count) glucose entries from TSV format with query param")
+                            completion(.success(glucoseEntries))
+                        } else {
+                            completion(.failure(error))
+                        }
+                    } else {
+                        completion(.failure(error))
+                    }
+                }
+            }
+        }.resume()
+    }
+    
+    private func parseTSVGlucoseData(_ tsvString: String) -> [NightscoutGlucoseEntry] {
+        var glucoseEntries: [NightscoutGlucoseEntry] = []
+        
+        let lines = tsvString.components(separatedBy: .newlines)
+        
+        for line in lines {
+            let trimmedLine = line.trimmingCharacters(in: .whitespacesAndNewlines)
+            if trimmedLine.isEmpty {
+                continue
+            }
+            
+            // Split by tab character
+            let fields = trimmedLine.components(separatedBy: "\t")
+            
+            // Expected format: "2025-10-07T21:09:52.013Z"	1759871392013	181	"FortyFiveUp"	"unknown"
+            // Fields: [0] = ISO date string, [1] = timestamp, [2] = sgv, [3] = direction, [4] = device/noise
+            if fields.count >= 3 {
+                let isoDateString = fields[0].trimmingCharacters(in: .whitespacesAndNewlines)
+                let timestampString = fields[1].trimmingCharacters(in: .whitespacesAndNewlines)
+                let sgvString = fields[2].trimmingCharacters(in: .whitespacesAndNewlines)
+                
+                // Parse timestamp
+                guard let timestamp = Int64(timestampString) else {
+                    print("Failed to parse timestamp: \(timestampString)")
+                    continue
+                }
+                
+                // Parse SGV value
+                guard let sgv = Int(sgvString) else {
+                    print("Failed to parse SGV: \(sgvString)")
+                    continue
+                }
+                
+                // Parse direction (remove quotes if present)
+                let direction = fields.count > 3 ? fields[3].trimmingCharacters(in: CharacterSet(charactersIn: "\"")) : nil
+                
+                // Parse device/noise (remove quotes if present)
+                let device = fields.count > 4 ? fields[4].trimmingCharacters(in: CharacterSet(charactersIn: "\"")) : nil
+                let noise = device == "unknown" ? nil : Int(device ?? "")
+                
+                let entry = NightscoutGlucoseEntry(
+                    sgv: sgv,
+                    direction: direction,
+                    date: timestamp,
+                    device: device,
+                    noise: noise
+                )
+                
+                glucoseEntries.append(entry)
+            }
+        }
+        
+        return glucoseEntries
     }
     
     func fetchTreatments(settings: NightscoutSettings, hours: Int = 24, completion: @escaping (Result<[NightscoutTreatment], Error>) -> Void) {
@@ -162,7 +474,7 @@ class NightscoutService: ObservableObject {
         }
         
         var request = URLRequest(url: url)
-        request.setValue(settings.apiToken, forHTTPHeaderField: "api-secret")
+        request.setValue(sha1(settings.apiToken), forHTTPHeaderField: "api-secret")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         
         URLSession.shared.dataTask(with: request) { data, response, error in
@@ -203,7 +515,7 @@ class NightscoutService: ObservableObject {
         }
         
         var request = URLRequest(url: url)
-        request.setValue(settings.apiToken, forHTTPHeaderField: "api-secret")
+        request.setValue(sha1(settings.apiToken), forHTTPHeaderField: "api-secret")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         
         URLSession.shared.dataTask(with: request) { data, response, error in
@@ -240,7 +552,7 @@ class NightscoutService: ObservableObject {
         }
         
         var request = URLRequest(url: url)
-        request.setValue(settings.apiToken, forHTTPHeaderField: "api-secret")
+        request.setValue(sha1(settings.apiToken), forHTTPHeaderField: "api-secret")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         
         URLSession.shared.dataTask(with: request) { data, response, error in

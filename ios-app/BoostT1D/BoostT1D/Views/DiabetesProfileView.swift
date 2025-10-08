@@ -14,10 +14,6 @@ struct DiabetesProfileView: View {
                     Image(systemName: "person.circle.fill")
                         .font(.system(size: 50))
                         .foregroundColor(.green)
-                    
-                    Text("Diabetes Profile")
-                        .font(.title)
-                        .fontWeight(.semibold)
                 }
                 .padding(.top, 20)
                 
@@ -47,42 +43,182 @@ struct DiabetesProfileView: View {
                     .padding()
                 } else if let profile = profile {
                     VStack(spacing: 16) {
-                        // Profile Info
-                        VStack(alignment: .leading, spacing: 12) {
-                            Text("Profile Information")
-                                .font(.headline)
+                        // Detailed Profile Data
+                        if let store = profile.store, let defaultProfileName = profile.defaultProfile,
+                           let profileData = store[defaultProfileName] {
                             
-                            if let defaultProfile = profile.defaultProfile {
-                                ProfileInfoRow(title: "Default Profile", value: defaultProfile)
-                            }
-                            
-                            if let units = profile.units {
-                                ProfileInfoRow(title: "Units", value: units)
-                            }
-                            
-                            if let startDate = profile.startDate {
-                                ProfileInfoRow(title: "Start Date", value: startDate)
-                            }
-                        }
-                        .padding(16)
-                        .background(Color(.systemGray6))
-                        .cornerRadius(12)
-                        
-                        // Store Data
-                        if let store = profile.store {
-                            VStack(alignment: .leading, spacing: 12) {
-                                Text("Profile Data")
-                                    .font(.headline)
-                                
-                                ForEach(Array(store.keys.sorted()), id: \.self) { key in
-                                    if let profileData = store[key] {
-                                        ProfileDataCard(name: key, data: profileData)
+                            // Basal Rates
+                            if let basal = profileData.basal, !basal.isEmpty {
+                                VStack(alignment: .leading, spacing: 12) {
+                                    Text("Basal Rates")
+                                        .font(.headline)
+                                    
+                                    ForEach(basal, id: \.time) { rate in
+                                        HStack {
+                                            Text(rate.time)
+                                                .font(.subheadline)
+                                                .foregroundColor(.secondary)
+                                            Spacer()
+                                            Text(String(format: "%.2f U/hr", rate.value))
+                                                .font(.subheadline)
+                                                .fontWeight(.medium)
+                                        }
                                     }
                                 }
+                                .padding(16)
+                                .background(Color(.systemGray6))
+                                .cornerRadius(12)
                             }
-                            .padding(16)
-                            .background(Color(.systemGray6))
-                            .cornerRadius(12)
+                            
+                            // Carb Ratios
+                            if let carbRatio = profileData.carb_ratio ?? profileData.carbratio, !carbRatio.isEmpty {
+                                VStack(alignment: .leading, spacing: 12) {
+                                    Text("Carb Ratios")
+                                        .font(.headline)
+                                    
+                                    ForEach(carbRatio, id: \.time) { ratio in
+                                        HStack {
+                                            Text(ratio.time)
+                                                .font(.subheadline)
+                                                .foregroundColor(.secondary)
+                                            Spacer()
+                                            Text(String(format: "1:%.0f", ratio.value))
+                                                .font(.subheadline)
+                                                .fontWeight(.medium)
+                                        }
+                                    }
+                                }
+                                .padding(16)
+                                .background(Color(.systemGray6))
+                                .cornerRadius(12)
+                            }
+                            
+                            // Insulin Sensitivity Factors
+                            if let sensitivity = profileData.sensitivity ?? profileData.sens, !sensitivity.isEmpty {
+                                VStack(alignment: .leading, spacing: 12) {
+                                    Text("Insulin Sensitivity Factors")
+                                        .font(.headline)
+                                    
+                                    ForEach(sensitivity, id: \.time) { sens in
+                                        HStack {
+                                            Text(sens.time)
+                                                .font(.subheadline)
+                                                .foregroundColor(.secondary)
+                                            Spacer()
+                                            Text(String(format: "%.0f mg/dl per U", sens.value))
+                                                .font(.subheadline)
+                                                .fontWeight(.medium)
+                                        }
+                                    }
+                                }
+                                .padding(16)
+                                .background(Color(.systemGray6))
+                                .cornerRadius(12)
+                            }
+                            
+                            // Target Ranges
+                            if let targetLow = profileData.target_low, let targetHigh = profileData.target_high,
+                               !targetLow.isEmpty && !targetHigh.isEmpty {
+                                VStack(alignment: .leading, spacing: 12) {
+                                    Text("Target Ranges")
+                                        .font(.headline)
+                                    
+                                    ForEach(Array(zip(targetLow, targetHigh)), id: \.0.time) { (low, high) in
+                                        HStack {
+                                            Text(low.time)
+                                                .font(.subheadline)
+                                                .foregroundColor(.secondary)
+                                            Spacer()
+                                            Text(String(format: "%.0f - %.0f mg/dl", low.value, high.value))
+                                                .font(.subheadline)
+                                                .fontWeight(.medium)
+                                        }
+                                    }
+                                }
+                                .padding(16)
+                                .background(Color(.systemGray6))
+                                .cornerRadius(12)
+                            }
+                            
+                            // DIA (Duration of Insulin Action)
+                            if let dia = profileData.dia {
+                                VStack(alignment: .leading, spacing: 12) {
+                                    Text("Duration of Insulin Action")
+                                        .font(.headline)
+                                    
+                                    HStack {
+                                        Text("DIA")
+                                            .font(.subheadline)
+                                            .foregroundColor(.secondary)
+                                        Spacer()
+                                        Text(String(format: "%.1f hours", dia))
+                                            .font(.subheadline)
+                                            .fontWeight(.medium)
+                                    }
+                                }
+                                .padding(16)
+                                .background(Color(.systemGray6))
+                                .cornerRadius(12)
+                            }
+                            
+                            // Override Presets
+                            if let overrides = profile.overridePresets, !overrides.isEmpty {
+                                VStack(alignment: .leading, spacing: 12) {
+                                    Text("Override Presets")
+                                        .font(.headline)
+                                    
+                                    ForEach(overrides, id: \.name) { preset in
+                                        VStack(alignment: .leading, spacing: 4) {
+                                            HStack {
+                                                Text(preset.name ?? "Unknown")
+                                                    .font(.subheadline)
+                                                    .fontWeight(.medium)
+                                                Spacer()
+                                                if let target = preset.target {
+                                                    Text("Target: \(target)")
+                                                        .font(.caption)
+                                                        .foregroundColor(.secondary)
+                                                }
+                                            }
+                                            
+                                            HStack {
+                                                if let percentage = preset.percentage {
+                                                    Text("\(percentage)%")
+                                                        .font(.caption)
+                                                        .foregroundColor(.secondary)
+                                                }
+                                                if let duration = preset.duration {
+                                                    Text("\(duration) min")
+                                                        .font(.caption)
+                                                        .foregroundColor(.secondary)
+                                                }
+                                                Spacer()
+                                            }
+                                        }
+                                        .padding(8)
+                                        .background(Color(.systemBackground))
+                                        .cornerRadius(8)
+                                    }
+                                }
+                                .padding(16)
+                                .background(Color(.systemGray6))
+                                .cornerRadius(12)
+                            }
+                            
+                            // Notes
+                            if let notes = profileData.notes, !notes.isEmpty {
+                                VStack(alignment: .leading, spacing: 12) {
+                                    Text("Notes")
+                                        .font(.headline)
+                                    
+                                    Text(notes)
+                                        .font(.subheadline)
+                                        .foregroundColor(.secondary)
+                                }
+                                .padding(16)
+                                .background(Color(.systemGray6))
+                                .cornerRadius(12)
+                            }
                         }
                     }
                     .padding(.horizontal, 20)
@@ -129,6 +265,7 @@ struct DiabetesProfileView: View {
                 case .success(let fetchedProfile):
                     self.profile = fetchedProfile
                 case .failure(let error):
+                    print("Diabetes Profile Error: \(error)")
                     self.errorMessage = error.localizedDescription
                 }
             }

@@ -12,32 +12,33 @@ struct LocationOnboardingView: View {
     var body: some View {
         VStack(spacing: 0) {
             // Header
-            VStack(spacing: 20) {
+            VStack(spacing: 16) {
                 Image(systemName: "location.fill")
-                    .font(.system(size: 80))
+                    .font(.system(size: 50))
                     .foregroundColor(.blue)
                 
-                VStack(spacing: 8) {
+                VStack(spacing: 6) {
                     Text("Where are you located?")
-                        .font(.title)
-                        .fontWeight(.bold)
+                        .font(.title2)
+                        .fontWeight(.semibold)
                     
                     Text("This helps us provide relevant information")
-                        .font(.body)
+                        .font(.subheadline)
                         .foregroundColor(.secondary)
                 }
             }
-            .padding(.top, 60)
+            .padding(.top, 40)
             .padding(.horizontal, 20)
             
             Spacer()
             
             // Location Fields
-            VStack(spacing: 24) {
+            VStack(spacing: 18) {
                 // Country Field
-                VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: 6) {
                     Text("Country")
-                        .font(.headline)
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
                         .foregroundColor(.primary)
                     
                     Button(action: { showingCountryPicker = true }) {
@@ -65,9 +66,10 @@ struct LocationOnboardingView: View {
                 
                 // State Field (only for USA)
                 if country == "United States" {
-                    VStack(alignment: .leading, spacing: 8) {
+                    VStack(alignment: .leading, spacing: 6) {
                         Text("State")
-                            .font(.headline)
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
                             .foregroundColor(.primary)
                         
                         Button(action: { showingStatePicker = true }) {
@@ -99,50 +101,50 @@ struct LocationOnboardingView: View {
             Spacer()
             
             // Navigation Buttons
-            VStack(spacing: 16) {
-                HStack(spacing: 16) {
+            VStack(spacing: 12) {
+                HStack(spacing: 12) {
                     // Back Button
                     Button(action: onBack) {
                         HStack {
                             Image(systemName: "arrow.left")
-                                .font(.headline)
+                                .font(.subheadline)
                             
                             Text("Back")
-                                .font(.headline)
+                                .font(.subheadline)
                                 .fontWeight(.semibold)
                         }
                         .foregroundColor(.blue)
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 16)
+                        .padding(.vertical, 12)
                         .background(Color(.systemGray6))
-                        .cornerRadius(12)
+                        .cornerRadius(8)
                     }
                     
                     // Next Button
                     Button(action: onNext) {
                         HStack {
                             Text("Continue")
-                                .font(.headline)
+                                .font(.subheadline)
                                 .fontWeight(.semibold)
                             
                             Image(systemName: "arrow.right")
-                                .font(.headline)
+                                .font(.subheadline)
                         }
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 16)
+                        .padding(.vertical, 12)
                         .background(canProceed ? Color.blue : Color.gray)
-                        .cornerRadius(12)
+                        .cornerRadius(8)
                     }
                     .disabled(!canProceed)
                 }
                 
                 Text("Step 3 of 4")
-                    .font(.caption)
+                    .font(.caption2)
                     .foregroundColor(.secondary)
             }
             .padding(.horizontal, 20)
-            .padding(.bottom, 40)
+            .padding(.bottom, 30)
         }
     }
     

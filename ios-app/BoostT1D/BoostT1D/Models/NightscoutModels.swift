@@ -5,11 +5,15 @@ struct NightscoutSettings: Codable {
     var url: String
     var apiToken: String
     var isManualMode: Bool
+    var lowGlucose: Double
+    var highGlucose: Double
     
-    init(url: String = "", apiToken: String = "", isManualMode: Bool = false) {
+    init(url: String = "", apiToken: String = "", isManualMode: Bool = false, lowGlucose: Double = 70.0, highGlucose: Double = 180.0) {
         self.url = url
         self.apiToken = apiToken
         self.isManualMode = isManualMode
+        self.lowGlucose = lowGlucose
+        self.highGlucose = highGlucose
     }
 }
 
@@ -97,12 +101,23 @@ extension TimeValue {
 
 // MARK: - Diabetes Profile
 struct DiabetesProfile: Codable {
+    let _id: String?
     let defaultProfile: String?
     let store: [String: ProfileData]?
     let startDate: String?
-    let mills: String?
+    let mills: Int64?
     let units: String?
     let created_at: String?
+    let deviceToken: String?
+    let overridePresets: [OverridePreset]?
+    let enteredBy: String?
+}
+
+struct OverridePreset: Codable {
+    let name: String?
+    let target: Int?
+    let percentage: Int?
+    let duration: Int?
 }
 
 struct ProfileData: Codable {

@@ -10,8 +10,8 @@ struct MainLandingView: View {
                 
                 // App Logo and Title
                 VStack(spacing: 20) {
-                    // Custom BoostT1D Logo
-                    BoostT1DAnimatedLogo(size: 120)
+                    // Custom BoostT1D Heart Blood Drop Logo
+                    BoostT1DHeartBloodAnimatedIcon(size: 120)
                     
                     Text("Your Personal Diabetes Management Assistant")
                         .font(.title3)

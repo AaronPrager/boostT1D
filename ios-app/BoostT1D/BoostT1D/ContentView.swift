@@ -1,21 +1,23 @@
-//
-//  ContentView.swift
-//  BoostT1D
-//
-//  Created by Faina on 10/7/25.
-//
-
 import SwiftUI
 
 struct ContentView: View {
+    @StateObject private var profileService = UserProfileService.shared
+    
     var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Hello, world!")
+        Group {
+            if profileService.isProfileComplete {
+                // User has completed profile, show main app
+                NavigationView {
+                    WelcomeView()
+                }
+            } else {
+                // First time user, show onboarding
+                MainLandingView()
+            }
         }
-        .padding()
+        .onChange(of: profileService.isProfileComplete) { isComplete in
+            print("Profile completion status changed: \(isComplete)")
+        }
     }
 }
 

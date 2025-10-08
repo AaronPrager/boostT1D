@@ -2,44 +2,28 @@ import SwiftUI
 
 struct WelcomeView: View {
     @StateObject private var profileService = UserProfileService.shared
-    @State private var showingProfileSetup = false
     
     var body: some View {
         NavigationView {
-            ScrollView {
-                VStack(spacing: 24) {
-                    // Header Section
-                    VStack(spacing: 16) {
-                        // Custom BoostT1D Logo
-                        BoostT1DLogoIcon(size: 80)
-                        
-                        Text("AI-Powered Diabetes Management")
-                            .font(.title2)
-                            .fontWeight(.medium)
-                            .foregroundColor(.secondary)
-                            .multilineTextAlignment(.center)
-                    }
-                    .padding(.top, 40)
+            VStack(spacing: 0) {
+                // Welcome Message - positioned at top
+                VStack(spacing: 4) {
+                    Text("Welcome back, \(profileService.currentProfile?.name ?? "User")!")
+                        .font(.title)
+                        .fontWeight(.bold)
+                        .multilineTextAlignment(.center)
                     
-                    // Welcome Message
-                    VStack(spacing: 12) {
-                        Text("Welcome back, \(profileService.currentProfile?.name ?? "User")!")
-                            .font(.title)
-                            .fontWeight(.bold)
-                            .multilineTextAlignment(.center)
-                        
-                        Text("Your diabetes management companion")
-                            .font(.body)
-                            .foregroundColor(.secondary)
-                            .multilineTextAlignment(.center)
-                    }
-                    .padding(.horizontal, 20)
-                    
-                    // Menu Grid
-                    LazyVGrid(columns: [
-                        GridItem(.flexible()),
-                        GridItem(.flexible())
-                    ], spacing: 16) {
+                    Text("Your diabetes management companion")
+                        .font(.body)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+                .padding(.top, 5)
+                .padding(.horizontal, 20)
+                
+                // Menu List
+                ScrollView {
+                    VStack(spacing: 8) {
                         // Blood Glucose Data
                         NavigationLink(destination: BloodGlucoseDataView()) {
                             MenuButtonContent(
@@ -67,19 +51,19 @@ struct WelcomeView: View {
                             MenuButtonContent(
                                 icon: "slider.horizontal.3",
                                 title: "Therapy Adjustment",
-                                subtitle: "AI-powered dose recommendations",
+                                subtitle: "AI dose recommendations",
                                 color: .orange
                             )
                         }
                         .buttonStyle(PlainButtonStyle())
                         
-                        // Profile
-                        NavigationLink(destination: ProfileView()) {
+                        // Food Analysis
+                        NavigationLink(destination: FoodAnalysisView()) {
                             MenuButtonContent(
-                                icon: "person.circle.fill",
-                                title: "Profile",
-                                subtitle: "Manage your personal information",
-                                color: .blue
+                                icon: "camera.fill",
+                                title: "Food Analysis",
+                                subtitle: "AI carb estimation",
+                                color: .green
                             )
                         }
                         .buttonStyle(PlainButtonStyle())
@@ -94,38 +78,38 @@ struct WelcomeView: View {
                             )
                         }
                         .buttonStyle(PlainButtonStyle())
-                        
-                        // Settings
-                        NavigationLink(destination: ProfileView()) {
-                            MenuButtonContent(
-                                icon: "gear",
-                                title: "Settings",
-                                subtitle: "App preferences and configuration",
-                                color: .gray
-                            )
-                        }
-                        .buttonStyle(PlainButtonStyle())
                     }
                     .padding(.horizontal, 20)
                     
-                    Spacer(minLength: 40)
+                    Spacer(minLength: 5)
+                    }
                 }
             }
             .navigationTitle("BoostT1D")
+            .navigationBarTitleDisplayMode(.inline)
             .navigationBarItems(
-                trailing: Button(action: {
-                    showingProfileSetup = true
-                }) {
-                    Image(systemName: "person.circle")
-                        .font(.title2)
+                trailing: NavigationLink(destination: ProfileView()) {
+                    Group {
+                        if let photo = profileService.currentProfile?.photo {
+                            Image(uiImage: photo)
+                                .resizable()
+                                .scaledToFill()
+                                .frame(width: 32, height: 32)
+                                .clipShape(Circle())
+                                .overlay(
+                                    Circle()
+                                        .stroke(Color.white, lineWidth: 2)
+                                )
+                        } else {
+                            Image(systemName: "person.circle.fill")
+                                .font(.title2)
+                                .foregroundColor(.blue)
+                        }
+                    }
                 }
             )
         }
-        .sheet(isPresented: $showingProfileSetup) {
-            OnboardingView()
-        }
     }
-}
 
 struct MenuButtonContent: View {
     let icon: String
@@ -134,26 +118,26 @@ struct MenuButtonContent: View {
     let color: Color
     
     var body: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 6) {
             Image(systemName: icon)
-                .font(.system(size: 32))
+                .font(.system(size: 24))
                 .foregroundColor(color)
             
-            VStack(spacing: 4) {
+            VStack(spacing: 2) {
                 Text(title)
-                    .font(.headline)
+                    .font(.subheadline)
                     .fontWeight(.semibold)
                     .multilineTextAlignment(.center)
                 
                 Text(subtitle)
-                    .font(.caption)
+                    .font(.caption2)
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
                     .lineLimit(2)
             }
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 20)
+        .padding(.vertical, 12)
         .background(Color(.systemGray6))
         .cornerRadius(12)
     }
