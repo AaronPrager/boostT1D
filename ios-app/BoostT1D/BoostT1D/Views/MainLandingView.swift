@@ -2,6 +2,7 @@ import SwiftUI
 
 struct MainLandingView: View {
     @State private var showingProfileSetup = false
+    @State private var showingAbout = false
     
     var body: some View {
         NavigationView {
@@ -10,8 +11,23 @@ struct MainLandingView: View {
                 
                 // App Logo and Title
                 VStack(spacing: 20) {
-                    // Custom BoostT1D Heart Blood Drop Logo
-                    BoostT1DHeartBloodAnimatedIcon(size: 120)
+                    // Custom BoostT1D Heart Blood Drop Logo - Clickable
+                    Button(action: {
+                        showingAbout = true
+                    }) {
+                        AppIconView(size: 120)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    
+                    // BoostT1D Title - Clickable
+                    Button(action: {
+                        showingAbout = true
+                    }) {
+                        Text("BoostT1D")
+                            .font(.system(size: 36, weight: .heavy, design: .rounded))
+                            .foregroundColor(.blue)
+                    }
+                    .buttonStyle(PlainButtonStyle())
                     
                     Text("Your Personal Diabetes Management Assistant")
                         .font(.title3)
@@ -38,14 +54,13 @@ struct MainLandingView: View {
                                 .font(.headline)
                                 .fontWeight(.semibold)
                         }
-                        .frame(maxWidth: .infinity)
+                        .padding(.horizontal, 40)
                         .padding(.vertical, 16)
                         .background(Color.blue)
                         .foregroundColor(.white)
                         .cornerRadius(12)
                     }
                 }
-                .padding(.horizontal, 40)
                 
                 Spacer()
                 
@@ -61,15 +76,11 @@ struct MainLandingView: View {
                 }
                 .padding(.bottom, 20)
             }
-            .background(
-                LinearGradient(
-                    gradient: Gradient(colors: [Color(.systemBackground), Color(.systemGray6)]),
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-            )
             .fullScreenCover(isPresented: $showingProfileSetup) {
                 OnboardingView()
+            }
+            .sheet(isPresented: $showingAbout) {
+                AboutView()
             }
         }
     }
