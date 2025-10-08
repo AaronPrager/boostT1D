@@ -2,6 +2,7 @@ import SwiftUI
 
 struct TherapyAdjustmentView: View {
     @StateObject private var nightscoutService = NightscoutService.shared
+    @StateObject private var apiService = APIService.shared
     @State private var selectedTimeRange: Int = 3
     @State private var suggestions: [AdjustmentSuggestion] = []
     @State private var metrics: AnalysisMetrics = AnalysisMetrics()
@@ -9,6 +10,10 @@ struct TherapyAdjustmentView: View {
     @State private var treatments: [NightscoutTreatment] = []
     @State private var isLoading = false
     @State private var errorMessage: String?
+    @State private var analysisMethod: AnalysisMethod = .ai
+    @State private var aiConfidence: Double = 0.0
+    @State private var keyFindings: [String] = []
+    @State private var safetyNotes: [String] = []
     
     private let timeRangeOptions = [3, 7]
     private let timeRangeLabels = ["3 days", "7 days"]
@@ -28,7 +33,7 @@ struct TherapyAdjustmentView: View {
                 }
                 .padding(.top, 20)
                 
-                // Time Range Selection
+                // Analysis Settings
                 VStack(spacing: 12) {
                     HStack {
                         Text("Analysis Period")
@@ -41,6 +46,23 @@ struct TherapyAdjustmentView: View {
                             }
                         }
                         .pickerStyle(MenuPickerStyle())
+                    }
+                    
+                    // Analysis Method Indicator
+                    HStack {
+                        Image(systemName: analysisMethod == .ai ? "brain.head.profile" : "gear")
+                            .foregroundColor(analysisMethod == .ai ? .blue : .gray)
+                        Text(analysisMethod == .ai ? "AI Analysis" : "Rule-Based Analysis")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        
+                        if analysisMethod == .ai && aiConfidence > 0 {
+                            Spacer()
+                            Text("Confidence: \(Int(aiConfidence * 100))%")
+                                .font(.caption)
+                                .fontWeight(.semibold)
+                                .foregroundColor(confidenceColor(aiConfidence))
+                        }
                     }
                 }
                 .padding(16)
@@ -68,27 +90,70 @@ struct TherapyAdjustmentView: View {
                 .cornerRadius(12)
                 .padding(.horizontal, 20)
                 
-                // Safety Warnings
-                if !safetyWarnings.isEmpty {
+                // AI Key Findings
+                if analysisMethod == .ai && !keyFindings.isEmpty {
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("Safety Warnings")
-                            .font(.headline)
-                            .foregroundColor(.red)
+                        HStack {
+                            Image(systemName: "sparkles")
+                                .foregroundColor(.blue)
+                            Text("AI Key Findings")
+                                .font(.headline)
+                                .foregroundColor(.blue)
+                        }
                         
-                        ForEach(safetyWarnings, id: \.self) { warning in
+                        ForEach(keyFindings, id: \.self) { finding in
                             HStack(alignment: .top, spacing: 8) {
-                                Image(systemName: "exclamationmark.triangle.fill")
-                                    .foregroundColor(.red)
+                                Image(systemName: "checkmark.circle.fill")
+                                    .foregroundColor(.blue)
                                     .font(.caption)
                                 
-                                Text(warning)
+                                Text(finding)
                                     .font(.caption)
-                                    .foregroundColor(.red)
+                                    .foregroundColor(.primary)
                             }
                         }
                     }
                     .padding(16)
-                    .background(Color.red.opacity(0.1))
+                    .background(Color.blue.opacity(0.1))
+                    .cornerRadius(12)
+                    .padding(.horizontal, 20)
+                }
+                
+                // Safety Notes
+                if !safetyWarnings.isEmpty || (analysisMethod == .ai && !safetyNotes.isEmpty) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Safety Notes")
+                            .font(.headline)
+                            .foregroundColor(.orange)
+                        
+                        ForEach(safetyWarnings, id: \.self) { warning in
+                            HStack(alignment: .top, spacing: 8) {
+                                Image(systemName: "exclamationmark.triangle.fill")
+                                    .foregroundColor(.orange)
+                                    .font(.caption)
+                                
+                                Text(warning)
+                                    .font(.caption)
+                                    .foregroundColor(.orange)
+                            }
+                        }
+                        
+                        if analysisMethod == .ai {
+                            ForEach(safetyNotes, id: \.self) { note in
+                                HStack(alignment: .top, spacing: 8) {
+                                    Image(systemName: "info.circle.fill")
+                                        .foregroundColor(.orange)
+                                        .font(.caption)
+                                    
+                                    Text(note)
+                                        .font(.caption)
+                                        .foregroundColor(.orange)
+                                }
+                            }
+                        }
+                    }
+                    .padding(16)
+                    .background(Color.orange.opacity(0.1))
                     .cornerRadius(12)
                     .padding(.horizontal, 20)
                 }
@@ -143,9 +208,33 @@ struct TherapyAdjustmentView: View {
                         }
                         .padding()
                     } else {
-                        LazyVStack(spacing: 12) {
-                            ForEach(suggestions, id: \.id) { suggestion in
-                                AdjustmentCard(suggestion: suggestion)
+                        LazyVStack(spacing: 20) {
+                            // Group suggestions by type
+                            ForEach(groupedSuggestions, id: \.type) { group in
+                                VStack(alignment: .leading, spacing: 12) {
+                                    // Type header
+                                    HStack {
+                                        Image(systemName: iconForType(group.type))
+                                            .foregroundColor(colorForType(group.type))
+                                        Text(group.type.displayName)
+                                            .font(.subheadline)
+                                            .fontWeight(.semibold)
+                                            .foregroundColor(colorForType(group.type))
+                                        Spacer()
+                                        Text("\(group.suggestions.count)")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                    }
+                                    .padding(.bottom, 4)
+                                    
+                                    // Suggestions for this type
+                                    ForEach(group.suggestions, id: \.id) { suggestion in
+                                        AdjustmentCard(suggestion: suggestion)
+                                    }
+                                }
+                                .padding(12)
+                                .background(Color(.systemBackground))
+                                .cornerRadius(8)
                             }
                         }
                     }
@@ -185,6 +274,46 @@ struct TherapyAdjustmentView: View {
         }
         .onChange(of: selectedTimeRange) {
             loadSuggestions()
+        }
+    }
+    
+    private var groupedSuggestions: [SuggestionGroup] {
+        let grouped = Dictionary(grouping: suggestions) { $0.type }
+        
+        // Sort groups by priority: basal, correction, carb ratio, timing
+        let order: [AdjustmentType] = [.basalRate, .correctionFactor, .carbRatio, .targetGlucose]
+        
+        return order.compactMap { type in
+            guard let suggestions = grouped[type], !suggestions.isEmpty else { return nil }
+            return SuggestionGroup(type: type, suggestions: suggestions.sorted { $0.priority.rawValue < $1.priority.rawValue })
+        }
+    }
+    
+    private func iconForType(_ type: AdjustmentType) -> String {
+        switch type {
+        case .basalRate: return "drop.fill"
+        case .carbRatio: return "fork.knife"
+        case .correctionFactor: return "waveform.path.ecg"
+        case .targetGlucose: return "clock.fill"
+        }
+    }
+    
+    private func colorForType(_ type: AdjustmentType) -> Color {
+        switch type {
+        case .basalRate: return .blue
+        case .carbRatio: return .green
+        case .correctionFactor: return .purple
+        case .targetGlucose: return .orange
+        }
+    }
+    
+    private func confidenceColor(_ confidence: Double) -> Color {
+        if confidence >= 0.8 {
+            return .green
+        } else if confidence >= 0.6 {
+            return .orange
+        } else {
+            return .red
         }
     }
     
@@ -250,10 +379,72 @@ struct TherapyAdjustmentView: View {
         let settings = nightscoutService.settings
         metrics = calculateRealMetrics(glucoseEntries: glucoseEntries, lowGlucose: settings.lowGlucose, highGlucose: settings.highGlucose)
         
-        // Generate real suggestions based on analysis
-        suggestions = generateRealSuggestions(glucoseEntries: glucoseEntries, treatments: treatments, lowGlucose: settings.lowGlucose, highGlucose: settings.highGlucose)
+        // Always try AI first with automatic fallback
+        apiService.analyzeTherapyAdjustments(
+            glucoseEntries: glucoseEntries,
+            treatments: treatments,
+            lowGlucose: settings.lowGlucose,
+            highGlucose: settings.highGlucose,
+            timeRangeDays: selectedTimeRange
+        ) { result in
+            DispatchQueue.main.async {
+                switch result {
+                case .success(let aiSuggestions):
+                    self.suggestions = self.convertAISuggestionsToAdjustments(aiSuggestions.suggestions)
+                    self.analysisMethod = .ai
+                    self.aiConfidence = aiSuggestions.overallConfidence
+                    self.keyFindings = aiSuggestions.keyFindings
+                    self.safetyNotes = aiSuggestions.safetyNotes
+                case .failure(let error):
+                    // Automatic fallback to rule-based analysis
+                    print("AI analysis failed: \(error), using rule-based analysis")
+                    self.suggestions = self.generateRealSuggestions(
+                        glucoseEntries: self.glucoseEntries,
+                        treatments: self.treatments,
+                        lowGlucose: settings.lowGlucose,
+                        highGlucose: settings.highGlucose
+                    )
+                    self.analysisMethod = .ruleBased
+                    self.aiConfidence = 0.0
+                    self.keyFindings = []
+                    self.safetyNotes = []
+                }
+                self.isLoading = false
+            }
+        }
+    }
+    
+    private func convertAISuggestionsToAdjustments(_ aiSuggestions: [AISuggestion]) -> [AdjustmentSuggestion] {
+        let rawSuggestions = aiSuggestions.map { aiSuggestion in
+            let adjustmentType: AdjustmentType
+            switch aiSuggestion.type.lowercased() {
+            case "basal_rate": adjustmentType = .basalRate
+            case "correction_factor": adjustmentType = .correctionFactor
+            case "carb_ratio": adjustmentType = .carbRatio
+            case "timing": adjustmentType = .targetGlucose
+            default: adjustmentType = .basalRate
+            }
+            
+            let priority: Priority
+            switch aiSuggestion.priority.lowercased() {
+            case "high": priority = .high
+            case "medium": priority = .medium
+            default: priority = .low
+            }
+            
+            return AdjustmentSuggestion(
+                id: UUID(),
+                type: adjustmentType,
+                timeSlot: aiSuggestion.timeSlot,
+                currentValue: aiSuggestion.currentValue,
+                suggestedValue: aiSuggestion.suggestedValue,
+                priority: priority,
+                reasoning: aiSuggestion.reasoning
+            )
+        }
         
-        isLoading = false
+        // Combine consecutive AI suggestions as well
+        return combineConsecutiveSuggestions(rawSuggestions)
     }
     
     private func calculateRealMetrics(glucoseEntries: [NightscoutGlucoseEntry], lowGlucose: Double, highGlucose: Double) -> AnalysisMetrics {
@@ -277,7 +468,7 @@ struct TherapyAdjustmentView: View {
     }
     
     private func generateRealSuggestions(glucoseEntries: [NightscoutGlucoseEntry], treatments: [NightscoutTreatment], lowGlucose: Double, highGlucose: Double) -> [AdjustmentSuggestion] {
-        var suggestions: [AdjustmentSuggestion] = []
+        var rawSuggestions: [AdjustmentSuggestion] = []
         
         // Analyze glucose patterns by time of day
         let timeSlotAnalysis = analyzeTimeSlots(glucoseEntries: glucoseEntries, lowGlucose: lowGlucose, highGlucose: highGlucose)
@@ -287,14 +478,14 @@ struct TherapyAdjustmentView: View {
         
         // Generate suggestions based on glucose patterns
         for (timeSlot, analysis) in timeSlotAnalysis {
-            if analysis.dataPoints < 5 {
-                continue // Skip time slots with insufficient data
+            if analysis.dataPoints < 3 {
+                continue // Skip time slots with insufficient data (lower threshold for 2-hour windows)
             }
             
             if analysis.averageGlucose > highGlucose + 15 {
                 // High glucose pattern - suggest small basal increase
                 let adjustmentPercent = min(5, max(2, Int((analysis.averageGlucose - highGlucose) / 20)))
-                suggestions.append(AdjustmentSuggestion(
+                rawSuggestions.append(AdjustmentSuggestion(
                     id: UUID(),
                     type: .basalRate,
                     timeSlot: timeSlot,
@@ -306,7 +497,7 @@ struct TherapyAdjustmentView: View {
             } else if analysis.averageGlucose < lowGlucose - 8 {
                 // Low glucose pattern - suggest small basal decrease
                 let adjustmentPercent = min(5, max(2, Int((lowGlucose - analysis.averageGlucose) / 20)))
-                suggestions.append(AdjustmentSuggestion(
+                rawSuggestions.append(AdjustmentSuggestion(
                     id: UUID(),
                     type: .basalRate,
                     timeSlot: timeSlot,
@@ -317,18 +508,21 @@ struct TherapyAdjustmentView: View {
                 ))
             }
             
-            if analysis.timeInRange < 60 && analysis.dataPoints >= 10 {
-                suggestions.append(AdjustmentSuggestion(
+            if analysis.timeInRange < 60 && analysis.dataPoints >= 6 {
+                rawSuggestions.append(AdjustmentSuggestion(
                     id: UUID(),
                     type: .correctionFactor,
                     timeSlot: timeSlot,
                     currentValue: 50.0, // Default - would need to get from user profile
                     suggestedValue: 48.0, // Small 4% decrease
                     priority: .low,
-                    reasoning: "Time in range is \(Int(analysis.timeInRange))% during this period (\(analysis.dataPoints) readings). Consider a small correction factor adjustment of 2-3 points for better control."
+                    reasoning: "Time in range is \(Int(analysis.timeInRange))% during this 2-hour period (\(analysis.dataPoints) readings). Consider a small correction factor adjustment of 2-3 points for better control."
                 ))
             }
         }
+        
+        // Combine consecutive time slots with same adjustment
+        var suggestions = combineConsecutiveSuggestions(rawSuggestions)
         
         // Generate suggestions based on treatment patterns with insulin timing consideration
         if treatmentAnalysis.frequentCorrections {
@@ -372,6 +566,84 @@ struct TherapyAdjustmentView: View {
         return suggestions
     }
     
+    private func combineConsecutiveSuggestions(_ rawSuggestions: [AdjustmentSuggestion]) -> [AdjustmentSuggestion] {
+        guard !rawSuggestions.isEmpty else { return [] }
+        
+        // Define time slot order for consecutive detection
+        let timeSlotOrder = [
+            "00:00-02:00", "02:00-04:00", "04:00-06:00", "06:00-08:00",
+            "08:00-10:00", "10:00-12:00", "12:00-14:00", "14:00-16:00",
+            "16:00-18:00", "18:00-20:00", "20:00-22:00", "22:00-24:00"
+        ]
+        
+        // Group by type, current value, suggested value, and priority
+        var grouped: [String: [AdjustmentSuggestion]] = [:]
+        for suggestion in rawSuggestions {
+            let key = "\(suggestion.type)_\(suggestion.currentValue)_\(suggestion.suggestedValue)_\(suggestion.priority)"
+            if grouped[key] == nil {
+                grouped[key] = []
+            }
+            grouped[key]?.append(suggestion)
+        }
+        
+        var combined: [AdjustmentSuggestion] = []
+        
+        for (_, suggestions) in grouped {
+            // Sort by time slot
+            let sorted = suggestions.sorted { s1, s2 in
+                let idx1 = timeSlotOrder.firstIndex(of: s1.timeSlot) ?? 999
+                let idx2 = timeSlotOrder.firstIndex(of: s2.timeSlot) ?? 999
+                return idx1 < idx2
+            }
+            
+            // Find consecutive sequences
+            var i = 0
+            while i < sorted.count {
+                var consecutiveGroup: [AdjustmentSuggestion] = [sorted[i]]
+                var j = i + 1
+                
+                // Check for consecutive time slots
+                while j < sorted.count {
+                    let currentIdx = timeSlotOrder.firstIndex(of: consecutiveGroup.last!.timeSlot) ?? -1
+                    let nextIdx = timeSlotOrder.firstIndex(of: sorted[j].timeSlot) ?? -1
+                    
+                    if nextIdx == currentIdx + 1 {
+                        consecutiveGroup.append(sorted[j])
+                        j += 1
+                    } else {
+                        break
+                    }
+                }
+                
+                // Create combined suggestion
+                if consecutiveGroup.count > 1 {
+                    let firstSlot = consecutiveGroup.first!.timeSlot
+                    let lastSlot = consecutiveGroup.last!.timeSlot
+                    let startTime = firstSlot.components(separatedBy: "-")[0]
+                    let endTime = lastSlot.components(separatedBy: "-")[1]
+                    let combinedTimeSlot = "\(startTime)-\(endTime)"
+                    
+                    let first = consecutiveGroup.first!
+                    combined.append(AdjustmentSuggestion(
+                        id: UUID(),
+                        type: first.type,
+                        timeSlot: combinedTimeSlot,
+                        currentValue: first.currentValue,
+                        suggestedValue: first.suggestedValue,
+                        priority: first.priority,
+                        reasoning: "Consistent pattern across \(consecutiveGroup.count) consecutive 2-hour periods. \(first.reasoning)"
+                    ))
+                } else {
+                    combined.append(consecutiveGroup[0])
+                }
+                
+                i = j
+            }
+        }
+        
+        return combined
+    }
+    
     private func analyzeTreatmentPatterns(treatments: [NightscoutTreatment]) -> TreatmentAnalysis {
         let correctionCount = treatments.filter { $0.eventType == "Correction Bolus" || $0.eventType == "Bolus" }.count
         let carbCount = treatments.filter { $0.eventType == "Carb" || $0.eventType == "Meal Bolus" }.count
@@ -394,8 +666,10 @@ struct TherapyAdjustmentView: View {
         // Look for carb treatments and check glucose response 1-2 hours later
         for treatment in treatments {
             if treatment.eventType == "Carb" || treatment.eventType == "Meal Bolus" {
+                guard let treatmentMills = treatment.mills else { continue }
+                
                 totalMeals += 1
-                let treatmentTime = Date(timeIntervalSince1970: Double(treatment.date) / 1000)
+                let treatmentTime = Date(timeIntervalSince1970: Double(treatmentMills) / 1000)
                 
                 // Check glucose levels 60-120 minutes after meal
                 let checkStartTime = treatmentTime.addingTimeInterval(60 * 60) // 1 hour
@@ -458,10 +732,18 @@ struct TherapyAdjustmentView: View {
     
     private func getTimeSlot(for hour: Int) -> String {
         switch hour {
-        case 0..<6: return "00:00-06:00"
-        case 6..<12: return "06:00-12:00"
-        case 12..<18: return "12:00-18:00"
-        default: return "18:00-24:00"
+        case 0..<2: return "00:00-02:00"
+        case 2..<4: return "02:00-04:00"
+        case 4..<6: return "04:00-06:00"
+        case 6..<8: return "06:00-08:00"
+        case 8..<10: return "08:00-10:00"
+        case 10..<12: return "10:00-12:00"
+        case 12..<14: return "12:00-14:00"
+        case 14..<16: return "14:00-16:00"
+        case 16..<18: return "16:00-18:00"
+        case 18..<20: return "18:00-20:00"
+        case 20..<22: return "20:00-22:00"
+        default: return "22:00-24:00"
         }
     }
     
@@ -657,6 +939,18 @@ struct InsulinTimingAnalysis {
     let totalMeals: Int
     let spikeRate: Double
     let needsPreBolus: Bool
+}
+
+struct SuggestionGroup: Identifiable {
+    let id = UUID()
+    let type: AdjustmentType
+    let suggestions: [AdjustmentSuggestion]
+}
+
+enum AnalysisMethod {
+    case ai
+    case ruleBased
+    case hybrid
 }
 
 #Preview {
