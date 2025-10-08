@@ -166,9 +166,6 @@ class NightscoutService: ObservableObject {
         let endTime = Int(Date().timeIntervalSince1970 * 1000)
         let startTime = endTime - (hours * 60 * 60 * 1000)
         
-        print("Date range: \(startTime) to \(endTime) (hours: \(hours))")
-        print("Start date: \(Date(timeIntervalSince1970: Double(startTime) / 1000))")
-        print("End date: \(Date(timeIntervalSince1970: Double(endTime) / 1000))")
         
         var urlComponents = URLComponents(string: "\(settings.url)/api/v1/entries/sgv")
         urlComponents?.queryItems = [
@@ -194,13 +191,10 @@ class NightscoutService: ObservableObject {
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         
-        print("Fetching glucose data from: \(url)")
-        print("Using token: [HIDDEN]")
         
         URLSession.shared.dataTask(with: request) { data, response, error in
             DispatchQueue.main.async {
                 if let error = error {
-                    print("Glucose API Error: \(error)")
                     // Try X-API-Key header
                     self.fetchGlucoseWithXAPIKey(url: url, settings: settings, completion: completion)
                     return
@@ -212,7 +206,6 @@ class NightscoutService: ObservableObject {
                 }
                 
                 if httpResponse.statusCode == 401 {
-                    print("Glucose API 401 with api-secret, trying X-API-Key")
                     self.fetchGlucoseWithXAPIKey(url: url, settings: settings, completion: completion)
                     return
                 }
@@ -223,21 +216,14 @@ class NightscoutService: ObservableObject {
                 }
                 
                 do {
-                    // Debug: Print the raw response
-                    if let jsonString = String(data: data, encoding: .utf8) {
-                        print("Glucose API Response: \(String(jsonString.prefix(500)))...")
-                    }
                     
                     let glucoseEntries = try JSONDecoder().decode([NightscoutGlucoseEntry].self, from: data)
-                    print("Successfully decoded \(glucoseEntries.count) glucose entries")
                     completion(.success(glucoseEntries))
                 } catch {
-                    print("JSON Decoding Error: \(error)")
                     // Try parsing as TSV format
                     if let responseString = String(data: data, encoding: .utf8) {
                         let glucoseEntries = self.parseTSVGlucoseData(responseString)
                         if !glucoseEntries.isEmpty {
-                            print("Successfully parsed \(glucoseEntries.count) glucose entries from TSV format")
                             completion(.success(glucoseEntries))
                         } else {
                             completion(.failure(error))
@@ -258,12 +244,10 @@ class NightscoutService: ObservableObject {
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         
-        print("Trying X-API-Key header for glucose data")
         
         URLSession.shared.dataTask(with: request) { data, response, error in
             DispatchQueue.main.async {
                 if let error = error {
-                    print("Glucose API Error with X-API-Key: \(error)")
                     // Try query parameter
                     self.fetchGlucoseWithQueryParam(url: url, settings: settings, completion: completion)
                     return
@@ -275,7 +259,6 @@ class NightscoutService: ObservableObject {
                 }
                 
                 if httpResponse.statusCode == 401 {
-                    print("Glucose API 401 with X-API-Key, trying query parameter")
                     self.fetchGlucoseWithQueryParam(url: url, settings: settings, completion: completion)
                     return
                 }
@@ -285,22 +268,15 @@ class NightscoutService: ObservableObject {
                     return
                 }
                 
-                // Debug: Print the raw response for X-API-Key
-                if let responseString = String(data: data, encoding: .utf8) {
-                    print("X-API-Key Response: \(String(responseString.prefix(200)))...")
-                }
                 
                 do {
                     let glucoseEntries = try JSONDecoder().decode([NightscoutGlucoseEntry].self, from: data)
-                    print("Successfully decoded \(glucoseEntries.count) glucose entries with X-API-Key")
                     completion(.success(glucoseEntries))
                 } catch {
-                    print("JSON Decoding Error with X-API-Key: \(error)")
                     // Try parsing as TSV format
                     if let responseString = String(data: data, encoding: .utf8) {
                         let glucoseEntries = self.parseTSVGlucoseData(responseString)
                         if !glucoseEntries.isEmpty {
-                            print("Successfully parsed \(glucoseEntries.count) glucose entries from TSV format with X-API-Key")
                             completion(.success(glucoseEntries))
                         } else {
                             // Try query parameter
@@ -505,7 +481,6 @@ class NightscoutService: ObservableObject {
                     let treatments = try JSONDecoder().decode([NightscoutTreatment].self, from: data)
                     completion(.success(treatments))
                 } catch {
-                    print("JSON Decoding Error: \(error)")
                     if let responseString = String(data: data, encoding: .utf8) {
                         print("Response: \(responseString)")
                     }
