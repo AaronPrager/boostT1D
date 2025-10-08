@@ -103,14 +103,14 @@ struct BloodGlucoseDataView: View {
                     }
                     .padding()
                 } else if !glucoseEntries.isEmpty {
-                    VStack(spacing: 16) {
+                    VStack(spacing: 24) {
                         // Statistics Section
                         StatisticsSection(statistics: statistics, totalReadings: filteredGlucoseEntries.count)
                             .padding(.horizontal, 20)
                         
                         // Tab Navigation
                         VStack(spacing: 0) {
-                            HStack(spacing: 0) {
+                            HStack(spacing: 8) {
                                 TabButton(
                                     title: "Chart",
                                     icon: "chart.line.uptrend.xyaxis",
@@ -483,8 +483,8 @@ struct TabButton: View {
                     .font(.system(size: 16, weight: .medium))
             }
             .foregroundColor(isSelected ? .white : .primary)
-            .padding(.vertical, 12)
-            .padding(.horizontal, 16)
+            .padding(.vertical, 16)
+            .padding(.horizontal, 24)
             .background(isSelected ? Color.blue : Color.clear)
             .cornerRadius(8)
         }

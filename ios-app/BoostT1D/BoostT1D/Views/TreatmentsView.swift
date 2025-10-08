@@ -117,11 +117,11 @@ struct TreatmentsView: View {
                 } else {
                     // Treatments List
                     VStack(spacing: 16) {
-                        Text("Recent Treatments")
+                        Text("Treatments")
                             .font(.headline)
                         
                         LazyVStack(spacing: 8) {
-                            ForEach(Array(filteredTreatments.prefix(10).enumerated()), id: \.offset) { index, treatment in
+                            ForEach(Array(filteredTreatments.enumerated()), id: \.offset) { index, treatment in
                                 TreatmentRow(treatment: treatment)
                             }
                         }
@@ -146,6 +146,8 @@ struct TreatmentsView: View {
             loadTreatments()
         }
         .onChange(of: selectedTimeRange) { _ in
+            // Reset treatment type to "All" when time range changes to avoid confusion
+            selectedTreatmentType = "All"
             loadTreatments()
         }
         .onChange(of: selectedTreatmentType) { _ in
@@ -253,6 +255,10 @@ struct TreatmentRow: View {
             return "syringe.fill"
         } else if let carbs = treatment.carbs, carbs > 0 {
             return "fork.knife"
+        } else if treatment.eventType == "Temp Basal" {
+            return "timer"
+        } else if treatment.eventType == "Exercise" {
+            return "person.circle.fill"
         } else {
             return "pills.fill"
         }
@@ -263,8 +269,12 @@ struct TreatmentRow: View {
             return .blue
         } else if let carbs = treatment.carbs, carbs > 0 {
             return .green
-        } else {
+        } else if treatment.eventType == "Temp Basal" {
+            return .orange
+        } else if treatment.eventType == "Exercise" {
             return .purple
+        } else {
+            return .gray
         }
     }
     
@@ -279,8 +289,34 @@ struct TreatmentRow: View {
             parts.append("\(String(format: "%.0f", carbs))g carbs")
         }
         
-        if let eventType = treatment.eventType {
+        // Handle Temp Basal treatments
+        if treatment.eventType == "Temp Basal" {
+            if let rate = treatment.rate, let duration = treatment.duration {
+                parts.append("\(String(format: "%.1f", rate))U/hr for \(duration)min")
+            } else if let rate = treatment.rate {
+                parts.append("\(String(format: "%.1f", rate))U/hr")
+            } else if let duration = treatment.duration {
+                parts.append("Temp Basal for \(duration)min")
+            } else {
+                parts.append("Temp Basal")
+            }
+        }
+        // Handle Profile treatments (Exercise)
+        else if treatment.eventType == "Exercise" {
+            if let notes = treatment.notes, !notes.isEmpty {
+                parts.append("Profile: \(notes)")
+            } else {
+                parts.append("Profile")
+            }
+        }
+        // Handle other event types
+        else if let eventType = treatment.eventType {
             parts.append(displayEventType(eventType))
+        }
+        
+        // Add notes for other treatments if available
+        if let notes = treatment.notes, !notes.isEmpty, treatment.eventType != "Exercise" {
+            parts.append(notes)
         }
         
         return parts.joined(separator: " • ")

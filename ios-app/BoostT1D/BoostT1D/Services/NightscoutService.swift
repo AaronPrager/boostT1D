@@ -449,12 +449,24 @@ class NightscoutService: ObservableObject {
                     }
                     return false
                 }
-                print("Fetched \(allTreatments.count) total treatments, filtered to \(filteredTreatments.count) for \(hours) hours")
+                
                 completion(.success(filteredTreatments))
             case .failure(let error):
                 completion(.failure(error))
             }
         }
+    }
+    
+    private func getTreatmentDate(_ treatment: NightscoutTreatment) -> Date {
+        if let mills = treatment.mills, mills > 0 {
+            return Date(timeIntervalSince1970: Double(mills) / 1000)
+        } else if let created_at = treatment.created_at {
+            let formatter = DateFormatter()
+            formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"
+            formatter.timeZone = TimeZone(abbreviation: "UTC")
+            return formatter.date(from: created_at) ?? Date.distantPast
+        }
+        return Date.distantPast
     }
     
     private func fetchTreatmentsNoFilter(settings: NightscoutSettings, completion: @escaping (Result<[NightscoutTreatment], Error>) -> Void) {
@@ -465,7 +477,7 @@ class NightscoutService: ObservableObject {
         
         var urlComponents = URLComponents(string: "\(settings.url)/api/v1/treatments")
         urlComponents?.queryItems = [
-            URLQueryItem(name: "count", value: "5000")
+            URLQueryItem(name: "count", value: "10000")
         ]
         
         guard let url = urlComponents?.url else {

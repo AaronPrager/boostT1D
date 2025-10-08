@@ -20,6 +20,7 @@ struct WelcomeView: View {
                 }
                 .padding(.top, 5)
                 .padding(.horizontal, 20)
+                .padding(.bottom, 40)
                 
                 // Menu List
                 ScrollView {
