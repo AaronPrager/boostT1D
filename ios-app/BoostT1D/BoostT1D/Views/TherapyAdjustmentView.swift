@@ -295,17 +295,42 @@ struct TherapyAdjustmentView: View {
                         .padding()
                     } else if let errorMessage = errorMessage {
                         VStack(spacing: 12) {
-                            Image(systemName: "exclamationmark.triangle")
-                                .font(.system(size: 40))
-                                .foregroundColor(.orange)
-                            
-                            Text("Analysis Error")
-                                .font(.headline)
-                            
-                            Text(errorMessage)
-                                .font(.body)
-                                .foregroundColor(.secondary)
-                                .multilineTextAlignment(.center)
+                            if !isNightscoutConfigured() {
+                                // Nightscout not configured - show helpful suggestion
+                                Image(systemName: "link.circle")
+                                    .font(.system(size: 40))
+                                    .foregroundColor(.blue)
+                                
+                                Text("Connect to Nightscout")
+                                    .font(.headline)
+                                
+                                Text("To get AI-powered therapy recommendations, you need to connect to your Nightscout server. This will allow us to analyze your glucose patterns and suggest personalized adjustments.")
+                                    .font(.body)
+                                    .foregroundColor(.secondary)
+                                    .multilineTextAlignment(.center)
+                                
+                                NavigationLink(destination: ProfileView()) {
+                                    Text("Configure Nightscout")
+                                        .foregroundColor(.white)
+                                        .padding(.horizontal, 20)
+                                        .padding(.vertical, 10)
+                                        .background(Color.blue)
+                                        .cornerRadius(8)
+                                }
+                            } else {
+                                // Nightscout configured but error occurred
+                                Image(systemName: "exclamationmark.triangle")
+                                    .font(.system(size: 40))
+                                    .foregroundColor(.orange)
+                                
+                                Text("Analysis Error")
+                                    .font(.headline)
+                                
+                                Text(errorMessage)
+                                    .font(.body)
+                                    .foregroundColor(.secondary)
+                                    .multilineTextAlignment(.center)
+                            }
                         }
                         .padding()
                     } else if suggestions.isEmpty {
@@ -915,6 +940,11 @@ struct TherapyAdjustmentView: View {
             dataPoints: days >= 7 ? 168 : 72,
             analysisPeriod: "\(days) days"
         )
+    }
+    
+    private func isNightscoutConfigured() -> Bool {
+        let settings = nightscoutService.getSettings()
+        return !settings.url.isEmpty && !settings.apiToken.isEmpty
     }
 }
 

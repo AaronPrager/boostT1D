@@ -77,22 +77,47 @@ struct TreatmentsView: View {
                         .padding()
                 } else if let errorMessage = errorMessage {
                     VStack(spacing: 12) {
-                        Image(systemName: "exclamationmark.triangle")
-                            .font(.system(size: 40))
-                            .foregroundColor(.orange)
-                        
-                        Text("Error Loading Treatments")
-                            .font(.headline)
-                        
-                        Text(errorMessage)
-                            .font(.body)
-                            .foregroundColor(.secondary)
-                            .multilineTextAlignment(.center)
-                        
-                        Button("Retry") {
-                            loadTreatments()
+                        if !isNightscoutConfigured() {
+                            // Nightscout not configured - show helpful suggestion
+                            Image(systemName: "link.circle")
+                                .font(.system(size: 40))
+                                .foregroundColor(.blue)
+                            
+                            Text("Connect to Nightscout")
+                                .font(.headline)
+                            
+                            Text("To view your treatment history, you need to connect to your Nightscout server. This will allow you to see insulin doses, carb entries, and other treatments.")
+                                .font(.body)
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.center)
+                            
+                            NavigationLink(destination: ProfileView()) {
+                                Text("Configure Nightscout")
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal, 20)
+                                    .padding(.vertical, 10)
+                                    .background(Color.blue)
+                                    .cornerRadius(8)
+                            }
+                        } else {
+                            // Nightscout configured but error occurred
+                            Image(systemName: "exclamationmark.triangle")
+                                .font(.system(size: 40))
+                                .foregroundColor(.orange)
+                            
+                            Text("Error Loading Treatments")
+                                .font(.headline)
+                            
+                            Text(errorMessage)
+                                .font(.body)
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.center)
+                            
+                            Button("Retry") {
+                                loadTreatments()
+                            }
+                            .foregroundColor(.blue)
                         }
-                        .foregroundColor(.blue)
                     }
                     .padding()
                 } else if filteredTreatments.isEmpty {
@@ -210,6 +235,11 @@ struct TreatmentsView: View {
                 }
             }
         }
+    }
+    
+    private func isNightscoutConfigured() -> Bool {
+        let settings = nightscoutService.getSettings()
+        return !settings.url.isEmpty && !settings.apiToken.isEmpty
     }
 }
 
