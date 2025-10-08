@@ -186,21 +186,21 @@ struct DailyOverlayChart: View {
             let lowY = yPosition(for: lowGlucose)
             let highY = yPosition(for: highGlucose)
             
-            // Below range zone (yellow) - from top to low glucose line
+            // Below range zone (white) - from top to low glucose line
             Rectangle()
-                .fill(Color.yellow.opacity(0.15))
+                .fill(Color.white.opacity(0.3))
                 .frame(width: chartWidth, height: lowY)
                 .offset(y: 0)
             
-            // In range zone (green) - from low to high glucose line
+            // In range zone (white) - from low to high glucose line
             Rectangle()
-                .fill(Color.green.opacity(0.15))
+                .fill(Color.white.opacity(0.3))
                 .frame(width: chartWidth, height: highY - lowY)
                 .offset(y: lowY)
             
-            // Above range zone (red) - from high glucose line to bottom
+            // Above range zone (white) - from high glucose line to bottom
             Rectangle()
-                .fill(Color.red.opacity(0.15))
+                .fill(Color.white.opacity(0.3))
                 .frame(width: chartWidth, height: chartHeight - highY)
                 .offset(y: highY)
         }
@@ -223,17 +223,17 @@ struct DailyOverlayChart: View {
                 }
             }
             
-            // Low glucose line (yellow)
+            // Low glucose line (gray)
             Rectangle()
-                .fill(Color.yellow.opacity(0.8))
-                .frame(height: 1.5)
+                .fill(Color.gray.opacity(0.6))
+                .frame(height: 1.0)
                 .frame(maxWidth: .infinity)
                 .offset(y: yPosition(for: lowGlucose) - chartHeight/2)
             
-            // High glucose line (red)
+            // High glucose line (gray)
             Rectangle()
-                .fill(Color.red.opacity(0.8))
-                .frame(height: 1.5)
+                .fill(Color.gray.opacity(0.6))
+                .frame(height: 1.0)
                 .frame(maxWidth: .infinity)
                 .offset(y: yPosition(for: highGlucose) - chartHeight/2)
             
@@ -306,7 +306,7 @@ struct DailyOverlayChart: View {
             HStack {
                 Text("\(Int(highGlucose))")
                     .font(.caption2)
-                    .foregroundColor(.red)
+                    .foregroundColor(.primary)
                     .fontWeight(.semibold)
                 Spacer()
             }
@@ -316,7 +316,7 @@ struct DailyOverlayChart: View {
             HStack {
                 Text("\(Int(lowGlucose))")
                     .font(.caption2)
-                    .foregroundColor(.yellow)
+                    .foregroundColor(.primary)
                     .fontWeight(.semibold)
                 Spacer()
             }
