@@ -25,7 +25,9 @@ struct TreatmentsView: View {
             VStack(spacing: 20) {
                 // Header
                 VStack(spacing: 16) {
-                    AppIconView(size: 30)
+                    Image(systemName: "syringe.fill")
+                        .font(.system(size: 30))
+                        .foregroundColor(.purple)
                 }
                 .padding(.top, 20)
                 

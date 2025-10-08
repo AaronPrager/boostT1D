@@ -145,7 +145,9 @@ struct TherapyAdjustmentView: View {
             VStack(spacing: 20) {
                 // Header
                 VStack(spacing: 16) {
-                    AppIconView(size: 30)
+                    Image(systemName: "slider.horizontal.3")
+                        .font(.system(size: 30))
+                        .foregroundColor(.orange)
                 }
                 .padding(.top, 20)
                 

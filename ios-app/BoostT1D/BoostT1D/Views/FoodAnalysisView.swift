@@ -11,23 +11,13 @@ struct FoodAnalysisView: View {
     @State private var errorMessage: String?
     
     var body: some View {
-        NavigationView {
-            ScrollView {
+        ScrollView {
                 VStack(spacing: 24) {
                     // Header
                     VStack(spacing: 16) {
                         Image(systemName: "camera.fill")
-                            .font(.system(size: 50))
+                            .font(.system(size: 30))
                             .foregroundColor(.green)
-                        
-                        Text("Food Analysis")
-                            .font(.title)
-                            .fontWeight(.semibold)
-                        
-                        Text("Take a photo of your food to get carbohydrate estimates")
-                            .font(.body)
-                            .foregroundColor(.secondary)
-                            .multilineTextAlignment(.center)
                     }
                     .padding(.top, 20)
                     
@@ -60,30 +50,16 @@ struct FoodAnalysisView: View {
                                 )
                         }
                         
-                        HStack(spacing: 16) {
-                            Button(action: { showingPhotoActionSheet = true }) {
-                                HStack {
-                                    Image(systemName: "photo")
-                                    Text("Photo Library")
-                                }
-                                .foregroundColor(.blue)
-                                .frame(maxWidth: .infinity)
-                                .padding()
-                                .background(Color(.systemGray6))
-                                .cornerRadius(8)
+                        Button(action: { showingPhotoActionSheet = true }) {
+                            HStack {
+                                Image(systemName: "camera.fill")
+                                Text("Select Photo")
                             }
-                            
-                            Button(action: { showingCamera = true }) {
-                                HStack {
-                                    Image(systemName: "camera")
-                                    Text("Take Photo")
-                                }
-                                .foregroundColor(.green)
-                                .frame(maxWidth: .infinity)
-                                .padding()
-                                .background(Color(.systemGray6))
-                                .cornerRadius(8)
-                            }
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(Color.green)
+                            .cornerRadius(8)
                         }
                     }
                     .padding(.horizontal, 20)
@@ -187,29 +163,6 @@ struct FoodAnalysisView: View {
                 }
             }
             .navigationTitle("Food Analysis")
-            .navigationBarItems(
-                leading: AppIconView(size: 24),
-                trailing: NavigationLink(destination: ProfileView()) {
-                    Group {
-                        if let photo = UserProfileService.shared.currentProfile?.photo {
-                            Image(uiImage: photo)
-                                .resizable()
-                                .scaledToFill()
-                                .frame(width: 32, height: 32)
-                                .clipShape(Circle())
-                                .overlay(
-                                    Circle()
-                                        .stroke(Color.white, lineWidth: 2)
-                                )
-                        } else {
-                            Image(systemName: "person.circle.fill")
-                                .font(.title2)
-                                .foregroundColor(.blue)
-                        }
-                    }
-                }
-            )
-        }
         .sheet(isPresented: $showingImagePicker) {
             ImagePicker(selectedImage: $selectedImage)
         }

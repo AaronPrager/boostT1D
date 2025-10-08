@@ -48,7 +48,9 @@ struct BloodGlucoseDataView: View {
             VStack(spacing: 20) {
                 // Header
                 VStack(spacing: 16) {
-                    AppIconView(size: 30)
+                    Image(systemName: "heart.fill")
+                        .font(.system(size: 30))
+                        .foregroundColor(.red)
                 }
                 .padding(.top, 20)
                 
