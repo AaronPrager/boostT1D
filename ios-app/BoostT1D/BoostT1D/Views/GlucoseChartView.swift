@@ -367,16 +367,40 @@ struct DailyOverlayChart: View {
     }
     
     private func xPosition(for hour: Int) -> CGFloat {
+        // Validate chart width
+        guard chartWidth > 0 else {
+            return 0
+        }
+        
         let clampedHour = max(0, min(23, hour))
         let ratio = Double(clampedHour) / 23.0
-        return CGFloat(ratio) * chartWidth
+        let position = CGFloat(ratio) * chartWidth
+        
+        // Ensure result is finite
+        guard position.isFinite else {
+            return 0
+        }
+        
+        return position
     }
     
     private func yPosition(for glucose: Double) -> CGFloat {
+        // Validate inputs
+        guard yMax > yMin, chartHeight > 0 else {
+            return chartHeight / 2 // Return middle position as fallback
+        }
+        
         let clampedGlucose = max(yMin, min(yMax, glucose))
         let ratio = (clampedGlucose - yMin) / (yMax - yMin)
         let clampedRatio = max(0, min(1, ratio))
-        return chartHeight - (CGFloat(clampedRatio) * chartHeight)
+        let position = chartHeight - (CGFloat(clampedRatio) * chartHeight)
+        
+        // Ensure result is finite and non-negative
+        guard position.isFinite, position >= 0 else {
+            return chartHeight / 2
+        }
+        
+        return position
     }
 }
 
