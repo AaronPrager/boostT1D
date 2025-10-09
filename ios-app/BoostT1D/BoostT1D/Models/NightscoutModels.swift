@@ -76,10 +76,14 @@ struct COBResult: Codable {
 }
 
 // MARK: - Time Value
-struct TimeValue: Codable, Identifiable {
+struct TimeValue: Codable, Identifiable, Equatable {
     let id = UUID()
     let time: String
     let value: Double
+    
+    static func == (lhs: TimeValue, rhs: TimeValue) -> Bool {
+        return lhs.time == rhs.time && lhs.value == rhs.value
+    }
 }
 
 extension TimeValue {
@@ -100,7 +104,7 @@ extension TimeValue {
 }
 
 // MARK: - Diabetes Profile
-struct DiabetesProfile: Codable {
+struct DiabetesProfile: Codable, Equatable {
     let _id: String?
     let defaultProfile: String?
     let store: [String: ProfileData]?
@@ -113,14 +117,14 @@ struct DiabetesProfile: Codable {
     let enteredBy: String?
 }
 
-struct OverridePreset: Codable {
+struct OverridePreset: Codable, Equatable {
     let name: String?
     let target: Int?
     let percentage: Int?
     let duration: Int?
 }
 
-struct ProfileData: Codable {
+struct ProfileData: Codable, Equatable {
     let timezone: String?
     let units: String?
     let dia: Double?
@@ -137,7 +141,7 @@ struct ProfileData: Codable {
     let pump: PumpSettings?
 }
 
-struct PumpSettings: Codable {
+struct PumpSettings: Codable, Equatable {
     let units: String?
     let activeProfile: String?
     let timezone: String?
@@ -150,4 +154,62 @@ struct PumpSettings: Codable {
     let bolusing: Bool?
     let suspended: Bool?
     let delivering: Bool?
+}
+
+// MARK: - Device Status (for IOB/COB)
+struct DeviceStatus: Decodable {
+    let created_at: String?
+    let openaps: [String: Any]?
+    let pump: [String: Any]?
+    
+    enum CodingKeys: String, CodingKey {
+        case created_at, openaps, pump
+    }
+    
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        created_at = try container.decodeIfPresent(String.self, forKey: .created_at)
+        
+        // Decode as generic dictionaries since structure varies
+        if let openapsData = try? container.decode([String: AnyCodable].self, forKey: .openaps) {
+            openaps = openapsData.mapValues { $0.value }
+        } else {
+            openaps = nil
+        }
+        
+        if let pumpData = try? container.decode([String: AnyCodable].self, forKey: .pump) {
+            pump = pumpData.mapValues { $0.value }
+        } else {
+            pump = nil
+        }
+    }
+}
+
+// Helper for decoding unknown types
+struct AnyCodable: Codable {
+    let value: Any
+    
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        
+        if let intValue = try? container.decode(Int.self) {
+            value = intValue
+        } else if let doubleValue = try? container.decode(Double.self) {
+            value = doubleValue
+        } else if let stringValue = try? container.decode(String.self) {
+            value = stringValue
+        } else if let boolValue = try? container.decode(Bool.self) {
+            value = boolValue
+        } else if let arrayValue = try? container.decode([AnyCodable].self) {
+            value = arrayValue.map { $0.value }
+        } else if let dictValue = try? container.decode([String: AnyCodable].self) {
+            value = dictValue.mapValues { $0.value }
+        } else {
+            value = NSNull()
+        }
+    }
+    
+    func encode(to encoder: Encoder) throws {
+        // Not needed for our use case
+    }
 }

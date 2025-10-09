@@ -2,9 +2,12 @@ import SwiftUI
 
 struct DiabetesProfileView: View {
     @StateObject private var diabetesProfileService = DiabetesProfileService.shared
+    @StateObject private var nightscoutService = NightscoutService.shared
     @State private var profile: DiabetesProfile?
     @State private var isLoading = false
     @State private var errorMessage: String?
+    @State private var showManualModeWarning = false
+    @State private var showingManualEntry = false
     
     var body: some View {
         ScrollView {
@@ -17,11 +20,99 @@ struct DiabetesProfileView: View {
                 }
                 .padding(.top, 20)
                 
+                // Manual Mode Warning Banner (only show if no profile exists)
+                if nightscoutService.settings.isManualMode && !showManualModeWarning && profile == nil {
+                    VStack(spacing: 12) {
+                        HStack(spacing: 12) {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .font(.title2)
+                                .foregroundColor(.orange)
+                            
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Manual Mode Active")
+                                    .font(.headline)
+                                    .foregroundColor(.orange)
+                                
+                                Text("You're in manual mode. Your diabetes profile will be stored locally on this device only.")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            
+                            Spacer()
+                        }
+                        
+                        HStack(spacing: 12) {
+                            NavigationLink(destination: ProfileView()) {
+                                Text("Configure Nightscout")
+                                    .font(.caption)
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 8)
+                                    .background(Color.blue)
+                                    .cornerRadius(6)
+                            }
+                            
+                            Button("Continue in Manual Mode") {
+                                showManualModeWarning = true
+                            }
+                            .font(.caption)
+                            .foregroundColor(.blue)
+                        }
+                    }
+                    .padding()
+                    .background(Color.orange.opacity(0.1))
+                    .cornerRadius(12)
+                    .padding(.horizontal)
+                }
+                
+                // Edit Profile Banner (show if profile exists in manual mode)
+                if nightscoutService.settings.isManualMode && profile != nil {
+                    VStack(spacing: 12) {
+                        HStack(spacing: 12) {
+                            Image(systemName: "info.circle.fill")
+                                .font(.title2)
+                                .foregroundColor(.blue)
+                            
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Manual Mode")
+                                    .font(.headline)
+                                    .foregroundColor(.blue)
+                                
+                                Text("Your profile is stored locally on this device.")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            
+                            Spacer()
+                            
+                            Button(action: {
+                                showingManualEntry = true
+                            }) {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "square.and.pencil")
+                                    Text("Edit Profile")
+                                }
+                                .font(.caption)
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 8)
+                                .background(Color.blue)
+                                .cornerRadius(6)
+                            }
+                        }
+                    }
+                    .padding()
+                    .background(Color.blue.opacity(0.1))
+                    .cornerRadius(12)
+                    .padding(.horizontal)
+                }
+                
                 // Content
                 if isLoading {
                     ProgressView("Loading diabetes profile...")
                         .padding()
-                } else if let errorMessage = errorMessage {
+                } else if let errorMessage = errorMessage, !nightscoutService.settings.isManualMode {
+                    // Only show error message if NOT in manual mode
                     VStack(spacing: 12) {
                         if !isNightscoutConfigured() {
                             // Nightscout not configured - show helpful suggestion
@@ -248,18 +339,44 @@ struct DiabetesProfileView: View {
                     }
                     .padding(.horizontal, 20)
                 } else {
-                    VStack(spacing: 12) {
+                    VStack(spacing: 20) {
                         Image(systemName: "person.circle")
                             .font(.system(size: 40))
                             .foregroundColor(.gray)
                         
-                        Text("No Profile Data")
-                            .font(.headline)
-                        
-                        Text("No diabetes profile data found. Make sure your Nightscout is configured correctly.")
-                            .font(.body)
-                            .foregroundColor(.secondary)
-                            .multilineTextAlignment(.center)
+                        if nightscoutService.settings.isManualMode {
+                            Text("No Profile Data")
+                                .font(.headline)
+                            
+                            Text("You can enter your diabetes profile settings manually.")
+                                .font(.body)
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.center)
+                            
+                            Button(action: {
+                                showingManualEntry = true
+                            }) {
+                                HStack {
+                                    Image(systemName: "square.and.pencil")
+                                    Text("Enter Profile Data")
+                                }
+                                .font(.headline)
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 24)
+                                .padding(.vertical, 12)
+                                .background(Color.blue)
+                                .cornerRadius(10)
+                            }
+                            .padding(.top, 8)
+                        } else {
+                            Text("No Profile Data")
+                                .font(.headline)
+                            
+                            Text("No diabetes profile data found. Make sure your Nightscout is configured correctly.")
+                                .font(.body)
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.center)
+                        }
                     }
                     .padding()
                 }
@@ -274,12 +391,35 @@ struct DiabetesProfileView: View {
             Image(systemName: "arrow.clockwise")
                 .foregroundColor(.blue)
         })
+        .sheet(isPresented: $showingManualEntry) {
+            ManualProfileEntryView()
+        }
         .onAppear {
             loadProfile()
+        }
+        .onChange(of: diabetesProfileService.localProfile) { _ in
+            // Reload profile when local profile changes
+            if nightscoutService.settings.isManualMode {
+                loadProfile()
+            }
         }
     }
     
     private func loadProfile() {
+        // Check if in manual mode
+        if nightscoutService.settings.isManualMode {
+            // Load local profile
+            profile = diabetesProfileService.getLocalProfile()
+            
+            // If no local profile exists, allow user to continue anyway
+            // The "No Profile Data" message will show with option to configure Nightscout
+            if profile == nil {
+                errorMessage = "No local profile found"
+            }
+            return
+        }
+        
+        // Otherwise, fetch from Nightscout
         isLoading = true
         errorMessage = nil
         
@@ -289,6 +429,8 @@ struct DiabetesProfileView: View {
                 switch result {
                 case .success(let fetchedProfile):
                     self.profile = fetchedProfile
+                    // Also save to local storage as backup
+                    self.diabetesProfileService.saveLocalProfile(fetchedProfile)
                 case .failure(let error):
                     print("Diabetes Profile Error: \(error)")
                     self.errorMessage = error.localizedDescription

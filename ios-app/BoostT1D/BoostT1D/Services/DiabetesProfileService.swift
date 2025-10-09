@@ -4,8 +4,14 @@ class DiabetesProfileService: ObservableObject {
     static let shared = DiabetesProfileService()
     
     private let nightscoutService = NightscoutService.shared
+    private let userDefaults = UserDefaults.standard
+    private let localProfileKey = "localDiabetesProfile"
     
-    private init() {}
+    @Published var localProfile: DiabetesProfile?
+    
+    private init() {
+        loadLocalProfile()
+    }
     
     func fetchProfile(completion: @escaping (Result<DiabetesProfile, Error>) -> Void) {
         let settings = nightscoutService.getSettings()
@@ -92,6 +98,31 @@ class DiabetesProfileService: ObservableObject {
                 }
             }
         }.resume()
+    }
+    
+    // MARK: - Local Profile Management
+    func saveLocalProfile(_ profile: DiabetesProfile) {
+        localProfile = profile
+        if let data = try? JSONEncoder().encode(profile) {
+            userDefaults.set(data, forKey: localProfileKey)
+        }
+    }
+    
+    func loadLocalProfile() {
+        guard let data = userDefaults.data(forKey: localProfileKey),
+              let profile = try? JSONDecoder().decode(DiabetesProfile.self, from: data) else {
+            return
+        }
+        localProfile = profile
+    }
+    
+    func getLocalProfile() -> DiabetesProfile? {
+        return localProfile
+    }
+    
+    func clearLocalProfile() {
+        localProfile = nil
+        userDefaults.removeObject(forKey: localProfileKey)
     }
 }
 

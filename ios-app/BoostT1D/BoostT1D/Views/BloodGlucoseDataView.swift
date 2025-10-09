@@ -4,6 +4,7 @@ import SwiftUI
 struct BloodGlucoseDataView: View {
     @StateObject private var nightscoutService = NightscoutService.shared
     @StateObject private var profileService = UserProfileService.shared
+    @StateObject private var localDataService = LocalDataService.shared
     @State private var glucoseEntries: [NightscoutGlucoseEntry] = []
     @State private var isLoading = false
     @State private var errorMessage: String?
@@ -11,6 +12,7 @@ struct BloodGlucoseDataView: View {
     @State private var statistics = GlucoseStatistics()
     @State private var lastFetchTime: Date?
     @State private var activeTab: TabSelection = .chart
+    @State private var showingManualEntry = false
     
     private let timeRangeOptions = [1, 3, 7, 30]
     private let timeRangeLabels = ["1 day", "3 days", "7 days", "1 month"]
@@ -200,12 +202,26 @@ struct BloodGlucoseDataView: View {
             }
         }
         .navigationTitle("Glucose Data")
-        .navigationBarItems(trailing: Button(action: {
-            loadGlucoseData()
-        }) {
-            Image(systemName: "arrow.clockwise")
-                .foregroundColor(.blue)
+        .navigationBarItems(trailing: HStack(spacing: 12) {
+            if nightscoutService.settings.isManualMode {
+                Button(action: {
+                    showingManualEntry = true
+                }) {
+                    Image(systemName: "plus.circle.fill")
+                        .foregroundColor(.blue)
+                }
+            }
+            
+            Button(action: {
+                loadGlucoseData()
+            }) {
+                Image(systemName: "arrow.clockwise")
+                    .foregroundColor(.blue)
+            }
         })
+        .sheet(isPresented: $showingManualEntry) {
+            ManualDataEntryView()
+        }
         .onAppear {
             loadGlucoseData()
         }
@@ -215,6 +231,16 @@ struct BloodGlucoseDataView: View {
     }
     
     private func loadGlucoseData() {
+        // Check if in manual mode
+        if nightscoutService.settings.isManualMode {
+            // Load local data
+            glucoseEntries = localDataService.getAllGlucoseEntries()
+            lastFetchTime = Date()
+            calculateStatistics(entries: glucoseEntries)
+            return
+        }
+        
+        // Otherwise, fetch from Nightscout
         isLoading = true
         errorMessage = nil
         

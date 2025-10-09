@@ -8,7 +8,12 @@ struct ContentView: View {
             if profileService.isProfileComplete {
                 // User has completed profile, show main app
                 NavigationView {
-                    WelcomeView()
+                    DashboardView()
+                        .toolbar {
+                            ToolbarItem(placement: .navigationBarLeading) {
+                                AppIconView(size: 30)
+                            }
+                        }
                 }
             } else {
                 // First time user, show onboarding

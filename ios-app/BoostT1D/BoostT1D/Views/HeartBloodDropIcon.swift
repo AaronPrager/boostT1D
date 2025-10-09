@@ -10,7 +10,7 @@ struct HeartBloodDropIcon: View {
     var body: some View {
         ZStack {
             // Blue Heart - more prominent
-            HeartShape()
+            AnimatedHeartShape()
                 .fill(
                     LinearGradient(
                         gradient: Gradient(colors: [
@@ -25,7 +25,7 @@ struct HeartBloodDropIcon: View {
                 .shadow(color: .blue.opacity(0.4), radius: 6, x: 0, y: 3)
             
             // Red Blood Drop - more vibrant
-            BloodDropShape()
+            AnimatedBloodDropShape()
                 .fill(
                     LinearGradient(
                         gradient: Gradient(colors: [
@@ -43,7 +43,7 @@ struct HeartBloodDropIcon: View {
     }
 }
 
-struct HeartShape: Shape {
+struct AnimatedHeartShape: Shape {
     func path(in rect: CGRect) -> Path {
         var path = Path()
         
@@ -82,7 +82,7 @@ struct HeartShape: Shape {
     }
 }
 
-struct BloodDropShape: Shape {
+struct AnimatedBloodDropShape: Shape {
     func path(in rect: CGRect) -> Path {
         var path = Path()
         

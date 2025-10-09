@@ -496,7 +496,8 @@ class NightscoutService: ObservableObject {
             return
         }
         
-        guard let url = URL(string: "\(settings.url)/api/v1/iob") else {
+        // Try devicestatus endpoint first (where IOB is commonly stored)
+        guard let url = URL(string: "\(settings.url)/api/v1/devicestatus.json?count=1") else {
             completion(.failure(NightscoutError.invalidURL))
             return
         }
@@ -504,6 +505,7 @@ class NightscoutService: ObservableObject {
         var request = URLRequest(url: url)
         request.setValue(sha1(settings.apiToken), forHTTPHeaderField: "api-secret")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
         
         URLSession.shared.dataTask(with: request) { data, response, error in
             DispatchQueue.main.async {
@@ -518,9 +520,53 @@ class NightscoutService: ObservableObject {
                 }
                 
                 do {
-                    let iobResult = try JSONDecoder().decode(IOBResult.self, from: data)
-                    completion(.success(iobResult))
+                    // Devicestatus returns an array
+                    let devicestatusArray = try JSONDecoder().decode([DeviceStatus].self, from: data)
+                    
+                    if let latestStatus = devicestatusArray.first {
+                        // Try to find IOB in various locations within devicestatus
+                        var iob: Double = 0
+                        var source = "not_found"
+                        
+                        // Check openaps.suggested.IOB
+                        if let openaps = latestStatus.openaps,
+                           let suggested = openaps["suggested"] as? [String: Any],
+                           let iobValue = suggested["IOB"] as? Double {
+                            iob = iobValue
+                            source = "openaps.suggested.IOB"
+                        }
+                        // Check openaps.iob.iob
+                        else if let openaps = latestStatus.openaps,
+                                let iobData = openaps["iob"] as? [String: Any],
+                                let iobValue = iobData["iob"] as? Double {
+                            iob = iobValue
+                            source = "openaps.iob.iob"
+                        }
+                        // Check pump.iob.bolusiob
+                        else if let pump = latestStatus.pump,
+                                let pumpIOB = pump["iob"] as? [String: Any],
+                                let bolusIOB = pumpIOB["bolusiob"] as? Double {
+                            iob = bolusIOB
+                            source = "pump.iob.bolusiob"
+                        }
+                        
+                        print("IOB found: \(iob) from \(source)")
+                        
+                        let iobResult = IOBResult(
+                            iob: iob,
+                            activity: 0,
+                            bolusinsulin: iob,
+                            basaliob: 0,
+                            time: latestStatus.created_at ?? ISO8601DateFormatter().string(from: Date())
+                        )
+                        completion(.success(iobResult))
+                    } else {
+                        completion(.failure(NightscoutError.noData))
+                    }
                 } catch {
+                    if let jsonString = String(data: data, encoding: .utf8) {
+                        print("IOB devicestatus response: \(jsonString.prefix(500))")
+                    }
                     completion(.failure(error))
                 }
             }
@@ -533,7 +579,8 @@ class NightscoutService: ObservableObject {
             return
         }
         
-        guard let url = URL(string: "\(settings.url)/api/v1/cob") else {
+        // Try devicestatus endpoint (where COB is commonly stored)
+        guard let url = URL(string: "\(settings.url)/api/v1/devicestatus.json?count=1") else {
             completion(.failure(NightscoutError.invalidURL))
             return
         }
@@ -541,6 +588,7 @@ class NightscoutService: ObservableObject {
         var request = URLRequest(url: url)
         request.setValue(sha1(settings.apiToken), forHTTPHeaderField: "api-secret")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
         
         URLSession.shared.dataTask(with: request) { data, response, error in
             DispatchQueue.main.async {
@@ -555,9 +603,43 @@ class NightscoutService: ObservableObject {
                 }
                 
                 do {
-                    let cobResult = try JSONDecoder().decode(COBResult.self, from: data)
-                    completion(.success(cobResult))
+                    // Devicestatus returns an array
+                    let devicestatusArray = try JSONDecoder().decode([DeviceStatus].self, from: data)
+                    
+                    if let latestStatus = devicestatusArray.first {
+                        // Try to find COB in various locations within devicestatus
+                        var cob: Double = 0
+                        var source = "not_found"
+                        
+                        // Check openaps.suggested.COB
+                        if let openaps = latestStatus.openaps,
+                           let suggested = openaps["suggested"] as? [String: Any],
+                           let cobValue = suggested["COB"] as? Double {
+                            cob = cobValue
+                            source = "openaps.suggested.COB"
+                        }
+                        // Check openaps.cob.cob
+                        else if let openaps = latestStatus.openaps,
+                                let cobData = openaps["cob"] as? [String: Any],
+                                let cobValue = cobData["cob"] as? Double {
+                            cob = cobValue
+                            source = "openaps.cob.cob"
+                        }
+                        
+                        print("COB found: \(cob) from \(source)")
+                        
+                        let cobResult = COBResult(
+                            cob: cob,
+                            time: latestStatus.created_at ?? ISO8601DateFormatter().string(from: Date())
+                        )
+                        completion(.success(cobResult))
+                    } else {
+                        completion(.failure(NightscoutError.noData))
+                    }
                 } catch {
+                    if let jsonString = String(data: data, encoding: .utf8) {
+                        print("COB devicestatus response: \(jsonString.prefix(500))")
+                    }
                     completion(.failure(error))
                 }
             }

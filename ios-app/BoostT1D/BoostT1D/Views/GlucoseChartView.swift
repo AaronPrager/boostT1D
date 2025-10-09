@@ -186,23 +186,28 @@ struct DailyOverlayChart: View {
             let lowY = yPosition(for: lowGlucose)
             let highY = yPosition(for: highGlucose)
             
-            // Below range zone (white) - from top to low glucose line
+            // Ensure all heights are non-negative
+            let belowHeight = max(0, highY)
+            let inRangeHeight = max(0, lowY - highY)
+            let aboveHeight = max(0, chartHeight - lowY)
+            
+            // Below range zone (white) - from top to high glucose line (high glucose is at lower Y)
             Rectangle()
                 .fill(Color.white.opacity(0.3))
-                .frame(width: chartWidth, height: lowY)
+                .frame(width: chartWidth, height: belowHeight)
                 .offset(y: 0)
             
-            // In range zone (white) - from low to high glucose line
+            // In range zone (white) - from high to low glucose line
             Rectangle()
                 .fill(Color.white.opacity(0.3))
-                .frame(width: chartWidth, height: highY - lowY)
-                .offset(y: lowY)
-            
-            // Above range zone (white) - from high glucose line to bottom
-            Rectangle()
-                .fill(Color.white.opacity(0.3))
-                .frame(width: chartWidth, height: chartHeight - highY)
+                .frame(width: chartWidth, height: inRangeHeight)
                 .offset(y: highY)
+            
+            // Above range zone (white) - from low glucose line to bottom
+            Rectangle()
+                .fill(Color.white.opacity(0.3))
+                .frame(width: chartWidth, height: aboveHeight)
+                .offset(y: lowY)
         }
         .frame(width: chartWidth, height: chartHeight)
     }

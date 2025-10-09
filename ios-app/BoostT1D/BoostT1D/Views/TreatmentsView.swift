@@ -2,11 +2,13 @@ import SwiftUI
 
 struct TreatmentsView: View {
     @StateObject private var nightscoutService = NightscoutService.shared
+    @StateObject private var localDataService = LocalDataService.shared
     @State private var treatments: [NightscoutTreatment] = []
     @State private var isLoading = false
     @State private var errorMessage: String?
     @State private var selectedTimeRange: Int = 3
     @State private var selectedTreatmentType: String = "All"
+    @State private var showingManualEntry = false
     
     private let timeRangeOptions = [1, 3, 7, 30]
     private let timeRangeLabels = ["1 day", "3 days", "7 days", "1 month"]
@@ -154,12 +156,26 @@ struct TreatmentsView: View {
             }
         }
         .navigationTitle("Treatments")
-        .navigationBarItems(trailing: Button(action: {
-            loadTreatments()
-        }) {
-            Image(systemName: "arrow.clockwise")
-                .foregroundColor(.blue)
+        .navigationBarItems(trailing: HStack(spacing: 12) {
+            if nightscoutService.settings.isManualMode {
+                Button(action: {
+                    showingManualEntry = true
+                }) {
+                    Image(systemName: "plus.circle.fill")
+                        .foregroundColor(.blue)
+                }
+            }
+            
+            Button(action: {
+                loadTreatments()
+            }) {
+                Image(systemName: "arrow.clockwise")
+                    .foregroundColor(.blue)
+            }
         })
+        .sheet(isPresented: $showingManualEntry) {
+            ManualDataEntryView()
+        }
         .onAppear {
             loadTreatments()
         }
@@ -217,6 +233,14 @@ struct TreatmentsView: View {
     }
     
     private func loadTreatments() {
+        // Check if in manual mode
+        if nightscoutService.settings.isManualMode {
+            // Load local data
+            treatments = localDataService.getAllTreatments()
+            return
+        }
+        
+        // Otherwise, fetch from Nightscout
         isLoading = true
         errorMessage = nil
         

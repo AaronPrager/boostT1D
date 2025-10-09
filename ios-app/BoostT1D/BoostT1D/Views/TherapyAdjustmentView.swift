@@ -3,6 +3,7 @@ import SwiftUI
 struct TherapyAdjustmentView: View {
     @StateObject private var nightscoutService = NightscoutService.shared
     @StateObject private var apiService = APIService.shared
+    @StateObject private var localDataService = LocalDataService.shared
     @State private var selectedTimeRange: Int = 3
     @State private var suggestions: [AdjustmentSuggestion] = []
     @State private var metrics: AnalysisMetrics = AnalysisMetrics()
@@ -487,6 +488,16 @@ struct TherapyAdjustmentView: View {
     }
     
     private func loadSuggestions() {
+        // Check if in manual mode
+        if nightscoutService.settings.isManualMode {
+            // Load local data
+            glucoseEntries = localDataService.getGlucoseEntriesForTimeRange(hours: selectedTimeRange * 24)
+            treatments = localDataService.getTreatmentsForTimeRange(hours: selectedTimeRange * 24)
+            analyzeDataAndGenerateSuggestions()
+            return
+        }
+        
+        // Otherwise, fetch from Nightscout
         isLoading = true
         errorMessage = nil
         
