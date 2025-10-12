@@ -1,68 +1,85 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
+import crypto from 'crypto';
 
-export async function GET(request: NextRequest) {
+function sha1(input: string): string {
+  return crypto.createHash('sha1').update(input).digest('hex');
+}
+
+export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const body = await request.json();
+    const { url, token } = body;
+
+    if (!url || !token) {
+      return NextResponse.json(
+        { success: false, error: 'URL and token are required' },
+        { status: 400 }
+      );
     }
 
-    console.log('🧪 Test Nightscout connection endpoint called for user:', session.user.email);
+    // Clean up the URL (remove trailing slash)
+    const cleanUrl = url.replace(/\/$/, '');
 
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-      include: { settings: true }
+    // Test connection by fetching status endpoint
+    const statusUrl = `${cleanUrl}/api/v1/status`;
+    
+    const response = await fetch(statusUrl, {
+      method: 'GET',
+      headers: {
+        'api-secret': sha1(token),
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      }
     });
 
-    if (!user?.settings?.nightscoutUrl) {
-      return NextResponse.json({ error: 'No Nightscout URL configured' }, { status: 400 });
-    }
-
-    const baseUrl = user.settings.nightscoutUrl.trim();
-    console.log('📡 Testing connection to:', baseUrl);
-
-    // Test 1: Try to connect without authentication
-    try {
-      const response = await fetch(`${baseUrl}/api/v1/status.json`, {
+    if (!response.ok) {
+      // Try with token as query parameter instead
+      const statusUrlWithToken = `${cleanUrl}/api/v1/status?token=${encodeURIComponent(token)}`;
+      const responseWithToken = await fetch(statusUrlWithToken, {
         method: 'GET',
         headers: {
+          'Content-Type': 'application/json',
           'Accept': 'application/json'
         }
       });
-      
-      console.log('📥 Response without auth:', response.status, response.statusText);
-      
-      if (response.status === 401) {
-        console.log('✅ URL is correct, authentication required');
-      } else if (response.status === 200) {
-        console.log('⚠️ URL works without authentication (insecure)');
-      } else {
-        console.log('❌ URL might be incorrect or server error');
+
+      if (!responseWithToken.ok) {
+        return NextResponse.json(
+          { 
+            success: false, 
+            error: `Failed to connect to Nightscout. Status: ${response.status}. Please check your URL and API token.` 
+          },
+          { status: 400 }
+        );
       }
-      
+
+      // Success with query parameter
+      const data = await responseWithToken.json();
       return NextResponse.json({
-        url: baseUrl,
-        status: response.status,
-        statusText: response.statusText,
-        requiresAuth: response.status === 401,
-        worksWithoutAuth: response.status === 200
+        success: true,
+        message: 'Connection successful!',
+        nightscoutVersion: data.version || 'Unknown',
+        authMethod: 'token'
       });
-    } catch (error) {
-      console.error('❌ Connection test failed:', error);
-      return NextResponse.json({
-        error: 'Failed to connect to Nightscout',
-        details: error instanceof Error ? error.message : 'Unknown error',
-        url: baseUrl
-      }, { status: 500 });
     }
-  } catch (error) {
-    console.error('❌ Test connection endpoint error:', error);
+
+    // Success with header authentication
+    const data = await response.json();
     return NextResponse.json({
-      error: 'Internal server error',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 });
+      success: true,
+      message: 'Connection successful!',
+      nightscoutVersion: data.version || 'Unknown',
+      authMethod: 'api-secret'
+    });
+
+  } catch (error) {
+    console.error('Nightscout connection test error:', error);
+    return NextResponse.json(
+      { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Failed to connect to Nightscout. Please check your URL and network connection.' 
+      },
+      { status: 500 }
+    );
   }
-} 
+}

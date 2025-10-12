@@ -56,19 +56,21 @@ model User {
 }
 
 model Profile {
-  id                 String    @id @default(cuid())
-  bio                String?
-  location           String?
-  website            String?
-  birthDate          DateTime?
-  phoneNumber        String?
-  occupation         String?
-  userId             String    @unique
-  data               Json?
-  diagnosisAge       Int?
-  favoriteActivities String?
-  Photo              Photo[]
-  user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                  String    @id @default(cuid())
+  bio                 String?
+  location            String?
+  website             String?
+  birthDate           DateTime?
+  phoneNumber         String?
+  occupation          String?
+  userId              String    @unique
+  data                Json?
+  diagnosisAge        Int?
+  favoriteActivities  String?
+  age                 Int?
+  yearsSinceDiagnosis String?
+  Photo               Photo[]
+  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Treatment {

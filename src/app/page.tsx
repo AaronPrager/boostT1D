@@ -62,7 +62,7 @@ export default function Home() {
               <a href="/login" className="text-gray-700 hover:text-gray-900 px-4 py-2 text-sm font-semibold transition-colors hover:bg-gray-50 rounded-lg" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}>
                 Sign In
               </a>
-              <a href="/register" className="bg-gradient-to-r from-gray-600 to-gray-700 text-white px-6 py-2 rounded-lg text-sm font-semibold hover:from-gray-700 hover:to-gray-800 transition-all duration-200 shadow-lg hover:shadow-xl" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}>
+              <a href="/onboarding" className="bg-gradient-to-r from-gray-600 to-gray-700 text-white px-6 py-2 rounded-lg text-sm font-semibold hover:from-gray-700 hover:to-gray-800 transition-all duration-200 shadow-lg hover:shadow-xl" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}>
                 Get Started
               </a>
             </nav>
@@ -87,7 +87,7 @@ export default function Home() {
             comprehensive glucose tracking, and personalized therapy recommendations.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <a href="/register" className="bg-gradient-to-r from-gray-600 to-gray-700 text-white px-8 py-4 rounded-xl text-lg font-semibold hover:from-gray-700 hover:to-gray-800 transition-all duration-200 shadow-xl hover:shadow-2xl">
+            <a href="/onboarding" className="bg-gradient-to-r from-gray-600 to-gray-700 text-white px-8 py-4 rounded-xl text-lg font-semibold hover:from-gray-700 hover:to-gray-800 transition-all duration-200 shadow-xl hover:shadow-2xl">
               Get Started
             </a>
             <a href="/login" className="border-2 border-gray-300 text-gray-700 px-8 py-4 rounded-xl text-lg font-semibold hover:border-gray-600 hover:text-gray-900 transition-all duration-200">
@@ -116,7 +116,7 @@ export default function Home() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                 </svg>
               </a>
-              <a href="/register" className="inline-flex items-center px-8 py-4 border-2 border-orange-300 text-orange-700 text-lg font-semibold rounded-xl hover:border-orange-500 hover:bg-orange-50 transition-all duration-200">
+              <a href="/onboarding" className="inline-flex items-center px-8 py-4 border-2 border-orange-300 text-orange-700 text-lg font-semibold rounded-xl hover:border-orange-500 hover:bg-orange-50 transition-all duration-200">
                 Learn More
               </a>
             </div>

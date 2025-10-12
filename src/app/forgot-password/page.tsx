@@ -68,7 +68,7 @@ export default function ForgotPasswordPage() {
               <Link href="/login" className="text-slate-600 hover:text-slate-900 px-3 py-2 rounded-md text-sm font-medium transition-colors">
                 Sign In
               </Link>
-              <Link href="/register" className="text-slate-600 hover:text-slate-900 px-3 py-2 rounded-md text-sm font-medium transition-colors">
+              <Link href="/onboarding" className="text-slate-600 hover:text-slate-900 px-3 py-2 rounded-md text-sm font-medium transition-colors">
                 Sign Up
               </Link>
             </nav>
@@ -139,7 +139,7 @@ export default function ForgotPasswordPage() {
               </Link>
             </div>
             <div>
-              <Link href="/register" className="font-medium text-indigo-600 hover:text-indigo-500">
+              <Link href="/onboarding" className="font-medium text-indigo-600 hover:text-indigo-500">
                 Don't have an account? Sign up
               </Link>
             </div>

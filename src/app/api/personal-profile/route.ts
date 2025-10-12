@@ -5,8 +5,12 @@ import { authOptions } from "@/lib/auth";
 
 export async function GET() {
   try {
+    console.log('[GET /api/personal-profile] Request received');
     const session = await getServerSession(authOptions);
+    console.log('[GET /api/personal-profile] Session:', session?.user?.email);
+    
     if (!session || !session.user?.email) {
+      console.log('[GET /api/personal-profile] Unauthorized - no session');
       return new NextResponse('Unauthorized', { status: 401 });
     }
 
@@ -19,6 +23,7 @@ export async function GET() {
     });
 
     if (!user) {
+      console.log('[GET /api/personal-profile] User not found');
       return new NextResponse('User not found', { status: 404 });
     }
 
@@ -29,17 +34,18 @@ export async function GET() {
       about: user.profile?.bio || null,
       photo: user.image,
       phone: user.profile?.phoneNumber || null,
-      dateOfBirth: user.dateOfBirth ? user.dateOfBirth.toISOString().split('T')[0] : (user.profile?.birthDate ? user.profile.birthDate.toISOString().split('T')[0] : null),
       occupation: user.profile?.occupation || null,
       country: user.country,
       state: user.state,
       favoriteActivities: user.profile?.favoriteActivities || null,
-      diagnosisAge: user.profile?.diagnosisAge || null,
+      age: user.profile?.age || null,
+      yearsSinceDiagnosis: user.profile?.yearsSinceDiagnosis || null,
     };
 
+    console.log('[GET /api/personal-profile] Returning data:', personalProfileData);
     return NextResponse.json(personalProfileData);
   } catch (error) {
-    console.error('Error fetching personal profile:', error);
+    console.error('[GET /api/personal-profile] Error:', error);
     return new NextResponse(
       error instanceof Error ? error.message : 'Failed to fetch personal profile',
       { status: 500 }
@@ -55,7 +61,8 @@ export async function PUT(req: Request) {
     }
 
     const body = await req.json();
-    const { name, about, phone, dateOfBirth, occupation, country, state, favoriteActivities, diagnosisAge, photo } = body;
+    console.log('[PUT /api/personal-profile] Request received, photo size:', body.photo?.length || 0);
+    const { name, about, phone, occupation, country, state, favoriteActivities, age, yearsSinceDiagnosis, photo } = body;
 
     // Get the user
     const user = await prisma.user.findUnique({
@@ -76,7 +83,6 @@ export async function PUT(req: Request) {
         name: name || user.name,
         country: country || user.country,
         state: state || user.state,
-        dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : user.dateOfBirth,
         image: photo !== undefined ? photo : user.image,
       },
     });
@@ -87,8 +93,8 @@ export async function PUT(req: Request) {
       phoneNumber: phone || null,
       occupation: occupation || null,
       favoriteActivities: favoriteActivities || null,
-      diagnosisAge: diagnosisAge ? Number(diagnosisAge) : null,
-      birthDate: dateOfBirth ? new Date(dateOfBirth) : (user.dateOfBirth || user.profile?.birthDate || null),
+      age: age ? Number(age) : null,
+      yearsSinceDiagnosis: yearsSinceDiagnosis || null,
     };
 
     await prisma.profile.upsert({

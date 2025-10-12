@@ -97,26 +97,6 @@ struct WelcomeView: View {
                             .buttonStyle(PlainButtonStyle())
                         }
                         
-                        // Divider
-                        Divider()
-                            .padding(.vertical, 8)
-                        
-                        // Group 4: Social Features
-                        VStack(spacing: 8) {
-                            // Buddies (Placeholder - will show coming soon)
-                            Button(action: {
-                                // TODO: Implement BuddiesView
-                            }) {
-                                MenuButtonContent(
-                                    icon: "person.2.fill",
-                                    title: "Buddies",
-                                    subtitle: "Connect with diabetes community (Coming Soon)",
-                                    color: .gray
-                                )
-                            }
-                            .buttonStyle(PlainButtonStyle())
-                            .disabled(true)
-                        }
                     }
                     .padding(.horizontal, 20)
                     

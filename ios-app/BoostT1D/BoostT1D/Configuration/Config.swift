@@ -16,7 +16,7 @@ struct Config {
     // API URLs
     static let geminiBaseURL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
     
-    // SApp Configuration
+    // App Configuration
     static let appName = "BoostT1D"
     static let appVersion = "1.0.0"
 }
