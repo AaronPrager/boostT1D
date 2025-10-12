@@ -40,38 +40,28 @@ function calculateAge(dateOfBirth: string): number | null {
  */
 function parseInterests(favoriteActivities?: string): string[] {
   if (!favoriteActivities) return [];
-  const interests = favoriteActivities
+  return favoriteActivities
     .toLowerCase()
     .split(/[,;]/) // Split by comma or semicolon
     .map(activity => activity.trim())
     .filter(activity => activity.length > 0);
-  
-  console.log('Parsed interests from:', favoriteActivities, '->', interests);
-  return interests;
 }
 
 /**
  * Find shared interests between two users
  */
 function findSharedInterests(interests1: string[], interests2: string[]): string[] {
-  const shared = interests1.filter(interest => 
+  return interests1.filter(interest => 
     interests2.some(otherInterest => 
       interest.includes(otherInterest) || otherInterest.includes(interest)
     )
   );
-  
-  console.log('Finding shared interests between:', interests1, 'and', interests2, '->', shared);
-  return shared;
 }
 
 /**
  * Calculate match score between two users (0-100)
  */
 export function calculateMatchScore(user1: UserProfile, user2: UserProfile): { score: number; reasons: string[] } {
-  console.log('Calculating match score between:', user1.name, 'and', user2.name);
-  console.log('User1 interests:', user1.favoriteActivities);
-  console.log('User2 interests:', user2.favoriteActivities);
-  
   let score = 0;
   const reasons: string[] = [];
   

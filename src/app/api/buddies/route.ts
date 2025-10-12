@@ -141,9 +141,6 @@ export async function GET() {
     // Transform other users data
     const otherUserProfiles = otherUsers.map(user => transformUserProfile(user, false));
 
-    console.log('Current user profile:', JSON.stringify(currentUserProfile, null, 2));
-    console.log('Other user profiles:', JSON.stringify(otherUserProfiles, null, 2));
-
     // Find matches using the buddy matching algorithm
     const matches = findBuddyMatches(currentUserProfile, otherUserProfiles);
 
