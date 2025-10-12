@@ -11,11 +11,13 @@ struct TherapyAdjustmentView: View {
     @State private var treatments: [NightscoutTreatment] = []
     @State private var isLoading = false
     @State private var errorMessage: String?
-    @State private var analysisMethod: AnalysisMethod = .ai
+    @State private var analysisMethod: AnalysisMethod = .ruleBased
     @State private var aiConfidence: Double = 0.0
     @State private var keyFindings: [String] = []
     @State private var safetyNotes: [String] = []
     @State private var showDisclaimer = true
+    @State private var useAIAnalysis = false // Start with manual mode by default
+    @State private var isClosedLoopSystem = false
     
     private let timeRangeOptions = [3, 7]
     private let timeRangeLabels = ["3 days", "7 days"]
@@ -167,21 +169,21 @@ struct TherapyAdjustmentView: View {
                         .pickerStyle(MenuPickerStyle())
                     }
                     
-                    // Analysis Method Indicator
+                    Divider()
+                    
+                    // Closed Loop System Toggle
                     HStack {
-                        Image(systemName: analysisMethod == .ai ? "brain.head.profile" : "gear")
-                            .foregroundColor(analysisMethod == .ai ? .blue : .gray)
-                        Text(analysisMethod == .ai ? "AI Analysis" : "Rule-Based Analysis")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        
-                        if analysisMethod == .ai && aiConfidence > 0 {
-                            Spacer()
-                            Text("Confidence: \(Int(aiConfidence * 100))%")
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Closed Loop System")
+                                .font(.headline)
+                                .foregroundColor(.primary)
+                            Text(isClosedLoopSystem ? "Loop/OpenAPS/AAPS active" : "Manual insulin management")
                                 .font(.caption)
-                                .fontWeight(.semibold)
-                                .foregroundColor(confidenceColor(aiConfidence))
+                                .foregroundColor(.secondary)
                         }
+                        Spacer()
+                        Toggle("", isOn: $isClosedLoopSystem)
+                            .labelsHidden()
                     }
                 }
                 .padding(16)
@@ -201,7 +203,7 @@ struct TherapyAdjustmentView: View {
                     
                     HStack(spacing: 20) {
                         MetricCard(title: "Est. A1C", value: String(format: "%.1f", estimatedA1C), unit: "%", color: .orange)
-                        MetricCard(title: "Data Points", value: "\(metrics.dataPoints)", unit: "readings", color: .purple)
+                        MetricCard(title: "Variability", value: String(format: "%.0f", metrics.coefficientOfVariation), unit: "% CV", color: glucoseVariabilityColor)
                     }
                 }
                 .padding(16)
@@ -216,7 +218,7 @@ struct TherapyAdjustmentView: View {
                             Image(systemName: "sparkles")
                                 .foregroundColor(.blue)
                             Text("AI Key Findings")
-                                .font(.headline)
+                            .font(.headline)
                                 .foregroundColor(.blue)
                         }
                         
@@ -277,6 +279,27 @@ struct TherapyAdjustmentView: View {
                     .padding(.horizontal, 20)
                 }
                 
+                // Closed Loop Info Banner
+                if isClosedLoopSystem {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Image(systemName: "arrow.triangle.2.circlepath")
+                                .foregroundColor(.blue)
+                            Text("Closed Loop System Active")
+                                .font(.headline)
+                                .foregroundColor(.blue)
+                        }
+                        
+                        Text("Suggestions focus on baseline profile adjustments. Frequent basal changes from your Loop/OpenAPS/AAPS algorithm are normal and not flagged for adjustment.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(16)
+                    .background(Color.blue.opacity(0.1))
+                    .cornerRadius(12)
+                    .padding(.horizontal, 20)
+                }
+                
                 // Adjustment Suggestions
                 VStack(spacing: 16) {
                     
@@ -286,8 +309,8 @@ struct TherapyAdjustmentView: View {
                                 .scaleEffect(1.2)
                             
                             Text("Analyzing your data...")
-                                .font(.headline)
-                            
+                        .font(.headline)
+                    
                             Text("Please wait while we analyze your glucose patterns and generate personalized suggestions.")
                                 .font(.body)
                                 .foregroundColor(.secondary)
@@ -421,6 +444,11 @@ struct TherapyAdjustmentView: View {
             loadSuggestions()
                     }
                 }
+        .onChange(of: isClosedLoopSystem) {
+                    if !showDisclaimer {
+            loadSuggestions()
+                    }
+                }
             }
         }
     }
@@ -469,6 +497,17 @@ struct TherapyAdjustmentView: View {
         return (Double(metrics.averageGlucose) + 46.7) / 28.7
     }
     
+    private var glucoseVariabilityColor: Color {
+        let cv = metrics.coefficientOfVariation
+        if cv <= 36 {
+            return .green // Stable glucose
+        } else if cv <= 42 {
+            return .orange // Moderate variability
+        } else {
+            return .red // High variability
+        }
+    }
+    
     private var safetyWarnings: [String] {
         var warnings: [String] = []
         
@@ -480,8 +519,16 @@ struct TherapyAdjustmentView: View {
             warnings.append("Time in range is below target. Review your diabetes management plan.")
         }
         
+        if metrics.timeBelowRange > 4 {
+            warnings.append("Time below range is \(metrics.timeBelowRange)%. Target is <4%. Risk of hypoglycemia - consider reducing insulin doses.")
+        }
+        
+        if metrics.coefficientOfVariation > 36 {
+            warnings.append("Glucose variability is high (\(Int(metrics.coefficientOfVariation))% CV). Target is <36%. This indicates unstable glucose control.")
+        }
+        
         if metrics.dataPoints < 50 {
-            warnings.append("Limited data available. More readings needed for reliable analysis.")
+            warnings.append("Limited data available (\(metrics.dataPoints) readings). More data needed for reliable analysis.")
         }
         
         return warnings
@@ -537,38 +584,57 @@ struct TherapyAdjustmentView: View {
         let settings = nightscoutService.settings
         metrics = calculateRealMetrics(glucoseEntries: glucoseEntries, lowGlucose: settings.lowGlucose, highGlucose: settings.highGlucose)
         
-        // Always try AI first with automatic fallback
-        apiService.analyzeTherapyAdjustments(
-            glucoseEntries: glucoseEntries,
-            treatments: treatments,
-            lowGlucose: settings.lowGlucose,
-            highGlucose: settings.highGlucose,
-            timeRangeDays: selectedTimeRange
-        ) { result in
-            DispatchQueue.main.async {
-                switch result {
-                case .success(let aiSuggestions):
-                    self.suggestions = self.convertAISuggestionsToAdjustments(aiSuggestions.suggestions)
-                    self.analysisMethod = .ai
-                    self.aiConfidence = aiSuggestions.overallConfidence
-                    self.keyFindings = aiSuggestions.keyFindings
-                    self.safetyNotes = aiSuggestions.safetyNotes
-                case .failure(let error):
-                    // Automatic fallback to rule-based analysis
-                    print("AI analysis failed: \(error), using rule-based analysis")
-                    self.suggestions = self.generateRealSuggestions(
-                        glucoseEntries: self.glucoseEntries,
-                        treatments: self.treatments,
-                        lowGlucose: settings.lowGlucose,
-                        highGlucose: settings.highGlucose
-                    )
-                    self.analysisMethod = .ruleBased
-                    self.aiConfidence = 0.0
-                    self.keyFindings = []
-                    self.safetyNotes = []
+        // Check if user wants AI analysis
+        if useAIAnalysis {
+            // Try AI first with automatic fallback
+            apiService.analyzeTherapyAdjustments(
+                glucoseEntries: glucoseEntries,
+                treatments: treatments,
+                lowGlucose: settings.lowGlucose,
+                highGlucose: settings.highGlucose,
+                timeRangeDays: selectedTimeRange,
+                isClosedLoop: isClosedLoopSystem
+            ) { result in
+                DispatchQueue.main.async {
+                    switch result {
+                    case .success(let aiSuggestions):
+                        self.suggestions = self.convertAISuggestionsToAdjustments(aiSuggestions.suggestions)
+                        self.analysisMethod = .ai
+                        self.aiConfidence = aiSuggestions.overallConfidence
+                        self.keyFindings = aiSuggestions.keyFindings
+                        self.safetyNotes = aiSuggestions.safetyNotes
+                    case .failure(let error):
+                        // Automatic fallback to rule-based analysis
+                        print("AI analysis failed: \(error), using rule-based analysis")
+                        self.suggestions = self.generateRealSuggestions(
+                            glucoseEntries: self.glucoseEntries,
+                            treatments: self.treatments,
+                            lowGlucose: settings.lowGlucose,
+                            highGlucose: settings.highGlucose,
+                            isClosedLoop: self.isClosedLoopSystem
+                        )
+                        self.analysisMethod = .ruleBased
+                        self.aiConfidence = 0.0
+                        self.keyFindings = []
+                        self.safetyNotes = []
+                    }
+                    self.isLoading = false
                 }
-                self.isLoading = false
             }
+        } else {
+            // Use manual rule-based analysis directly
+            self.suggestions = self.generateRealSuggestions(
+                glucoseEntries: self.glucoseEntries,
+                treatments: self.treatments,
+                lowGlucose: settings.lowGlucose,
+                highGlucose: settings.highGlucose,
+                isClosedLoop: self.isClosedLoopSystem
+            )
+            self.analysisMethod = .ruleBased
+            self.aiConfidence = 0.0
+            self.keyFindings = []
+            self.safetyNotes = []
+            self.isLoading = false
         }
     }
     
@@ -617,15 +683,26 @@ struct TherapyAdjustmentView: View {
         let inRangeCount = glucoseValues.filter { $0 >= lowGlucose && $0 <= highGlucose }.count
         let timeInRange = Double(inRangeCount) / Double(glucoseValues.count) * 100
         
+        // Calculate time below range
+        let belowRangeCount = glucoseValues.filter { $0 < lowGlucose }.count
+        let timeBelowRange = Double(belowRangeCount) / Double(glucoseValues.count) * 100
+        
+        // Calculate coefficient of variation (CV) - measure of glucose variability
+        let variance = glucoseValues.map { pow($0 - averageGlucose, 2) }.reduce(0, +) / Double(glucoseValues.count)
+        let standardDeviation = sqrt(variance)
+        let coefficientOfVariation = (standardDeviation / averageGlucose) * 100
+        
         return AnalysisMetrics(
             averageGlucose: Int(averageGlucose),
             timeInRange: Int(timeInRange),
+            timeBelowRange: Int(timeBelowRange),
+            coefficientOfVariation: coefficientOfVariation,
             dataPoints: glucoseValues.count,
             analysisPeriod: "\(selectedTimeRange) days"
         )
     }
     
-    private func generateRealSuggestions(glucoseEntries: [NightscoutGlucoseEntry], treatments: [NightscoutTreatment], lowGlucose: Double, highGlucose: Double) -> [AdjustmentSuggestion] {
+    private func generateRealSuggestions(glucoseEntries: [NightscoutGlucoseEntry], treatments: [NightscoutTreatment], lowGlucose: Double, highGlucose: Double, isClosedLoop: Bool = false) -> [AdjustmentSuggestion] {
         var rawSuggestions: [AdjustmentSuggestion] = []
         
         // Analyze glucose patterns by time of day
@@ -640,33 +717,107 @@ struct TherapyAdjustmentView: View {
                 continue // Skip time slots with insufficient data (lower threshold for 2-hour windows)
             }
             
-            if analysis.averageGlucose > highGlucose + 15 {
+            // For closed loop systems, be much more conservative with basal suggestions
+            // Only suggest if pattern is very clear and persistent
+            let basalThreshold = isClosedLoop ? 25.0 : 15.0 // Higher threshold for closed loop
+            let basalMinDataPoints = isClosedLoop ? 10 : 3 // More data required for closed loop
+            
+            if analysis.averageGlucose > highGlucose + basalThreshold && analysis.dataPoints >= basalMinDataPoints {
                 // High glucose pattern - suggest small basal increase
                 let adjustmentPercent = min(5, max(2, Int((analysis.averageGlucose - highGlucose) / 20)))
+                let pointsAboveTarget = Int(analysis.averageGlucose - highGlucose)
+                
+                // Determine priority based on severity
+                let priority: Priority
+                if pointsAboveTarget > 50 {
+                    priority = .high // Very high BG
+                } else if pointsAboveTarget > 30 {
+                    priority = .medium // Moderately high BG
+                } else {
+                    priority = .low // Slightly high BG
+                }
+                
+                var reasoning = "\(priorityText(priority))\n\n"
+                reasoning += "📊 PATTERN ANALYSIS:\n"
+                reasoning += "   • Average BG: \(Int(analysis.averageGlucose)) mg/dL\n"
+                reasoning += "   • Target: \(Int(highGlucose)) mg/dL\n"
+                reasoning += "   • Difference: +\(pointsAboveTarget) mg/dL\n"
+                reasoning += "   • Data points: \(analysis.dataPoints) readings\n"
+                if isClosedLoop {
+                    reasoning += "   • Closed loop active: Only baseline profile adjustment suggested\n"
+                }
+                reasoning += "\n💉 RECOMMENDATION:\n"
+                reasoning += "   Increase basal rate by \(adjustmentPercent)% (approximately 0.02-0.05 U/hr).\n\n"
+                reasoning += "📝 WHY THIS WORKS:\n"
+                if isClosedLoop {
+                    reasoning += "   Your closed loop system is making temporary adjustments, but the persistent pattern suggests your baseline basal profile needs adjustment. This will help the algorithm work more effectively.\n\n"
+                } else {
+                    reasoning += "   Basal insulin provides background coverage. Since BG is consistently elevated during this time, increasing basal helps maintain stable levels without food.\n\n"
+                }
+                reasoning += "⚠️ IMPLEMENTATION:\n"
+                reasoning += "   Make one small change at a time. Wait 2-3 days to observe the effect before making another adjustment. Always consult your healthcare provider."
+                
                 rawSuggestions.append(AdjustmentSuggestion(
                     id: UUID(),
                     type: .basalRate,
                     timeSlot: timeSlot,
                     currentValue: 1.0, // Default - would need to get from user profile
                     suggestedValue: 1.0 * (1.0 + Double(adjustmentPercent) / 100.0),
-                    priority: .medium,
-                    reasoning: "Average glucose \(Int(analysis.averageGlucose)) mg/dL is \(Int(analysis.averageGlucose - highGlucose)) points above target. Consider a small basal rate increase of \(adjustmentPercent)% (0.02-0.05 U/hr) during this period."
+                    priority: priority,
+                    reasoning: reasoning
                 ))
-            } else if analysis.averageGlucose < lowGlucose - 8 {
+            } else if analysis.averageGlucose < lowGlucose - (isClosedLoop ? 15.0 : 8.0) && analysis.dataPoints >= basalMinDataPoints {
                 // Low glucose pattern - suggest small basal decrease
                 let adjustmentPercent = min(5, max(2, Int((lowGlucose - analysis.averageGlucose) / 20)))
+                let pointsBelowTarget = Int(lowGlucose - analysis.averageGlucose)
+                
+                // HIGH priority for low BG - safety critical!
+                let priority: Priority = pointsBelowTarget > 10 ? .high : .medium
+                
+                var reasoning = "\(priorityText(priority))\n\n"
+                reasoning += "📊 PATTERN ANALYSIS:\n"
+                reasoning += "   • Average BG: \(Int(analysis.averageGlucose)) mg/dL\n"
+                reasoning += "   • Target: \(Int(lowGlucose)) mg/dL\n"
+                reasoning += "   • Difference: -\(pointsBelowTarget) mg/dL\n"
+                reasoning += "   • Data points: \(analysis.dataPoints) readings\n"
+                if isClosedLoop {
+                    reasoning += "   • Closed loop active: Baseline profile adjustment needed\n"
+                }
+                reasoning += "\n💉 RECOMMENDATION:\n"
+                reasoning += "   Decrease basal rate by \(adjustmentPercent)% (approximately 0.02-0.05 U/hr).\n\n"
+                reasoning += "📝 WHY THIS WORKS:\n"
+                if isClosedLoop {
+                    reasoning += "   Your closed loop system is suspending or reducing insulin, but the persistent low pattern suggests your baseline basal profile is too aggressive. Lowering it will help prevent lows and reduce algorithm interventions.\n\n"
+                } else {
+                    reasoning += "   Your basal insulin may be too high during this period, causing BG to drift low. Reducing basal prevents unnecessary lows while maintaining coverage.\n\n"
+                }
+                reasoning += "⚠️ IMPLEMENTATION:\n"
+                reasoning += "   Make one small change at a time. Wait 2-3 days to observe the effect before making another adjustment. Always consult your healthcare provider."
+                
                 rawSuggestions.append(AdjustmentSuggestion(
                     id: UUID(),
                     type: .basalRate,
                     timeSlot: timeSlot,
                     currentValue: 1.0,
                     suggestedValue: 1.0 * (1.0 - Double(adjustmentPercent) / 100.0),
-                    priority: .medium,
-                    reasoning: "Average glucose \(Int(analysis.averageGlucose)) mg/dL is \(Int(lowGlucose - analysis.averageGlucose)) points below target. Consider a small basal rate decrease of \(adjustmentPercent)% (0.02-0.05 U/hr) during this period."
+                    priority: priority,
+                    reasoning: reasoning
                 ))
             }
             
             if analysis.timeInRange < 60 && analysis.dataPoints >= 6 {
+                var reasoning = "\(priorityText(.low))\n\n"
+                reasoning += "📊 PATTERN ANALYSIS:\n"
+                reasoning += "   • Time in range: \(Int(analysis.timeInRange))%\n"
+                reasoning += "   • Target: 70%+\n"
+                reasoning += "   • Data points: \(analysis.dataPoints) readings\n\n"
+                reasoning += "💉 RECOMMENDATION:\n"
+                reasoning += "   Adjust correction factor by 2-3 points (from 1:50 to 1:47-48).\n\n"
+                reasoning += "📝 WHY THIS WORKS:\n"
+                reasoning += "   Correction factor (ISF) determines how much 1 unit of insulin lowers BG. If you're spending too much time out of range during this period, your correction doses may not be strong enough.\n\n"
+                reasoning += "⚠️ IMPLEMENTATION:\n"
+                reasoning += "   Test this adjustment carefully with correction doses during this time window. Monitor for 2-3 days before making further changes."
+                
                 rawSuggestions.append(AdjustmentSuggestion(
                     id: UUID(),
                     type: .correctionFactor,
@@ -674,7 +825,7 @@ struct TherapyAdjustmentView: View {
                     currentValue: 50.0, // Default - would need to get from user profile
                     suggestedValue: 48.0, // Small 4% decrease
                     priority: .low,
-                    reasoning: "Time in range is \(Int(analysis.timeInRange))% during this 2-hour period (\(analysis.dataPoints) readings). Consider a small correction factor adjustment of 2-3 points for better control."
+                    reasoning: reasoning
                 ))
             }
         }
@@ -682,42 +833,142 @@ struct TherapyAdjustmentView: View {
         // Combine consecutive time slots with same adjustment
         var suggestions = combineConsecutiveSuggestions(rawSuggestions)
         
-        // Generate suggestions based on treatment patterns with insulin timing consideration
-        if treatmentAnalysis.frequentCorrections {
-            suggestions.append(AdjustmentSuggestion(
-                id: UUID(),
-                type: .correctionFactor,
-                timeSlot: "All Day",
-                currentValue: 50.0,
-                suggestedValue: 47.0, // Small 6% decrease
-                priority: .low,
-                reasoning: "Frequent correction doses detected (\(treatmentAnalysis.correctionCount) in \(selectedTimeRange) days). Consider a small correction factor decrease of 2-3 points. Remember insulin takes ~20 minutes to start working."
-            ))
+        // Analyze correction effectiveness by time of day
+        let correctionAnalysis = analyzeCorrectionEffectiveness(glucoseEntries: glucoseEntries, treatments: treatments)
+        
+        // Generate time-specific ISF suggestions based on actual correction effectiveness
+        for (timeSlot, effectiveness) in correctionAnalysis {
+            // Need at least 3 corrections in a time slot to make a suggestion
+            guard effectiveness.correctionCount >= 3 else { continue }
+            
+            let avgActualISF = effectiveness.avgActualISF
+            let assumedISF = 50.0 // Default assumption - ideally get from profile
+            
+            // If actual ISF is significantly different from assumed, suggest adjustment
+            let difference = abs(avgActualISF - assumedISF)
+            let percentDiff = (difference / assumedISF) * 100
+            
+            if percentDiff > 10 { // More than 10% difference
+                let suggestedISF = avgActualISF * 0.95 // Be conservative, adjust by 95% of measured
+                let adjustmentPercent = Int(abs((suggestedISF - assumedISF) / assumedISF * 100))
+                
+                // Assign priority based on severity
+                let priority: Priority
+                if percentDiff > 30 {
+                    priority = .high // Large discrepancy
+                } else if percentDiff > 20 {
+                    priority = .medium // Moderate discrepancy
+                } else {
+                    priority = .low // Small discrepancy
+                }
+                
+                var reasoning = "\(priorityText(priority))\n\n"
+                reasoning += "📊 PATTERN ANALYSIS:\n"
+                reasoning += "   • Corrections in this time: \(effectiveness.correctionCount)\n"
+                reasoning += "   • Measured ISF: 1:\(Int(avgActualISF)) mg/dL per unit\n"
+                reasoning += "   • Current setting: 1:\(Int(assumedISF)) mg/dL per unit\n"
+                reasoning += "   • Difference: \(Int(percentDiff))%\n\n"
+                reasoning += "💉 RECOMMENDATION:\n"
+                if avgActualISF < assumedISF {
+                    reasoning += "   Your insulin is MORE effective during this time.\n"
+                    reasoning += "   Adjust ISF from 1:\(Int(assumedISF)) to 1:\(Int(suggestedISF)) (stronger).\n\n"
+                } else {
+                    reasoning += "   Your insulin is LESS effective during this time.\n"
+                    reasoning += "   Adjust ISF from 1:\(Int(assumedISF)) to 1:\(Int(suggestedISF)) (weaker).\n\n"
+                }
+                reasoning += "📝 WHY THIS WORKS:\n"
+                reasoning += "   Based on \(effectiveness.correctionCount) actual corrections, your insulin sensitivity varies by time of day. Dawn phenomenon, exercise, stress, and hormones all affect insulin action.\n\n"
+                reasoning += "⏱️ TIMING TIP:\n"
+                reasoning += "   Insulin peaks 60-90 minutes after dosing. We measured BG change 2-3 hours after corrections to get accurate ISF.\n\n"
+                reasoning += "⚠️ IMPLEMENTATION:\n"
+                reasoning += "   Test this carefully over 3-4 days. Monitor corrections during this time window before making further changes."
+                
+                rawSuggestions.append(AdjustmentSuggestion(
+                    id: UUID(),
+                    type: .correctionFactor,
+                    timeSlot: timeSlot,
+                    currentValue: assumedISF,
+                    suggestedValue: suggestedISF,
+                    priority: priority,
+                    reasoning: reasoning
+                ))
+            }
         }
         
+        // Re-combine with new correction factor suggestions
+        suggestions = combineConsecutiveSuggestions(rawSuggestions)
+        
         if treatmentAnalysis.frequentCarbs {
+            let carbsPerDay = Double(treatmentAnalysis.carbCount) / Double(selectedTimeRange)
+            
+            // Assign priority based on frequency
+            let priority: Priority
+            if carbsPerDay > 6 {
+                priority = .high // Very frequent carb treatments
+            } else if carbsPerDay > 5 {
+                priority = .medium // Moderately frequent
+            } else {
+                priority = .low // Less frequent
+            }
+            
+            var reasoning = "\(priorityText(priority))\n\n"
+            reasoning += "📊 PATTERN ANALYSIS:\n"
+            reasoning += "   • Carb treatments: \(treatmentAnalysis.carbCount) in \(selectedTimeRange) days\n"
+            reasoning += "   • Average: \(String(format: "%.1f", carbsPerDay)) per day\n\n"
+            reasoning += "💉 RECOMMENDATION:\n"
+            reasoning += "   Adjust carb ratio by 1-2 points (from 1:15 to 1:13-14).\n\n"
+            reasoning += "📝 WHY THIS WORKS:\n"
+            reasoning += "   Your carb ratio determines how much insulin covers your food. If you're frequently treating high BG after meals, your carb ratio may need strengthening.\n\n"
+            reasoning += "⏱️ TIMING TIP:\n"
+            reasoning += "   Pre-bolus 15-20 minutes before meals. This gives insulin time to start working when carbs hit your bloodstream, preventing post-meal spikes.\n\n"
+            reasoning += "⚠️ IMPLEMENTATION:\n"
+            reasoning += "   Change one meal at a time (breakfast, lunch, or dinner). Wait 3-4 days to see the pattern before adjusting other meals."
+            
             suggestions.append(AdjustmentSuggestion(
                 id: UUID(),
                 type: .carbRatio,
                 timeSlot: "Meal Times",
                 currentValue: 15.0,
                 suggestedValue: 14.0, // Small 7% decrease
-                priority: .low,
-                reasoning: "Frequent carb treatments detected (\(treatmentAnalysis.carbCount) in \(selectedTimeRange) days). Consider a small carb ratio adjustment of 1-2 points. Pre-bolus 15-20 minutes before meals for better control."
+                priority: priority,
+                reasoning: reasoning
             ))
         }
         
         // Add insulin timing-specific suggestions
         let timingAnalysis = analyzeInsulinTiming(glucoseEntries: glucoseEntries, treatments: treatments)
         if timingAnalysis.needsPreBolus {
+            // Assign priority based on spike frequency
+            let priority: Priority
+            if timingAnalysis.spikeRate > 0.6 {
+                priority = .medium // Very frequent spikes
+            } else {
+                priority = .low // Occasional spikes
+            }
+            
+            var reasoning = "\(priorityText(priority))\n\n"
+            reasoning += "📊 PATTERN ANALYSIS:\n"
+            reasoning += "   • Post-meal spikes: \(timingAnalysis.postMealSpikes) out of \(timingAnalysis.totalMeals) meals\n"
+            reasoning += "   • Spike rate: \(Int(timingAnalysis.spikeRate * 100))%\n\n"
+            reasoning += "⏱️ RECOMMENDATION:\n"
+            reasoning += "   Pre-bolus 15-20 minutes before meals.\n\n"
+            reasoning += "📝 WHY THIS WORKS:\n"
+            reasoning += "   Insulin takes time to start working:\n"
+            reasoning += "   • Onset: ~15-20 minutes\n"
+            reasoning += "   • Peak effect: 60-90 minutes\n"
+            reasoning += "   • Duration: 3-4 hours\n\n"
+            reasoning += "   By dosing before eating, insulin starts working when carbs begin digesting, preventing the initial spike.\n\n"
+            reasoning += "⚠️ IMPLEMENTATION:\n"
+            reasoning += "   Start with 15 minutes for familiar meals. Adjust timing based on results. Be careful with high-protein or high-fat meals that digest slower."
+            
             suggestions.append(AdjustmentSuggestion(
                 id: UUID(),
                 type: .targetGlucose,
                 timeSlot: "Meal Times",
                 currentValue: 100.0,
                 suggestedValue: 100.0,
-                priority: .low,
-                reasoning: "Post-meal glucose spikes detected. Consider pre-bolusing 15-20 minutes before meals to account for insulin onset time."
+                priority: priority,
+                reasoning: reasoning
             ))
         }
         
@@ -815,6 +1066,70 @@ struct TherapyAdjustmentView: View {
             frequentCarbs: carbCount > selectedTimeRange * 4, // More than 4 per day (more conservative)
             frequentTempBasals: tempBasalCount > selectedTimeRange * 2 // More than 2 per day (more conservative)
         )
+    }
+    
+    private func analyzeCorrectionEffectiveness(glucoseEntries: [NightscoutGlucoseEntry], treatments: [NightscoutTreatment]) -> [String: CorrectionEffectiveness] {
+        var timeSlotCorrections: [String: CorrectionEffectiveness] = [:]
+        
+        // Find correction boluses
+        let corrections = treatments.filter { $0.eventType == "Correction Bolus" || ($0.eventType == "Bolus" && ($0.carbs ?? 0) == 0) }
+        
+        for correction in corrections {
+            guard let correctionMills = correction.mills,
+                  let insulinAmount = correction.insulin,
+                  insulinAmount > 0 else { continue }
+            
+            let correctionTime = Date(timeIntervalSince1970: Double(correctionMills) / 1000)
+            let calendar = Calendar.current
+            let hour = calendar.component(.hour, from: correctionTime)
+            let timeSlot = getTimeSlot(for: hour)
+            
+            // Find BG before correction (within 10 minutes before)
+            let beforeStart = correctionTime.addingTimeInterval(-10 * 60)
+            let beforeBG = glucoseEntries.filter { entry in
+                let entryTime = Date(timeIntervalSince1970: Double(entry.date) / 1000)
+                return entryTime >= beforeStart && entryTime <= correctionTime
+            }.sorted { $0.date > $1.date }.first
+            
+            // Find BG after correction (2-3 hours after, to see effect)
+            let afterStart = correctionTime.addingTimeInterval(120 * 60) // 2 hours
+            let afterEnd = correctionTime.addingTimeInterval(180 * 60) // 3 hours
+            let afterBG = glucoseEntries.filter { entry in
+                let entryTime = Date(timeIntervalSince1970: Double(entry.date) / 1000)
+                return entryTime >= afterStart && entryTime <= afterEnd
+            }.sorted { $0.date < $1.date }.first
+            
+            if let before = beforeBG, let after = afterBG {
+                let bgDrop = Double(before.sgv - after.sgv)
+                let actualISF = bgDrop / insulinAmount
+                
+                if timeSlotCorrections[timeSlot] == nil {
+                    timeSlotCorrections[timeSlot] = CorrectionEffectiveness(
+                        timeSlot: timeSlot,
+                        correctionCount: 0,
+                        totalInsulin: 0,
+                        avgBGDrop: 0,
+                        avgActualISF: 0,
+                        isfValues: []
+                    )
+                }
+                
+                timeSlotCorrections[timeSlot]!.correctionCount += 1
+                timeSlotCorrections[timeSlot]!.totalInsulin += insulinAmount
+                timeSlotCorrections[timeSlot]!.isfValues.append(actualISF)
+            }
+        }
+        
+        // Calculate averages
+        for (timeSlot, _) in timeSlotCorrections {
+            let isfValues = timeSlotCorrections[timeSlot]!.isfValues
+            if !isfValues.isEmpty {
+                let avgISF = isfValues.reduce(0, +) / Double(isfValues.count)
+                timeSlotCorrections[timeSlot]!.avgActualISF = avgISF
+            }
+        }
+        
+        return timeSlotCorrections
     }
     
     private func analyzeInsulinTiming(glucoseEntries: [NightscoutGlucoseEntry], treatments: [NightscoutTreatment]) -> InsulinTimingAnalysis {
@@ -957,6 +1272,17 @@ struct TherapyAdjustmentView: View {
         let settings = nightscoutService.getSettings()
         return !settings.url.isEmpty && !settings.apiToken.isEmpty
     }
+    
+    private func priorityText(_ priority: Priority) -> String {
+        switch priority {
+        case .high:
+            return "🔴 HIGH PRIORITY - Critical adjustment needed for safety and control."
+        case .medium:
+            return "🟠 MEDIUM PRIORITY - Important adjustment that should be addressed soon."
+        case .low:
+            return "🟢 LOW PRIORITY - Optional improvement for better control."
+        }
+    }
 }
 
 struct MetricCard: View {
@@ -1071,12 +1397,16 @@ enum Priority: String, CaseIterable {
 struct AnalysisMetrics {
     let averageGlucose: Int
     let timeInRange: Int
+    let timeBelowRange: Int
+    let coefficientOfVariation: Double
     let dataPoints: Int
     let analysisPeriod: String
     
-    init(averageGlucose: Int = 0, timeInRange: Int = 0, dataPoints: Int = 0, analysisPeriod: String = "") {
+    init(averageGlucose: Int = 0, timeInRange: Int = 0, timeBelowRange: Int = 0, coefficientOfVariation: Double = 0, dataPoints: Int = 0, analysisPeriod: String = "") {
         self.averageGlucose = averageGlucose
         self.timeInRange = timeInRange
+        self.timeBelowRange = timeBelowRange
+        self.coefficientOfVariation = coefficientOfVariation
         self.dataPoints = dataPoints
         self.analysisPeriod = analysisPeriod
     }
@@ -1095,6 +1425,15 @@ struct TreatmentAnalysis {
     let frequentCorrections: Bool
     let frequentCarbs: Bool
     let frequentTempBasals: Bool
+}
+
+struct CorrectionEffectiveness {
+    let timeSlot: String
+    var correctionCount: Int
+    var totalInsulin: Double
+    var avgBGDrop: Double
+    var avgActualISF: Double
+    var isfValues: [Double]
 }
 
 struct InsulinTimingAnalysis {

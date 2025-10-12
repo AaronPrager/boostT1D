@@ -222,26 +222,26 @@ struct NightscoutOnboardingView: View {
                         .cornerRadius(8)
                     }
                     
-                    // Complete Button
+                    // Next Button
                     Button(action: validateAndComplete) {
                         HStack {
-                            Text("Get Started")
+                            Text("Next")
                                 .font(.subheadline)
                                 .fontWeight(.semibold)
                             
-                            Image(systemName: "checkmark")
+                            Image(systemName: "arrow.right")
                                 .font(.subheadline)
                         }
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
-                        .background(canProceed ? Color.green : Color.gray)
+                        .background(canProceed ? Color.blue : Color.gray)
                         .cornerRadius(8)
                     }
                     .disabled(!canProceed)
                 }
                 
-                Text("Step 4 of 4")
+                Text("Step 4 of 5")
                     .font(.caption2)
                     .foregroundColor(.secondary)
             }

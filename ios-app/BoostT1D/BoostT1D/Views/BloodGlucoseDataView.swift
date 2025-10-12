@@ -556,7 +556,7 @@ struct TabButton: View {
     }
 }
 
-// MARK: - Raw Data View
+// Raw Data View
 struct RawDataView: View {
     let glucoseEntries: [NightscoutGlucoseEntry]
     

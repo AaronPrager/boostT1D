@@ -14,6 +14,7 @@ class APIService: ObservableObject {
                                    lowGlucose: Double,
                                    highGlucose: Double,
                                    timeRangeDays: Int,
+                                   isClosedLoop: Bool = false,
                                    completion: @escaping (Result<AITherapySuggestions, Error>) -> Void) {
         
         // Prepare glucose data summary
@@ -21,6 +22,17 @@ class APIService: ObservableObject {
         
         // Prepare treatment summary
         let treatmentSummary = prepareTreatmentSummary(treatments: treatments)
+        
+        let closedLoopNote = isClosedLoop ? """
+        
+        ⚠️ CLOSED LOOP SYSTEM ACTIVE (Loop/OpenAPS/AAPS):
+        - This patient uses an automated insulin delivery system
+        - IGNORE frequent basal rate changes - these are algorithm-driven micro-adjustments
+        - Focus ONLY on baseline basal profile adjustments that persist across multiple days
+        - Do NOT suggest basal changes for short-term patterns (< 3 days)
+        - Prioritize carb ratio and correction factor suggestions over basal adjustments
+        - Consider that the algorithm is already making real-time adjustments
+        """ : ""
         
         let prompt = """
         You are a diabetes management AI expert specializing in insulin therapy optimization. Analyze this patient's glucose data and provide VERY CONSERVATIVE therapy adjustment suggestions.
@@ -32,7 +44,7 @@ class APIService: ObservableObject {
         \(treatmentSummary)
         
         TARGET RANGE: \(Int(lowGlucose))-\(Int(highGlucose)) mg/dL
-        ANALYSIS PERIOD: \(timeRangeDays) days
+        ANALYSIS PERIOD: \(timeRangeDays) days\(closedLoopNote)
         
         CRITICAL REQUIREMENTS:
         1. Insulin onset time is 20 minutes - consider this for timing recommendations

@@ -32,7 +32,7 @@ struct OnboardingView: View {
     @State private var lowGlucose = 70.0
     @State private var highGlucose = 180.0
     
-    private let totalSteps = 4
+    private let totalSteps = 5
     
     var body: some View {
         NavigationView {
@@ -87,10 +87,17 @@ struct OnboardingView: View {
                         connectionAlertMessage: $connectionAlertMessage,
                         lowGlucose: $lowGlucose,
                         highGlucose: $highGlucose,
-                        onComplete: completeOnboarding,
+                        onComplete: { currentStep = 4 },
                         onBack: { currentStep = 2 }
                     )
                     .tag(3)
+                    
+                    // Step 5: Terms of Use
+                    TermsOfUseOnboardingView(
+                        onComplete: completeOnboarding,
+                        onBack: { currentStep = 3 }
+                    )
+                    .tag(4)
                 }
                 .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
                 .animation(.easeInOut, value: currentStep)

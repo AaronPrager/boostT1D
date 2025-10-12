@@ -45,3 +45,47 @@ next-env.d.ts
 !/public/uploads/photos/.gitkeep
 
 /src/generated/prisma
+
+# iOS Development - Sensitive Files Only
+ios-app/BoostT1D/BoostT1D/Configuration/Config.swift
+
+# API Keys and Secrets
+**/Config.swift
+**/config.swift
+**/secrets.swift
+**/Secrets.swift
+**/APIKeys.swift
+**/api-keys.swift
+
+# Development Team and Signing
+ios-app/BoostT1D/BoostT1D.xcodeproj/project.xcworkspace/xcuserdata/
+ios-app/BoostT1D/BoostT1D.xcodeproj/xcuserdata/
+
+# Xcode
+*.xcodeproj/xcuserdata/
+*.xcodeproj/project.xcworkspace/xcuserdata/
+*.xcodeproj/project.xcworkspace/
+*.xcworkspace/xcuserdata/
+*.xcworkspace/
+DerivedData/
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# CocoaPods
+Pods/
+*.podspec
+Podfile.lock
+
+# Carthage
+Carthage/Build/
+
+# fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/**/*.png
+fastlane/test_output
+
+# Code Injection
+iOSInjectionProject/

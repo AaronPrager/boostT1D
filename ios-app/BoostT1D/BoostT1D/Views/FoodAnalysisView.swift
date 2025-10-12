@@ -16,7 +16,7 @@ struct FoodAnalysisView: View {
     @State private var showingCalculationDetails = false
     
     var body: some View {
-        ScrollView {
+            ScrollView {
                 VStack(spacing: 24) {
                     // Header
                     VStack(spacing: 16) {
@@ -55,16 +55,16 @@ struct FoodAnalysisView: View {
                                 )
                         }
                         
-                        Button(action: { showingPhotoActionSheet = true }) {
-                            HStack {
+                            Button(action: { showingPhotoActionSheet = true }) {
+                                HStack {
                                 Image(systemName: "camera.fill")
                                 Text("Select Photo")
                             }
                             .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding()
+                                .frame(maxWidth: .infinity)
+                                .padding()
                             .background(Color.green)
-                            .cornerRadius(8)
+                                .cornerRadius(8)
                         }
                     }
                     .padding(.horizontal, 20)
@@ -466,6 +466,40 @@ struct FoodAnalysisView: View {
     }
     
     @ViewBuilder
+    private func calculationStepView(icon: String, step: String, title: String, formula: String, explanation: String, isResult: Bool = false) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                Text(icon)
+                    .font(.title3)
+                
+                Text("Step \(step):")
+                    .font(.caption)
+                    .fontWeight(.bold)
+                    .foregroundColor(isResult ? .orange : .primary)
+                
+                Text(title)
+                    .font(.caption)
+                    .fontWeight(isResult ? .bold : .semibold)
+                    .foregroundColor(isResult ? .orange : .primary)
+            }
+            
+            // Formula
+            Text(formula)
+                .font(.system(.body, design: .monospaced))
+                .fontWeight(isResult ? .bold : .medium)
+                .foregroundColor(isResult ? .orange : .primary)
+                .padding(.leading, 32)
+            
+            // Explanation
+            Text(explanation)
+                .font(.caption)
+                .foregroundColor(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.leading, 32)
+        }
+    }
+    
+    @ViewBuilder
     private func insulinRecommendationView(_ insulin: InsulinRecommendation) -> some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
@@ -641,14 +675,139 @@ struct FoodAnalysisView: View {
             
             // Detailed Calculation
             if showingCalculationDetails {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Detailed Calculation")
-                        .font(.subheadline)
-                        .fontWeight(.medium)
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("How Is This Calculated?")
+                        .font(.headline)
+                        .fontWeight(.bold)
                     
-                    Text(insulin.calculationNote)
-                        .font(.system(.caption, design: .monospaced))
-                        .foregroundColor(.secondary)
+                    // Step-by-step explanation
+                    VStack(alignment: .leading, spacing: 16) {
+                        // Step 1: Carb Coverage
+                        calculationStepView(
+                            icon: "🍎",
+                            step: "1",
+                            title: "Carb Coverage",
+                            formula: "\(String(format: "%.1f", analysisResult?.carbsGrams ?? 0))g ÷ \(String(format: "%.1f", insulin.carbRatio)) = \(String(format: "%.1f", insulin.carbBolusUnits))u",
+                            explanation: "Your carb ratio is 1:\(String(format: "%.0f", insulin.carbRatio)), meaning 1 unit of insulin covers \(String(format: "%.0f", insulin.carbRatio))g of carbs. The estimated carbs divided by your ratio gives the insulin needed."
+                        )
+                        
+                        // Step 2: Correction (if applicable)
+                        if insulin.correctionUnits > 0, let glucose = insulin.currentGlucose, let target = insulin.targetGlucose, let isf = insulin.insulinSensitivity {
+                            Divider()
+                            calculationStepView(
+                                icon: "📊",
+                                step: "2",
+                                title: "Correction Dose",
+                                formula: "(\(glucose) - \(target)) ÷ \(String(format: "%.0f", isf)) = \(String(format: "%.1f", insulin.correctionUnits))u",
+                                explanation: "Your glucose is \(glucose) mg/dL, which is \(glucose - target) above your target of \(target). Your correction factor is 1:\(String(format: "%.0f", isf)), meaning 1 unit lowers glucose by \(String(format: "%.0f", isf)) mg/dL."
+                            )
+                        }
+                        
+                        // Step 3: Total Needed
+                        Divider()
+                        calculationStepView(
+                            icon: "🎯",
+                            step: insulin.correctionUnits > 0 ? "3" : "2",
+                            title: "Total Insulin Needed",
+                            formula: insulin.correctionUnits > 0 ? 
+                                "\(String(format: "%.1f", insulin.carbBolusUnits))u + \(String(format: "%.1f", insulin.correctionUnits))u = \(String(format: "%.1f", insulin.totalUnits))u" :
+                                "\(String(format: "%.1f", insulin.totalUnits))u",
+                            explanation: insulin.correctionUnits > 0 ? 
+                                "Add carb coverage and correction doses together." :
+                                "Only carb coverage needed (glucose is in range)."
+                        )
+                        
+                        // Step 4: IOB Adjustment
+                        if insulin.currentIOB > 0 {
+                            Divider()
+                            let stepNum = insulin.correctionUnits > 0 ? "4" : "3"
+                            
+                            if insulin.currentCOB > 0 {
+                                calculationStepView(
+                                    icon: "🍞",
+                                    step: stepNum + "a",
+                                    title: "Existing Carbs (COB)",
+                                    formula: "\(String(format: "%.1f", insulin.currentCOB))g ÷ \(String(format: "%.1f", insulin.carbRatio)) = \(String(format: "%.1f", insulin.currentCOB / insulin.carbRatio))u needed",
+                                    explanation: "You have \(String(format: "%.1f", insulin.currentCOB))g of carbs still digesting. They need \(String(format: "%.1f", insulin.currentCOB / insulin.carbRatio))u of insulin to cover."
+                                )
+                                
+                                let availableIOB = max(0, insulin.currentIOB - (insulin.currentCOB / insulin.carbRatio))
+                                calculationStepView(
+                                    icon: "💉",
+                                    step: stepNum + "b",
+                                    title: "Available IOB",
+                                    formula: "\(String(format: "%.1f", insulin.currentIOB))u - \(String(format: "%.1f", insulin.currentCOB / insulin.carbRatio))u = \(String(format: "%.1f", availableIOB))u",
+                                    explanation: "Total IOB minus the insulin already working on existing carbs equals insulin available to cover this meal."
+                                )
+                            } else {
+                                calculationStepView(
+                                    icon: "💉",
+                                    step: stepNum,
+                                    title: "Active Insulin (IOB)",
+                                    formula: "\(String(format: "%.1f", insulin.currentIOB))u active",
+                                    explanation: "You have \(String(format: "%.1f", insulin.currentIOB))u of insulin still working in your system from previous doses."
+                                )
+                            }
+                        }
+                        
+                        // Step 5: Safe Bolus
+                        Divider()
+                        let finalStep = insulin.correctionUnits > 0 ? (insulin.currentIOB > 0 ? "5" : "4") : (insulin.currentIOB > 0 ? "4" : "3")
+                        let iobSubtracted = min(insulin.currentIOB, insulin.totalUnits)
+                        if insulin.currentCOB > 0 {
+                            let availableIOB = max(0, insulin.currentIOB - (insulin.currentCOB / insulin.carbRatio))
+                            calculationStepView(
+                                icon: "✅",
+                                step: finalStep,
+                                title: "Recommended Bolus",
+                                formula: "\(String(format: "%.1f", insulin.totalUnits))u - \(String(format: "%.1f", availableIOB))u = \(String(format: "%.1f", insulin.safeBolus))u",
+                                explanation: "Subtract available IOB from total needed. This prevents stacking insulin and reduces hypoglycemia risk.",
+                                isResult: true
+                            )
+                        } else if insulin.currentIOB > 0 {
+                            calculationStepView(
+                                icon: "✅",
+                                step: finalStep,
+                                title: "Recommended Bolus",
+                                formula: "\(String(format: "%.1f", insulin.totalUnits))u - \(String(format: "%.1f", iobSubtracted))u = \(String(format: "%.1f", insulin.safeBolus))u",
+                                explanation: "Subtract active IOB from total needed. This prevents stacking insulin and reduces hypoglycemia risk.",
+                                isResult: true
+                            )
+                        } else {
+                            calculationStepView(
+                                icon: "✅",
+                                step: finalStep,
+                                title: "Recommended Bolus",
+                                formula: "\(String(format: "%.1f", insulin.safeBolus))u",
+                                explanation: "No active IOB, so the full amount is recommended.",
+                                isResult: true
+                            )
+                        }
+                    }
+                    
+                    // Important Note
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack(alignment: .top, spacing: 8) {
+                            Image(systemName: "info.circle.fill")
+                                .foregroundColor(.blue)
+                                .font(.system(size: 16))
+                            
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Important")
+                                    .font(.caption)
+                                    .fontWeight(.bold)
+                                    .foregroundColor(.blue)
+                                
+                                Text("This is a suggestion based on your profile settings and current data. Always consider factors like exercise, stress, illness, and meal timing. Consult your healthcare provider for personalized advice.")
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                        }
+                    }
+                    .padding(12)
+                    .background(Color.blue.opacity(0.1))
+                    .cornerRadius(8)
                 }
                 .padding()
                 .background(Color(.systemGray6))
