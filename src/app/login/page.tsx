@@ -38,6 +38,8 @@ function LoginForm() {
     setSuccessMessage('');
     
     try {
+      console.log('Attempting login with:', data.email);
+      
       // Use NextAuth without redirect, handle manually
       const result = await signIn('credentials', {
         email: data.email,
@@ -48,17 +50,42 @@ function LoginForm() {
       console.log('SignIn result:', result);
       
       if (result?.error) {
+        console.error('SignIn error:', result.error);
         setError('Invalid email or password. Please try again.');
       } else if (result?.ok) {
-        console.log('Login successful, redirecting to welcome page');
-        // Manual redirect to welcome page
-        window.location.href = '/welcome';
+        console.log('Login successful, waiting for session to establish...');
+        
+        // Wait for session to be established
+        let attempts = 0;
+        const maxAttempts = 10;
+        
+        while (attempts < maxAttempts) {
+          const session = await getSession();
+          if (session) {
+            console.log('Session established, redirecting to dashboard');
+            router.push('/dashboard');
+            return;
+          }
+          
+          // Wait 200ms before next attempt
+          await new Promise(resolve => setTimeout(resolve, 200));
+          attempts++;
+        }
+        
+        // If we get here, session didn't establish properly
+        console.warn('Session not established after login, redirecting anyway');
+        router.push('/dashboard');
       } else {
+        console.error('SignIn returned unexpected result:', result);
         setError('Something went wrong. Please try again.');
       }
     } catch (error) {
-      console.error('Login error:', error);
-      setError('Something went wrong. Please try again.');
+      console.error('Login exception:', error);
+      if (error instanceof Error) {
+        setError(`Login failed: ${error.message}`);
+      } else {
+        setError('Network error. Please check your connection and try again.');
+      }
     }
   };
 

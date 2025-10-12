@@ -73,12 +73,13 @@ function transformUserProfile(user: Record<string, unknown>, includeContactInfo 
     name: getStringValue(user, 'name') || 'Anonymous User',
     dateOfBirth: getStringValue(profileData, 'dateOfBirth'),
     diagnosisAge: getNumberValue(profileData, 'diagnosisAge'),
-    favoriteActivities: getStringValue(profileData, 'favoriteActivities'),
-    about: getStringValue(profileData, 'about'),
-    photo: getStringValue(profileData, 'photo'),
+    // Check both profile.data.favoriteActivities and profile.favoriteActivities
+    favoriteActivities: getStringValue(profileData, 'favoriteActivities') || getStringValue(userProfile, 'favoriteActivities'),
+    about: getStringValue(profileData, 'about') || getStringValue(userProfile, 'bio'),
+    photo: getStringValue(profileData, 'photo') || getStringValue(userProfile, 'photo'),
     address: {
-      country: getStringValue(getObjectValue(profileData, 'address'), 'country'),
-      state: getStringValue(getObjectValue(profileData, 'address'), 'state'),
+      country: getStringValue(getObjectValue(profileData, 'address'), 'country') || getStringValue(user, 'country'),
+      state: getStringValue(getObjectValue(profileData, 'address'), 'state') || getStringValue(user, 'state'),
       city: getStringValue(getObjectValue(profileData, 'address'), 'city'),
     }
   };
@@ -86,7 +87,7 @@ function transformUserProfile(user: Record<string, unknown>, includeContactInfo 
   // Only include contact information for approved connections
   if (includeContactInfo) {
     profile.email = getStringValue(user, 'email');
-    profile.phone = getStringValue(profileData, 'phone');
+    profile.phone = getStringValue(profileData, 'phone') || getStringValue(userProfile, 'phoneNumber');
   }
 
   return profile;
@@ -139,6 +140,9 @@ export async function GET() {
 
     // Transform other users data
     const otherUserProfiles = otherUsers.map(user => transformUserProfile(user, false));
+
+    console.log('Current user profile:', JSON.stringify(currentUserProfile, null, 2));
+    console.log('Other user profiles:', JSON.stringify(otherUserProfiles, null, 2));
 
     // Find matches using the buddy matching algorithm
     const matches = findBuddyMatches(currentUserProfile, otherUserProfiles);
