@@ -76,7 +76,8 @@ export const authOptions: NextAuthOptions = {
             id: user.id,
             email: user.email,
             name: user.name,
-            image: user.image,
+            // Don't include image in JWT to prevent cookie bloat
+            // image: user.image,
           };
         } catch (error) {
           console.error('💥 Error during authentication:', error);
@@ -92,32 +93,21 @@ export const authOptions: NextAuthOptions = {
   },
   callbacks: {
     async session({ session, token }) {
-      console.log('NextAuth session callback:', { session, token });
+      // Simplified session callback to prevent cookie bloat
       if (session.user && token) {
         session.user.id = token.sub as string;
-        console.log('Set session user ID:', token.sub);
-        
-        // Fetch user details from database to get the name
-        try {
-          const user = await prisma.user.findUnique({
-            where: { id: token.sub as string },
-            select: { name: true, email: true }
-          });
-          
-          if (user) {
-            session.user.name = user.name;
-            session.user.email = user.email;
-            console.log('Set session user name:', user.name);
-          }
-        } catch (error) {
-          console.error('Error fetching user details for session:', error);
-        }
+        session.user.name = token.name as string;
+        session.user.email = token.email as string;
       }
       return session;
     },
     async jwt({ token, user }) {
       if (user) {
         token.sub = user.id;
+        token.name = user.name;
+        token.email = user.email;
+        // Don't store image in JWT to prevent cookie bloat
+        // token.image = user.image;
       }
       return token;
     },
@@ -133,11 +123,29 @@ export const authOptions: NextAuthOptions = {
       // Use the current request URL to get the correct port
       const currentUrl = process.env.NEXTAUTH_URL || baseUrl;
       console.log('Current URL:', currentUrl);
-      console.log('Redirecting to welcome page:', `${currentUrl}/welcome`);
-      return `${currentUrl}/welcome`;
+      console.log('Redirecting to dashboard:', `${currentUrl}/dashboard`);
+      return `${currentUrl}/dashboard`;
     },
   },
   session: {
     strategy: 'jwt',
+    maxAge: 24 * 60 * 60, // 1 day
+  },
+  jwt: {
+    maxAge: 24 * 60 * 60, // 1 day
+  },
+  debug: false,
+  secret: process.env.NEXTAUTH_SECRET,
+  cookies: {
+    sessionToken: {
+      name: `next-auth.session-token`,
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: process.env.NODE_ENV === 'production',
+        maxAge: 24 * 60 * 60, // 1 day
+      },
+    },
   },
 }; 
