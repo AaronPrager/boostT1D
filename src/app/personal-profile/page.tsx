@@ -230,12 +230,13 @@ interface PersonalProfileData {
   email?: string;
   about?: string;
   photo?: string;
-  dateOfBirth?: string;
-  diagnosisAge?: number;
+  age?: number;
+  yearsSinceDiagnosis?: string;
   favoriteActivities?: string;
   country?: string;
   state?: string;
   phone?: string;
+  occupation?: string;
 }
 
 export default function PersonalProfile() {
@@ -285,8 +286,8 @@ export default function PersonalProfile() {
     if (!profileData.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(profileData.email)) {
       errors.email = 'Valid email is required.';
     }
-    if (!profileData.dateOfBirth) {
-      errors.dateOfBirth = 'Date of birth is required.';
+    if (!profileData.age) {
+      errors.age = 'Age is required.';
     }
     if (!profileData.country) {
       errors.country = 'Country is required.';
@@ -311,11 +312,18 @@ export default function PersonalProfile() {
       if (res.ok) {
         setProfile(editingProfile);
         setIsEditing(false);
+        // Dispatch event to update navigation photo
+        if (editingProfile.photo !== profile.photo) {
+          window.dispatchEvent(new CustomEvent('profilePhotoUpdated'));
+        }
       } else {
-        alert('Failed to save profile');
+        const errorData = await res.json();
+        console.error('Save profile error:', errorData);
+        alert(`Failed to save profile: ${errorData.message || 'Unknown error'}`);
       }
     } catch (error) {
-      alert('Failed to save profile');
+      console.error('Save profile exception:', error);
+      alert(`Failed to save profile: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setSaving(false);
     }
@@ -330,30 +338,79 @@ export default function PersonalProfile() {
     const file = event.target.files?.[0];
     if (!file) return;
 
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file');
+      return;
+    }
+
+    // Validate file size (max 10MB before compression)
+    if (file.size > 10 * 1024 * 1024) {
+      alert('Image must be less than 10MB');
+      return;
+    }
+
     setUploadingPhoto(true);
     try {
-      const formData = new FormData();
-      formData.append('photo', file);
+      // Resize and compress image
+      const img = document.createElement('img');
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
 
-      const response = await fetch('/api/personal-profile/photos', {
-        method: 'POST',
-        body: formData,
-      });
+      img.onload = () => {
+        // Calculate new dimensions (max 800x800)
+        let width = img.width;
+        let height = img.height;
+        const maxSize = 800;
 
-      if (response.ok) {
-        const data = await response.json();
-        setEditingProfile(prev => ({ ...prev, photo: data.photoUrl }));
-        setProfile(prev => ({ ...prev, photo: data.photoUrl }));
+        if (width > height && width > maxSize) {
+          height = (height * maxSize) / width;
+          width = maxSize;
+        } else if (height > maxSize) {
+          width = (width * maxSize) / height;
+          height = maxSize;
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        ctx?.drawImage(img, 0, 0, width, height);
+
+        // Convert to base64 with compression (quality 0.8)
+        const base64String = canvas.toDataURL('image/jpeg', 0.8);
+        
+        // Check if compressed size is reasonable (base64 < 1MB)
+        if (base64String.length > 1.5 * 1024 * 1024) {
+          alert('Compressed image is still too large. Please use a smaller image.');
+          setUploadingPhoto(false);
+          return;
+        }
+
+        setEditingProfile(prev => ({ ...prev, photo: base64String }));
+        setProfile(prev => ({ ...prev, photo: base64String }));
         
         // Dispatch event to update navigation photo
         window.dispatchEvent(new CustomEvent('profilePhotoUpdated'));
-      } else {
-        alert('Failed to upload photo');
-      }
+        setUploadingPhoto(false);
+      };
+
+      img.onerror = () => {
+        alert('Error loading image');
+        setUploadingPhoto(false);
+      };
+
+      // Read file as data URL
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        img.src = e.target?.result as string;
+      };
+      reader.onerror = () => {
+        alert('Error reading file');
+        setUploadingPhoto(false);
+      };
+      reader.readAsDataURL(file);
     } catch (error) {
       console.error('Error uploading photo:', error);
       alert('Failed to upload photo');
-    } finally {
       setUploadingPhoto(false);
     }
   };
@@ -537,21 +594,23 @@ export default function PersonalProfile() {
                 {validationErrors.email && <p className="text-red-600 text-sm font-medium">{validationErrors.email}</p>}
               </div>
 
-              {/* Date of Birth */}
+              {/* Age */}
               <div className="space-y-2">
-                <label className="block text-sm font-semibold text-slate-700">Date of Birth *</label>
+                <label className="block text-sm font-semibold text-slate-700">Age *</label>
                 {isEditing ? (
                   <input 
-                    type="date" 
-                    value={editingProfile.dateOfBirth || ''} 
-                    onChange={e => setEditingProfile({ ...editingProfile, dateOfBirth: e.target.value })} 
+                    type="number" 
+                    min="1"
+                    max="120"
+                    value={editingProfile.age || ''} 
+                    onChange={e => setEditingProfile({ ...editingProfile, age: parseInt(e.target.value) || undefined })} 
                     className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-slate-500 transition-colors" 
                     required 
                   />
                 ) : (
-                  <p className="px-4 py-3 bg-slate-50 rounded-lg text-slate-700">{formatDate(profile.dateOfBirth || '')}</p>
+                  <p className="px-4 py-3 bg-slate-50 rounded-lg text-slate-700">{profile.age || 'Not provided'}</p>
                 )}
-                {validationErrors.dateOfBirth && <p className="text-red-600 text-sm font-medium">{validationErrors.dateOfBirth}</p>}
+                {validationErrors.age && <p className="text-red-600 text-sm font-medium">{validationErrors.age}</p>}
               </div>
 
               {/* Country */}
@@ -613,18 +672,30 @@ export default function PersonalProfile() {
                 )}
               </div>
 
-              {/* Diagnosis Age (optional) */}
+              {/* Years Since Diagnosis */}
               <div className="space-y-2">
-                <label className="block text-sm font-semibold text-slate-700">Diagnosis Age</label>
+                <label className="block text-sm font-semibold text-slate-700">Years Since T1D Diagnosis</label>
                 {isEditing ? (
-                  <input 
-                    type="number" 
-                    value={editingProfile.diagnosisAge || ''} 
-                    onChange={e => setEditingProfile({ ...editingProfile, diagnosisAge: parseInt(e.target.value) || undefined })} 
+                  <select
+                    value={editingProfile.yearsSinceDiagnosis || ''} 
+                    onChange={e => setEditingProfile({ ...editingProfile, yearsSinceDiagnosis: e.target.value })} 
                     className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-slate-500 transition-colors" 
-                  />
+                  >
+                    <option value="">Select years since diagnosis</option>
+                    <option value="<1">&lt;1 year</option>
+                    <option value="1-2">1-2 years</option>
+                    <option value="3-10">3-10 years</option>
+                    <option value="10+">10+ years</option>
+                  </select>
                 ) : (
-                  <p className="px-4 py-3 bg-slate-50 rounded-lg text-slate-700">{profile.diagnosisAge || 'Not provided'}</p>
+                  <p className="px-4 py-3 bg-slate-50 rounded-lg text-slate-700">
+                    {profile.yearsSinceDiagnosis ? 
+                      (profile.yearsSinceDiagnosis === '<1' ? '<1 year' : 
+                       profile.yearsSinceDiagnosis === '1-2' ? '1-2 years' :
+                       profile.yearsSinceDiagnosis === '3-10' ? '3-10 years' :
+                       profile.yearsSinceDiagnosis === '10+' ? '10+ years' : 'Not provided') 
+                      : 'Not provided'}
+                  </p>
                 )}
               </div>
             </div>

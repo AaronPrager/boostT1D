@@ -103,7 +103,7 @@ function ResetPasswordContent() {
                 <Link href="/login" className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium transition-colors">
                   Sign In
                 </Link>
-                <Link href="/register" className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium transition-colors">
+                <Link href="/onboarding" className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium transition-colors">
                   Sign Up
                 </Link>
               </nav>

@@ -14,16 +14,16 @@ export async function POST(req: Request) {
       hasPassword: !!body.password
     });
 
-    const { email, password, name, country, state, dateOfBirth, about, phone, diagnosisAge, favoriteActivities } = body;
+    const { email, password, name, photo, country, state, age, yearsSinceDiagnosis, about, phone, favoriteActivities, nightscoutUrl, nightscoutApiToken, lowGlucose, highGlucose } = body;
 
     // Validate required fields
-    if (!email || !password || !name || !country || !dateOfBirth) {
+    if (!email || !password || !name || !country || !age) {
       const missingFields = [];
       if (!email) missingFields.push('email');
       if (!password) missingFields.push('password');
       if (!name) missingFields.push('name');
       if (!country) missingFields.push('country');
-      if (!dateOfBirth) missingFields.push('date of birth');
+      if (!age) missingFields.push('age');
       console.log('Missing required fields:', missingFields);
       return NextResponse.json({ message: `Missing required fields: ${missingFields.join(', ')}` }, { status: 400 });
     }
@@ -53,30 +53,16 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: "Country is required" }, { status: 400 });
     }
 
-    // Validate date of birth
-    if (!dateOfBirth) {
-      console.log('Date of birth is required');
-      return NextResponse.json({ message: "Date of birth is required" }, { status: 400 });
-    }
-
-    // Validate age (must be at least 13 years old)
-    const birthDate = new Date(dateOfBirth);
-    const today = new Date();
-    let age = today.getFullYear() - birthDate.getFullYear();
-    const monthDiff = today.getMonth() - birthDate.getMonth();
-    
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-      age--;
-    }
-    
-    if (age < 13) {
-      console.log('User too young:', age);
+    // Validate age
+    const ageNum = parseInt(age);
+    if (isNaN(ageNum) || ageNum < 13) {
+      console.log('User too young or invalid age:', age);
       return NextResponse.json({ message: "You must be at least 13 years old to register" }, { status: 400 });
     }
 
-    if (age > 120) {
-      console.log('Invalid date of birth');
-      return NextResponse.json({ message: "Please enter a valid date of birth" }, { status: 400 });
+    if (ageNum > 120) {
+      console.log('Invalid age');
+      return NextResponse.json({ message: "Please enter a valid age" }, { status: 400 });
     }
 
     // Check if user already exists
@@ -107,7 +93,7 @@ export async function POST(req: Request) {
         email,
         name,
         country,
-        dateOfBirth,
+        age,
         hasPassword: true,
         settingsData: {
           nightscoutUrl: "",
@@ -116,22 +102,23 @@ export async function POST(req: Request) {
         }
       });
 
-      // Create user with default settings
+      // Create user with settings from onboarding
       const user = await prisma.user.create({
         data: {
           email,
           name,
+          image: photo || null,
           country,
           state,
-          dateOfBirth: new Date(dateOfBirth),
           password: hashedPassword,
           emailConfirmed: true, // Auto-confirm email for development
           emailVerified: new Date(), // Auto-verify email for development
           settings: {
             create: {
-              nightscoutUrl: "",
-              lowGlucose: 70.0,
-              highGlucose: 180.0,
+              nightscoutUrl: nightscoutUrl || "",
+              nightscoutApiToken: nightscoutApiToken || "",
+              lowGlucose: lowGlucose || 70.0,
+              highGlucose: highGlucose || 180.0,
             },
           },
         },
@@ -140,14 +127,15 @@ export async function POST(req: Request) {
         },
       });
 
-      // Create the profile with extra fields
+      // Create the profile with extra fields including age and yearsSinceDiagnosis
       await prisma.profile.create({
         data: {
           userId: user.id,
           bio: about || null,
           phoneNumber: phone || null,
           favoriteActivities: favoriteActivities || null,
-          diagnosisAge: diagnosisAge ? Number(diagnosisAge) : null,
+          age: age ? Number(age) : null,
+          yearsSinceDiagnosis: yearsSinceDiagnosis || null,
         },
       });
 

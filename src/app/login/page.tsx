@@ -91,7 +91,7 @@ function LoginForm() {
                   )}
                   {error.includes('No account found') && (
                     <div className="mt-2 text-sm text-red-600">
-                      💡 <strong>Need an account?</strong> <Link href="/register" className="underline hover:no-underline">Sign up here</Link>
+                      💡 <strong>Need an account?</strong> <Link href="/onboarding" className="underline hover:no-underline">Sign up here</Link>
                     </div>
                   )}
                 </div>
@@ -155,7 +155,7 @@ function LoginForm() {
               </div>
             </form>
             <div className="text-sm text-center mt-6">
-              <Link href="/register" className="font-medium text-gray-600 hover:text-gray-900">
+              <Link href="/onboarding" className="font-medium text-gray-600 hover:text-gray-900">
                 Don't have an account? Sign up
               </Link>
             </div>

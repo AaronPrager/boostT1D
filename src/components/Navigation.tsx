@@ -206,6 +206,16 @@ export default function Navigation() {
                       >
                         👤 Personal Profile
                       </Link>
+                      <hr className="my-2 border-gray-100" />
+                      <button
+                        onClick={() => {
+                          closeDropdown();
+                          handleSignOut();
+                        }}
+                        className="block w-full text-left px-6 py-3 text-sm text-red-600 hover:bg-red-50 font-medium transition-colors"
+                      >
+                        🚪 Sign Out
+                      </button>
                     </div>
                   </div>
                 )}
@@ -228,7 +238,7 @@ export default function Navigation() {
                 <Link href="/login" className="text-gray-700 hover:text-blue-600 px-4 py-2 rounded-lg text-sm font-semibold transition-colors hover:bg-blue-50">
                   Sign In
                 </Link>
-                <Link href="/register" className="bg-gradient-to-r from-blue-600 to-blue-700 text-white hover:from-blue-700 hover:to-blue-800 px-6 py-2 rounded-lg text-sm font-semibold transition-all duration-200 shadow-lg hover:shadow-xl">
+                <Link href="/onboarding" className="bg-gradient-to-r from-blue-600 to-blue-700 text-white hover:from-blue-700 hover:to-blue-800 px-6 py-2 rounded-lg text-sm font-semibold transition-all duration-200 shadow-lg hover:shadow-xl">
                   Register
                 </Link>
               </div>
@@ -337,6 +347,15 @@ export default function Navigation() {
                     >
                       👤 Personal Profile
                     </Link>
+                    <button
+                      onClick={() => {
+                        closeMobileMenu();
+                        handleSignOut();
+                      }}
+                      className="block w-full text-left px-4 py-3 rounded-lg text-base font-semibold text-red-600 hover:bg-red-50 transition-colors"
+                    >
+                      🚪 Sign Out
+                    </button>
                   </div>
                 </>
               )}
@@ -363,7 +382,7 @@ export default function Navigation() {
                       Sign In
                     </Link>
                     <Link 
-                      href="/register" 
+                      href="/onboarding" 
                       className="block px-4 py-3 rounded-lg text-base font-semibold bg-gradient-to-r from-blue-600 to-blue-700 text-white hover:from-blue-700 hover:to-blue-800 transition-all duration-200 shadow-lg"
                       onClick={closeMobileMenu}
                     >
