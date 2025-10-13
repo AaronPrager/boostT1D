@@ -40,6 +40,7 @@ export default function DashboardPage() {
   const [refreshMessage, setRefreshMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [recentReadings, setRecentReadings] = useState<Reading[]>([]);
+  const [userName, setUserName] = useState<string>('');
   const [stats, setStats] = useState<DashboardStats>({
     currentGlucose: null,
     currentDirection: null,
@@ -73,6 +74,21 @@ export default function DashboardPage() {
 
   const pathname = usePathname();
 
+  // Fetch current user data to get updated name
+  const fetchUserData = async () => {
+    try {
+      const response = await fetch('/api/personal-profile');
+      if (response.ok) {
+        const userData = await response.json();
+        setUserName(userData.name || userData.email?.split('@')[0] || 'User');
+      }
+    } catch (error) {
+      console.error('Error fetching user data:', error);
+      // Fallback to session data
+      setUserName(session?.user?.name || session?.user?.email?.split('@')[0] || 'User');
+    }
+  };
+
   // Increment refreshTrigger every time we navigate to /dashboard
   useEffect(() => {
     if (pathname === '/dashboard') {
@@ -99,7 +115,10 @@ export default function DashboardPage() {
       // Load data automatically
       const loadDashboardData = async () => {
         try {
-          // First fetch settings
+          // First fetch user data to get updated name
+          await fetchUserData();
+          
+          // Then fetch settings
           const settingsRes = await fetch('/api/settings');
           if (settingsRes.ok) {
             const settingsData = await settingsRes.json();
@@ -119,7 +138,12 @@ export default function DashboardPage() {
     }
   }, [session, refreshTrigger]);
 
-
+  // Initialize userName when session is available
+  useEffect(() => {
+    if (session && !userName) {
+      setUserName(session.user?.name || session.user?.email?.split('@')[0] || 'User');
+    }
+  }, [session, userName]);
 
   const fetchSettings = async () => {
     try {
@@ -382,19 +406,22 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">
-                Welcome back, {session.user?.name || session.user?.email?.split('@')[0] || 'User'}!
+              <h1 className="text-5xl md:text-6xl font-bold mb-8 leading-tight">
+                <span className="text-gray-900">Welcome back, </span>
+                <span className="bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">
+                  {userName || session.user?.name || session.user?.email?.split('@')[0] || 'User'}!
+                </span>
               </h1>
-              <p className="mt-2 text-gray-600">
+              <p className="text-2xl text-gray-600 max-w-3xl leading-relaxed mb-4">
                 Here&apos;s an overview of your diabetes management
               </p>
-              <p className="mt-1 text-sm text-gray-500">
+              <p className="text-lg text-gray-500">
                 Showing data from {startDate.toLocaleDateString()} to {endDate.toLocaleDateString()}
               </p>
             </div>
@@ -403,57 +430,42 @@ export default function DashboardPage() {
 
         {/* Nightscout Information Message */}
         {!settings.nightscoutUrl && (
-          <div className="mb-6 bg-gray-100 border border-gray-200 rounded-lg p-6">
-            <div className="flex items-start">
-              <svg className="w-6 h-6 text-gray-600 mr-4 mt-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <div className="flex-1">
-                <h3 className="text-gray-900 font-semibold text-lg mb-2">Welcome to BoostT1D! 🎉</h3>
-                <p className="text-gray-700 mb-3">
-                  You're currently in <strong>manual mode</strong>, which means you can manually enter your glucose readings and treatments. 
-                  This is perfect for getting started and testing the system.
-                </p>
-                <div className="bg-gray-200 rounded-lg p-4 mb-3">
-                  <h4 className="text-gray-900 font-medium mb-2">To unlock full features, you can:</h4>
-                  <ul className="text-gray-700 text-sm space-y-1">
-                    <li>• <strong>Set up Nightscout</strong> for real-time data sync from your CGM/pump</li>
-                    <li>• <strong>Use manual entry</strong> for glucose readings and treatments</li>
-                    <li>• <strong>Explore the dashboard</strong> with sample data to see how it works</li>
-                  </ul>
-                </div>
-                <div className="flex flex-wrap gap-3">
-                  <Link 
-                    href="/diabetes-profile" 
-                    className="inline-flex items-center px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-md hover:bg-gray-800 transition-colors"
-                  >
-                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                    Configure Settings
-                  </Link>
-                  <Link 
-                    href="/readings" 
-                    className="inline-flex items-center px-4 py-2 bg-white text-gray-900 text-sm font-medium rounded-md border border-gray-300 hover:bg-gray-50 transition-colors"
-                  >
-                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                    </svg>
-                    Add Manual Readings
-                  </Link>
-                  <a 
-                    href="https://nightscout.github.io/" 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center px-4 py-2 bg-white text-gray-900 text-sm font-medium rounded-md border border-gray-300 hover:bg-gray-50 transition-colors"
-                  >
-                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                    </svg>
-                    Learn About Nightscout
-                  </a>
-                </div>
+          <div className="mb-16 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-3xl shadow-2xl border border-blue-200 p-12 max-w-4xl mx-auto">
+            <div className="text-center">
+              <h2 className="text-4xl font-bold text-gray-900 mb-6">Welcome to BoostT1D!</h2>
+              <p className="text-xl text-gray-700 mb-8 max-w-2xl mx-auto">
+                You're currently in <strong>manual mode</strong>, which means you can manually enter your glucose readings and treatments. 
+                This is perfect for getting started and testing the system.
+              </p>
+              <div className="bg-white rounded-2xl p-8 mb-8 shadow-xl border border-gray-100">
+                <h3 className="text-2xl font-bold text-gray-900 mb-4">To unlock full features, you can:</h3>
+                <ul className="text-lg text-gray-700 space-y-3 text-left max-w-2xl mx-auto">
+                  <li>• <strong>Set up Nightscout</strong> for real-time data sync from your CGM/pump</li>
+                  <li>• <strong>Use manual entry</strong> for glucose readings and treatments</li>
+                  <li>• <strong>Explore the dashboard</strong> with sample data to see how it works</li>
+                </ul>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <Link 
+                  href="/diabetes-profile" 
+                  className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-8 py-4 rounded-xl text-lg font-semibold hover:from-blue-700 hover:to-blue-800 transition-all duration-200 shadow-xl hover:shadow-2xl"
+                >
+                  Configure Settings
+                </Link>
+                <Link 
+                  href="/readings" 
+                  className="border-2 border-blue-300 text-blue-700 px-8 py-4 rounded-xl text-lg font-semibold hover:border-blue-500 hover:bg-blue-50 transition-all duration-200"
+                >
+                  Add Manual Readings
+                </Link>
+                <a 
+                  href="https://nightscout.github.io/" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="border-2 border-gray-300 text-gray-700 px-8 py-4 rounded-xl text-lg font-semibold hover:border-gray-500 hover:bg-gray-50 transition-all duration-200"
+                >
+                  Learn About Nightscout
+                </a>
               </div>
             </div>
           </div>
@@ -490,11 +502,11 @@ export default function DashboardPage() {
 
         {/* Current Status Card */}
         {stats.currentGlucose && (
-          <div className="mb-8">
-            <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg shadow-sm border border-gray-200 p-6">
+          <div className="mb-16">
+            <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-8 hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 group">
               <div className="flex items-center justify-between">
                 <div className="flex-1">
-                  <h2 className="text-lg font-semibold text-gray-900 mb-2">Current Glucose</h2>
+                  <h2 className="text-2xl font-bold text-gray-900 mb-4">Current Glucose</h2>
                   <div className="flex items-center space-x-3">
                     <span className={`text-4xl font-bold px-4 py-2 rounded-lg ${getGlucoseStatus(stats.currentGlucose).color}`}>
                       {stats.currentGlucose}
@@ -522,7 +534,7 @@ export default function DashboardPage() {
                     <button
                       onClick={handleRefresh}
                       disabled={refreshing}
-                      className="flex items-center px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                      className="flex items-center px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl text-lg font-semibold hover:from-blue-700 hover:to-blue-800 disabled:from-gray-400 disabled:to-gray-400 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl"
                     >
                       {refreshing ? (
                         <div className="flex items-center">
@@ -550,48 +562,48 @@ export default function DashboardPage() {
 
         {/* Enhanced Stats Grid - Only show if we have data */}
         {stats.totalReadings > 0 && (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-8">
-            <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-lg text-center border border-green-200 shadow-sm">
-              <div className="text-2xl font-bold text-green-700">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8 mb-16">
+            <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-8 hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 group text-center">
+              <div className="text-3xl font-bold text-green-600 mb-2">
                 {stats.timeInRange}%
               </div>
-              <div className="text-sm text-green-600 font-medium">Time in Range</div>
+              <div className="text-lg text-gray-600 font-medium">Time in Range</div>
             </div>
-            <div className="bg-gradient-to-br from-orange-50 to-orange-100 p-4 rounded-lg text-center border border-orange-200 shadow-sm">
-              <div className="text-2xl font-bold text-orange-700">
+            <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-8 hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 group text-center">
+              <div className="text-3xl font-bold text-orange-600 mb-2">
                 {stats.timeAboveRange}%
               </div>
-              <div className="text-sm text-orange-600 font-medium">Time Above</div>
+              <div className="text-lg text-gray-600 font-medium">Time Above</div>
             </div>
-            <div className="bg-gradient-to-br from-red-50 to-red-100 p-4 rounded-lg text-center border border-red-200 shadow-sm">
-              <div className="text-2xl font-bold text-red-700">
+            <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-8 hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 group text-center">
+              <div className="text-3xl font-bold text-red-600 mb-2">
                 {stats.timeBelowRange}%
               </div>
-              <div className="text-sm text-red-600 font-medium">Time Below</div>
+              <div className="text-lg text-gray-600 font-medium">Time Below</div>
             </div>
-            <div className="bg-gradient-to-br from-gray-50 to-gray-100 p-4 rounded-lg text-center border border-gray-200 shadow-sm">
-              <div className="text-2xl font-bold text-gray-700">
+            <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-8 hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 group text-center">
+              <div className="text-3xl font-bold text-blue-600 mb-2">
                 {stats.averageGlucose}
               </div>
-              <div className="text-sm text-gray-600 font-medium">Avg Glucose</div>
+              <div className="text-lg text-gray-600 font-medium">Avg Glucose</div>
             </div>
           </div>
         )}
 
         {/* A1C and Variability Row - Only show if we have data */}
         {stats.totalReadings > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-            <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-lg text-center border border-purple-200 shadow-sm">
-              <div className="text-2xl font-bold text-purple-700">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-16">
+            <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-8 hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 group text-center">
+              <div className="text-3xl font-bold text-purple-600 mb-2">
                 {((stats.averageGlucose + 46.7) / 28.7).toFixed(1)}%
               </div>
-              <div className="text-sm text-purple-600 font-medium">Est. A1C</div>
+              <div className="text-lg text-gray-600 font-medium">Est. A1C</div>
             </div>
-            <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 p-4 rounded-lg text-center border border-indigo-200 shadow-sm">
-              <div className="text-2xl font-bold text-indigo-700">
+            <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-8 hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 group text-center">
+              <div className="text-3xl font-bold text-indigo-600 mb-2">
                 {stats.glucoseVariability}%
               </div>
-              <div className="text-sm text-indigo-600 font-medium">Variability</div>
+              <div className="text-lg text-gray-600 font-medium">Variability</div>
             </div>
           </div>
         )}
@@ -599,15 +611,15 @@ export default function DashboardPage() {
         {/* Two Column Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Recent Readings */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-            <div className="p-6 border-b border-gray-200">
+          <div className="bg-white rounded-2xl shadow-xl border border-gray-100 hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 group">
+            <div className="p-8 border-b border-gray-100">
               <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-gray-900">Recent Readings</h3>
+                <h3 className="text-2xl font-bold text-gray-900">Recent Readings</h3>
                 <div className="flex items-center space-x-3">
                   <button
                     onClick={handleRefresh}
                     disabled={refreshing}
-                    className="flex items-center text-sm text-gray-600 hover:text-gray-800 disabled:text-gray-400"
+                    className="flex items-center text-lg text-blue-600 hover:text-blue-800 disabled:text-gray-400"
                     title="Sync fresh data from Nightscout"
                   >
                     <svg className={`w-4 h-4 mr-1 ${refreshing ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -617,20 +629,20 @@ export default function DashboardPage() {
                   </button>
                   <Link 
                     href="/readings"
-                    className="text-gray-900 hover:text-gray-700 text-sm font-medium"
+                    className="text-blue-600 hover:text-blue-800 text-lg font-medium"
                   >
                     View All →
                   </Link>
                 </div>
               </div>
             </div>
-            <div className="p-6">
+            <div className="p-8">
               {recentReadings.length > 0 ? (
-                <div className="space-y-3">
+                <div className="space-y-4">
                   {recentReadings.slice(0, 6).map((reading) => (
-                    <div key={reading.id} className="flex items-center justify-between p-3 rounded-lg bg-gray-100">
-                      <div className="flex items-center space-x-3">
-                        <span className="px-3 py-1 rounded-full text-sm font-medium bg-gray-200 text-gray-900">
+                    <div key={reading.id} className="flex items-center justify-between p-4 rounded-xl bg-gray-50 border border-gray-100">
+                      <div className="flex items-center space-x-4">
+                        <span className="px-4 py-2 rounded-full text-lg font-medium bg-blue-100 text-blue-900">
                           {reading.sgv}
                         </span>
                         <span className="text-lg text-gray-600">
@@ -638,8 +650,8 @@ export default function DashboardPage() {
                         </span>
                       </div>
                       <div className="text-right">
-                        <p className="text-sm font-medium text-gray-900">{formatTime(reading.date)}</p>
-                        <p className="text-xs text-gray-500">{formatRelativeTime(reading.date)}</p>
+                        <p className="text-lg font-medium text-gray-900">{formatTime(reading.date)}</p>
+                        <p className="text-sm text-gray-500">{formatRelativeTime(reading.date)}</p>
                       </div>
                     </div>
                   ))}
@@ -651,53 +663,70 @@ export default function DashboardPage() {
           </div>
 
           {/* Quick Actions */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-            <div className="p-6 border-b border-gray-200">
-              <h3 className="text-lg font-semibold text-gray-900">Quick Actions</h3>
+          <div className="bg-white rounded-2xl shadow-xl border border-gray-100 hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 group">
+            <div className="p-8 border-b border-gray-100">
+              <h3 className="text-2xl font-bold text-gray-900">Quick Actions</h3>
             </div>
-            <div className="p-6">
-              <div className="grid grid-cols-1 gap-4">
+            <div className="p-8">
+              <div className="grid grid-cols-1 gap-6">
                 <Link 
                   href="/diabetes-profile"
-                  className="flex items-center p-4 rounded-lg border border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-colors"
+                  className="flex items-center p-6 rounded-2xl border border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-all duration-300 hover:-translate-y-1 group"
                 >
-                  <div className="text-2xl mr-4">⚙️</div>
+                  <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center mr-6 group-hover:scale-110 transition-transform duration-300">
+                    <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                  </div>
                   <div>
-                    <h4 className="font-medium text-gray-900">Profile & Settings</h4>
-                    <p className="text-sm text-gray-600">Configure targets and Nightscout</p>
+                    <h4 className="text-xl font-bold text-gray-900 mb-2">Profile & Settings</h4>
+                    <p className="text-lg text-gray-600">Configure targets and Nightscout</p>
                   </div>
                 </Link>
 
                 <Link 
                   href="/treatments"
-                  className="flex items-center p-4 rounded-lg border border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-colors"
+                  className="flex items-center p-6 rounded-2xl border border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-all duration-300 hover:-translate-y-1 group"
                 >
-                  <div className="text-2xl mr-4">💊</div>
+                  <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-green-600 rounded-2xl flex items-center justify-center mr-6 group-hover:scale-110 transition-transform duration-300">
+                    <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+                    </svg>
+                  </div>
                   <div>
-                    <h4 className="font-medium text-gray-900">Log Treatment</h4>
-                    <p className="text-sm text-gray-600">Record insulin or medication</p>
+                    <h4 className="text-xl font-bold text-gray-900 mb-2">Log Treatment</h4>
+                    <p className="text-lg text-gray-600">Record insulin or medication</p>
                   </div>
                 </Link>
 
                 <Link 
                   href="/readings"
-                  className="flex items-center p-4 rounded-lg border border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-colors"
+                  className="flex items-center p-6 rounded-2xl border border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-all duration-300 hover:-translate-y-1 group"
                 >
-                  <div className="text-2xl mr-4">📊</div>
+                  <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl flex items-center justify-center mr-6 group-hover:scale-110 transition-transform duration-300">
+                    <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                  </div>
                   <div>
-                    <h4 className="font-medium text-gray-900">View Readings</h4>
-                    <p className="text-sm text-gray-600">Browse your glucose data</p>
+                    <h4 className="text-xl font-bold text-gray-900 mb-2">View Readings</h4>
+                    <p className="text-lg text-gray-600">Browse your glucose data</p>
                   </div>
                 </Link>
 
                 <Link 
                   href="/analysis"
-                  className="flex items-center p-4 rounded-lg border border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-colors"
+                  className="flex items-center p-6 rounded-2xl border border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-all duration-300 hover:-translate-y-1 group"
                 >
-                  <div className="text-2xl mr-4">🔍</div>
+                  <div className="w-16 h-16 bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl flex items-center justify-center mr-6 group-hover:scale-110 transition-transform duration-300">
+                    <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                    </svg>
+                  </div>
                   <div>
-                    <h4 className="font-medium text-gray-900">Therapy Adjustments</h4>
-                    <p className="text-sm text-gray-600">Get AI-powered recommendations</p>
+                    <h4 className="text-xl font-bold text-gray-900 mb-2">Therapy Adjustments</h4>
+                    <p className="text-lg text-gray-600">Get AI-powered recommendations</p>
                   </div>
                 </Link>
               </div>

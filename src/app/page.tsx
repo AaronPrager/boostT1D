@@ -22,9 +22,9 @@ export default function Home() {
   // Show loading state while checking authentication
   if (status === 'loading') {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-400 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-400 mx-auto mb-4"></div>
           <p className="text-gray-600 font-medium">Loading...</p>
         </div>
       </div>
@@ -34,9 +34,9 @@ export default function Home() {
   // If user is logged in, show loading while redirecting
   if (session) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-400 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-400 mx-auto mb-4"></div>
           <p className="text-gray-600 font-medium">Redirecting to welcome page...</p>
         </div>
       </div>
@@ -45,13 +45,13 @@ export default function Home() {
 
   // Show welcome page for non-authenticated users
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50">
       {/* Header */}
-      <header className="bg-white shadow-xl border-b-2 border-gray-300 sticky top-0 z-50">
+      <header className="bg-white shadow-xl border-b border-gray-200 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-20">
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-gray-600 to-gray-700 rounded-lg flex items-center justify-center">
+              <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg flex items-center justify-center">
                 <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
                 </svg>
@@ -59,10 +59,10 @@ export default function Home() {
               <h1 className="text-2xl font-bold text-gray-900" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}>BoostT1D</h1>
             </div>
             <nav className="flex space-x-6">
-              <a href="/login" className="text-gray-700 hover:text-gray-900 px-4 py-2 text-sm font-semibold transition-colors hover:bg-gray-50 rounded-lg" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}>
+              <a href="/login" className="text-gray-700 hover:text-blue-600 px-4 py-2 text-sm font-semibold transition-colors hover:bg-blue-50 rounded-lg" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}>
                 Sign In
               </a>
-              <a href="/onboarding" className="bg-gradient-to-r from-gray-600 to-gray-700 text-white px-6 py-2 rounded-lg text-sm font-semibold hover:from-gray-700 hover:to-gray-800 transition-all duration-200 shadow-lg hover:shadow-xl" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}>
+              <a href="/onboarding" className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-2 rounded-lg text-sm font-semibold hover:from-blue-700 hover:to-blue-800 transition-all duration-200 shadow-lg hover:shadow-xl" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}>
                 Get Started
               </a>
             </nav>
@@ -73,12 +73,12 @@ export default function Home() {
       {/* Hero Section */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
         <div className="text-center mb-20 py-12">
-          <div className="inline-flex items-center px-6 py-3 bg-gray-100 text-gray-800 text-sm font-semibold rounded-full mb-8">
+          <div className="inline-flex items-center px-6 py-3 bg-blue-100 text-blue-800 text-sm font-semibold rounded-full mb-8">
             Professional Diabetes Management Platform
           </div>
           <h1 className="text-6xl md:text-7xl font-bold mb-8 leading-tight" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}>
             <span className="block leading-tight text-gray-900">Take Control of Your</span>
-            <span className="block text-gray-800 leading-tight">
+            <span className="block leading-tight bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">
               Diabetes Management
             </span>
           </h1>
@@ -87,36 +87,36 @@ export default function Home() {
             comprehensive glucose tracking, and personalized therapy recommendations.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <a href="/onboarding" className="bg-gradient-to-r from-gray-600 to-gray-700 text-white px-8 py-4 rounded-xl text-lg font-semibold hover:from-gray-700 hover:to-gray-800 transition-all duration-200 shadow-xl hover:shadow-2xl">
+            <a href="/onboarding" className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-8 py-4 rounded-xl text-lg font-semibold hover:from-blue-700 hover:to-blue-800 transition-all duration-200 shadow-xl hover:shadow-2xl">
               Get Started
             </a>
-            <a href="/login" className="border-2 border-gray-300 text-gray-700 px-8 py-4 rounded-xl text-lg font-semibold hover:border-gray-600 hover:text-gray-900 transition-all duration-200">
+            <a href="/login" className="border-2 border-blue-300 text-blue-700 px-8 py-4 rounded-xl text-lg font-semibold hover:border-blue-500 hover:bg-blue-50 transition-all duration-200">
               Sign In
             </a>
           </div>
         </div>
 
         {/* Food Carbs Estimator Section */}
-        <div className="bg-gradient-to-br from-orange-50 to-red-50 rounded-3xl shadow-2xl border border-orange-200 p-12 max-w-4xl mx-auto mb-20">
+        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-3xl shadow-2xl border border-blue-200 p-12 max-w-4xl mx-auto mb-20">
           <div className="text-center">
-            <div className="w-20 h-20 bg-gradient-to-br from-orange-500 to-red-500 rounded-3xl flex items-center justify-center mb-8 mx-auto">
+            <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-blue-600 rounded-3xl flex items-center justify-center mb-8 mx-auto shadow-lg">
               <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
             </div>
-            <h3 className="text-3xl font-bold text-gray-900 mb-6" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}>🍎 AI-Powered Food Analysis</h3>
+            <h3 className="text-3xl font-bold text-gray-900 mb-6" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}>AI-Powered Food Analysis</h3>
             <p className="text-xl text-gray-700 leading-relaxed mb-8 max-w-2xl mx-auto" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}>
               Get instant carb estimates for your meals using cutting-edge AI photo analysis technology for precise diabetes management.
             </p>
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <a href="/food-analysis" className="inline-flex items-center px-8 py-4 bg-gradient-to-r from-orange-500 to-red-500 text-white text-lg font-semibold rounded-xl hover:from-orange-600 hover:to-red-600 transition-all duration-200 shadow-xl hover:shadow-2xl">
+              <a href="/food-analysis" className="inline-flex items-center px-8 py-4 bg-gradient-to-r from-blue-600 to-blue-700 text-white text-lg font-semibold rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all duration-200 shadow-xl hover:shadow-2xl">
                 Try Food Estimator
                 <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                 </svg>
               </a>
-              <a href="/onboarding" className="inline-flex items-center px-8 py-4 border-2 border-orange-300 text-orange-700 text-lg font-semibold rounded-xl hover:border-orange-500 hover:bg-orange-50 transition-all duration-200">
+              <a href="/onboarding" className="inline-flex items-center px-8 py-4 border-2 border-blue-300 text-blue-700 text-lg font-semibold rounded-xl hover:border-blue-500 hover:bg-blue-50 transition-all duration-200">
                 Learn More
               </a>
             </div>
@@ -124,7 +124,7 @@ export default function Home() {
         </div>
 
         {/* About Aaron Section */}
-        <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-3xl shadow-2xl border border-gray-200 p-12 max-w-4xl mx-auto">
+        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-3xl shadow-2xl border border-blue-200 p-12 max-w-4xl mx-auto">
           <div className="flex flex-col items-center">
             {/* Aaron's Photo */}
             <div className="mb-8">
@@ -132,9 +132,12 @@ export default function Home() {
                 <img
                   src="/aaron-profile.JPG"
                   alt="Aaron Prager's profile photo"
-                  className="w-32 h-32 rounded-full object-cover border-4 border-gray-200 shadow-2xl"
+                  className="w-32 h-32 rounded-full object-cover border-4 border-blue-300 shadow-2xl"
                   onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
                 />
+                <div className="absolute -top-2 -right-2 w-8 h-8 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full flex items-center justify-center">
+                  <span className="text-white text-sm font-bold">A</span>
+                </div>
               </div>
             </div>
             
@@ -151,7 +154,7 @@ export default function Home() {
                 href="https://www.linkedin.com/in/aaron-prager-6675b5230/" 
                 target="_blank" 
                 rel="noopener noreferrer"
-                className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-gray-600 to-gray-700 text-white text-lg font-semibold rounded-xl hover:from-gray-700 hover:to-gray-800 transition-all duration-200 shadow-lg hover:shadow-xl"
+                className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white text-lg font-semibold rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all duration-200 shadow-lg hover:shadow-xl"
               >
                 <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
                   <path d="M6.5 8a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM5 10a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 01-1 1H6a1 1 0 01-1-1v-4zM7 10a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 01-1 1H8a1 1 0 01-1-1v-4z" />
@@ -160,7 +163,7 @@ export default function Home() {
               </a>
               <a 
                 href="mailto:arik@pragersfamily.com" 
-                className="inline-flex items-center px-6 py-3 border-2 border-gray-300 text-gray-700 text-lg font-semibold rounded-xl hover:border-gray-500 hover:bg-gray-50 hover:text-gray-900 transition-all duration-200"
+                className="inline-flex items-center px-6 py-3 border-2 border-blue-300 text-blue-700 text-lg font-semibold rounded-xl hover:border-blue-500 hover:bg-blue-50 hover:text-blue-900 transition-all duration-200"
               >
                 <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />

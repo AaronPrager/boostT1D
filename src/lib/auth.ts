@@ -123,8 +123,8 @@ export const authOptions: NextAuthOptions = {
       // Use the current request URL to get the correct port
       const currentUrl = process.env.NEXTAUTH_URL || baseUrl;
       console.log('Current URL:', currentUrl);
-      console.log('Redirecting to dashboard:', `${currentUrl}/dashboard`);
-      return `${currentUrl}/dashboard`;
+      console.log('Redirecting to welcome page:', `${currentUrl}/welcome`);
+      return `${currentUrl}/welcome`;
     },
   },
   session: {

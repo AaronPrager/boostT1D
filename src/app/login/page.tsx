@@ -62,8 +62,8 @@ function LoginForm() {
         while (attempts < maxAttempts) {
           const session = await getSession();
           if (session) {
-            console.log('Session established, redirecting to dashboard');
-            router.push('/dashboard');
+            console.log('Session established, redirecting to welcome page');
+            router.push('/welcome');
             return;
           }
           
@@ -74,7 +74,7 @@ function LoginForm() {
         
         // If we get here, session didn't establish properly
         console.warn('Session not established after login, redirecting anyway');
-        router.push('/dashboard');
+        router.push('/welcome');
       } else {
         console.error('SignIn returned unexpected result:', result);
         setError('Something went wrong. Please try again.');
