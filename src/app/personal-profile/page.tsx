@@ -449,7 +449,7 @@ export default function PersonalProfile() {
       if (response.ok) {
         // Account deleted successfully - redirect to home page
         // Sign out and redirect to home page
-        await signOut({ callbackUrl: 'http://192.168.1.8:3001/' });
+        await signOut({ callbackUrl: '/' });
       } else {
         alert('Failed to delete account');
       }
