@@ -270,7 +270,25 @@ export default function ReadingsPage() {
   }, [readings, sourceFilter]);
 
   const calculateStatistics = (readings: Reading[]) => {
-    if (readings.length === 0) return;
+    if (readings.length === 0) {
+      // Reset statistics to default values when no readings
+      setStatistics({
+        averageGlucose: 0,
+        standardDeviation: 0,
+        coefficientOfVariation: 0,
+        estimatedA1C: 0,
+        gmi: 0,
+        totalReadings: 0,
+        timeInRange: 0,
+        timeAboveRange: 0,
+        timeBelowRange: 0,
+        overnight: 0,
+        morning: 0,
+        afternoon: 0,
+        evening: 0
+      });
+      return;
+    }
 
     const averageGlucose = readings.reduce((sum, reading) => sum + reading.sgv, 0) / readings.length;
     const squareDiffs = readings.map(reading => Math.pow(reading.sgv - averageGlucose, 2));
