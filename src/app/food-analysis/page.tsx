@@ -113,8 +113,23 @@ export default function FoodAnalysisPage() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Analysis failed');
+        let errorMessage = 'Analysis failed';
+        console.error('Food analysis API error:', {
+          status: response.status,
+          statusText: response.statusText,
+          url: response.url
+        });
+        
+        try {
+          const errorData = await response.json();
+          console.error('Error response data:', errorData);
+          errorMessage = errorData.error || errorMessage;
+        } catch (parseError) {
+          console.error('Failed to parse error response as JSON:', parseError);
+          // If response is not JSON, use status text or default message
+          errorMessage = response.statusText || errorMessage;
+        }
+        throw new Error(errorMessage);
       }
 
       const data = await response.json();
