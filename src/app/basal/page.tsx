@@ -137,8 +137,15 @@ export default function BasalProfilesPage() {
       setError('');
       const response = await fetch('/api/nightscout/profile');
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to fetch Nightscout profile');
+        let errorMessage = 'Failed to fetch Nightscout profile';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+        } catch (parseError) {
+          // If response is not JSON, use status text or default message
+          errorMessage = response.statusText || errorMessage;
+        }
+        throw new Error(errorMessage);
       }
       const data = await response.json();
       
