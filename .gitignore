@@ -89,3 +89,6 @@ fastlane/test_output
 
 # Code Injection
 iOSInjectionProject/
+
+# Xcode Scheme Files
+*.xcscheme
