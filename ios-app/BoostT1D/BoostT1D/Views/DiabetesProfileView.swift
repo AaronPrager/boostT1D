@@ -336,6 +336,23 @@ struct DiabetesProfileView: View {
                                 .cornerRadius(12)
                             }
                         }
+                        
+                        // Edit Profile Button
+                        Button(action: {
+                            showingManualEntry = true
+                        }) {
+                            HStack {
+                                Image(systemName: "square.and.pencil")
+                                Text("Edit Profile")
+                            }
+                            .font(.headline)
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 24)
+                            .padding(.vertical, 12)
+                            .background(Color.blue)
+                            .cornerRadius(10)
+                        }
+                        .padding(.top, 20)
                     }
                     .padding(.horizontal, 20)
                 } else {
@@ -393,6 +410,12 @@ struct DiabetesProfileView: View {
         })
         .sheet(isPresented: $showingManualEntry) {
             ManualProfileEntryView()
+        }
+        .onChange(of: showingManualEntry) { isShowing in
+            if !isShowing {
+                // Refresh profile when sheet is dismissed
+                loadProfile()
+            }
         }
         .onAppear {
             loadProfile()

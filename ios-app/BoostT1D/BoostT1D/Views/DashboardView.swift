@@ -125,51 +125,29 @@ struct DashboardView: View {
                             )
                         }
                         .buttonStyle(PlainButtonStyle())
-                    }
-                    .padding(.horizontal, 20)
-                    
-                    Divider()
-                        .padding(.vertical, 8)
-                        .padding(.horizontal, 20)
-                    
-                    // More Options
-                    Text("More")
-                        .font(.headline)
-                        .padding(.horizontal, 20)
-                    
-                    VStack(spacing: 8) {
+                        
                         NavigationLink(destination: DiabetesProfileView()) {
-                            CompactActionRow(
+                            QuickActionRow(
                                 icon: "person.circle.fill",
                                 title: "Diabetes Profile",
+                                subtitle: "Configure your diabetes settings",
                                 color: .blue
                             )
                         }
                         .buttonStyle(PlainButtonStyle())
                         
                         NavigationLink(destination: FoodAnalysisView()) {
-                            CompactActionRow(
+                            QuickActionRow(
                                 icon: "camera.fill",
                                 title: "Food Analysis",
+                                subtitle: "Estimate carbs and insulin",
                                 color: .green
                             )
                         }
                         .buttonStyle(PlainButtonStyle())
-                        
-                        Button(action: {
-                            // TODO: Navigate to Buddies when ready
-                        }) {
-                            CompactActionRow(
-                                icon: "person.2.fill",
-                                title: "Buddies",
-                                color: .gray,
-                                disabled: true
-                            )
-                        }
-                        .buttonStyle(PlainButtonStyle())
-                        .disabled(true)
                     }
                     .padding(.horizontal, 20)
+                    
                 }
                 
                 Spacer(minLength: 40)
@@ -559,50 +537,6 @@ struct QuickActionRow: View {
     }
 }
 
-// MARK: - Compact Action Row Component
-struct CompactActionRow: View {
-    let icon: String
-    let title: String
-    let color: Color
-    var disabled: Bool = false
-    
-    var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: icon)
-                .font(.title3)
-                .foregroundColor(disabled ? .gray : color)
-                .frame(width: 32)
-            
-            Text(title)
-                .font(.body)
-                .foregroundColor(disabled ? .secondary : .primary)
-            
-            if disabled {
-                Text("Coming Soon")
-                    .font(.caption2)
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(
-                        Capsule()
-                            .fill(Color.gray)
-                    )
-            }
-            
-            Spacer()
-            
-            Image(systemName: "chevron.right")
-                .font(.caption)
-                .foregroundColor(.secondary)
-        }
-        .padding(.vertical, 8)
-        .padding(.horizontal, 12)
-        .background(
-            RoundedRectangle(cornerRadius: 8)
-                .fill(Color(.systemGray6))
-        )
-    }
-}
 
 // MARK: - Error View Component
 struct ErrorView: View {

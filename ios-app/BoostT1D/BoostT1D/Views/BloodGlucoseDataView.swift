@@ -260,7 +260,11 @@ struct BloodGlucoseDataView: View {
     }
     
     private func calculateStatistics(entries: [NightscoutGlucoseEntry]) {
-        guard !entries.isEmpty else { return }
+        guard !entries.isEmpty else { 
+            // Reset statistics to default values when no entries
+            statistics = GlucoseStatistics()
+            return 
+        }
         
         let glucoseValues = entries.map { Double($0.sgv) }
         let averageGlucose = glucoseValues.reduce(0, +) / Double(glucoseValues.count)

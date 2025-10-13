@@ -191,25 +191,27 @@ struct TherapyAdjustmentView: View {
                 .cornerRadius(12)
                 .padding(.horizontal, 20)
                 
-                // Analysis Metrics
-                VStack(spacing: 16) {
-                    Text("Analysis Metrics")
-                        .font(.headline)
-                    
-                    HStack(spacing: 20) {
-                        MetricCard(title: "Average BG", value: "\(metrics.averageGlucose)", unit: "mg/dL", color: .blue)
-                        MetricCard(title: "Time in Range", value: "\(metrics.timeInRange)", unit: "%", color: .green)
+                // Analysis Metrics - Only show if we have data
+                if metrics.dataPoints > 0 {
+                    VStack(spacing: 16) {
+                        Text("Analysis Metrics")
+                            .font(.headline)
+                        
+                        HStack(spacing: 20) {
+                            MetricCard(title: "Average BG", value: "\(metrics.averageGlucose)", unit: "mg/dL", color: .blue)
+                            MetricCard(title: "Time in Range", value: "\(metrics.timeInRange)", unit: "%", color: .green)
+                        }
+                        
+                        HStack(spacing: 20) {
+                            MetricCard(title: "Est. A1C", value: String(format: "%.1f", estimatedA1C), unit: "%", color: .orange)
+                            MetricCard(title: "Variability", value: String(format: "%.0f", metrics.coefficientOfVariation), unit: "% CV", color: glucoseVariabilityColor)
+                        }
                     }
-                    
-                    HStack(spacing: 20) {
-                        MetricCard(title: "Est. A1C", value: String(format: "%.1f", estimatedA1C), unit: "%", color: .orange)
-                        MetricCard(title: "Variability", value: String(format: "%.0f", metrics.coefficientOfVariation), unit: "% CV", color: glucoseVariabilityColor)
-                    }
+                    .padding(16)
+                    .background(Color(.systemGray6))
+                    .cornerRadius(12)
+                    .padding(.horizontal, 20)
                 }
-                .padding(16)
-                .background(Color(.systemGray6))
-                .cornerRadius(12)
-                .padding(.horizontal, 20)
                 
                 // AI Key Findings
                 if analysisMethod == .ai && !keyFindings.isEmpty {
@@ -494,6 +496,8 @@ struct TherapyAdjustmentView: View {
     }
     
     private var estimatedA1C: Double {
+        // Don't calculate A1C if there are no data points
+        guard metrics.dataPoints > 0 else { return 0.0 }
         return (Double(metrics.averageGlucose) + 46.7) / 28.7
     }
     

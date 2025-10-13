@@ -48,7 +48,6 @@ struct AboutView: View {
                                 FeatureRow(icon: "syringe.fill", text: "Treatment tracking and management")
                                 FeatureRow(icon: "brain.head.profile", text: "AI-powered therapy recommendations")
                                 FeatureRow(icon: "camera.fill", text: "Food analysis and carb estimation")
-                                FeatureRow(icon: "person.2.fill", text: "Community support and buddy system")
                             }
                         }
                         
