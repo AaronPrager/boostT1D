@@ -282,10 +282,12 @@ export default function ReadingsPage() {
         timeInRange: 0,
         timeAboveRange: 0,
         timeBelowRange: 0,
-        overnight: 0,
-        morning: 0,
-        afternoon: 0,
-        evening: 0
+        dailyPatterns: {
+          overnight: 0,
+          morning: 0,
+          afternoon: 0,
+          evening: 0
+        }
       });
       return;
     }
