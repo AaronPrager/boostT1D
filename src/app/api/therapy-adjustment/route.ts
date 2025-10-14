@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { prisma } from "@/lib/prisma";
 import { authOptions } from "@/lib/auth";
-import { analyzeTreatmentPatterns, shouldAdjustCarbRatio, getCarbRatioPriority, generateCarbRatioReasoning } from "@/lib/shared-treatment-analysis";
+import { analyzeTreatmentPatterns, shouldAdjustCarbRatio, getCarbRatioPriority, generateCarbRatioReasoning, TreatmentAnalysis } from "@/lib/shared-treatment-analysis";
+import crypto from "crypto";
 
 interface Reading {
   sgv: number;
@@ -248,7 +249,7 @@ export async function POST(request: Request) {
         
         const response = await fetch(`${treatmentsUrl}?${queryParams}`, {
           headers: {
-            'api-secret': sha1(settings.nightscoutApiToken),
+            'api-secret': crypto.createHash('sha1').update(settings.nightscoutApiToken).digest('hex'),
             'Accept': 'application/json',
           },
         });
@@ -341,7 +342,9 @@ function analyzeAndSuggestAdjustments(
   readings: Reading[],
   profile: ProfileData,
   lowTarget: number,
-  highTarget: number
+  highTarget: number,
+  treatments?: any[],
+  analysisDateRange?: number
 ): AdjustmentSuggestions {
   // Calculate basic metrics
   const totalReadings = readings.length;
