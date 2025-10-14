@@ -18,7 +18,7 @@ struct WelcomeView: View {
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
                 }
-                .padding(.top, 5)
+                .padding(.top, 40)
                 .padding(.horizontal, 20)
                 .padding(.bottom, 40)
                 

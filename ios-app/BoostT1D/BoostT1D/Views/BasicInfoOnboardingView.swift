@@ -177,9 +177,15 @@ struct BasicInfoOnboardingView: View {
             return
         }
         
-        // Validate age is greater than 13
-        if ageValue <= 13 {
-            validationMessage = "You must be at least 14 years old to use this app."
+        // Validate age is between 13 and 130
+        if ageValue < 13 {
+            validationMessage = "You must be at least 13 years old to use this app."
+            showingValidationAlert = true
+            return
+        }
+        
+        if ageValue > 130 {
+            validationMessage = "Please enter a valid age (13-130)."
             showingValidationAlert = true
             return
         }

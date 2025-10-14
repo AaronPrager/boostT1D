@@ -12,7 +12,11 @@ struct ProfileView: View {
     @State private var state = ""
     @State private var age = 0
     @State private var yearsSinceDiagnosis = 0
+    @State private var yearsSinceDiagnosisString = ""
     @State private var selectedImage: UIImage?
+    
+    // Options
+    private let yearsSinceDiagnosisOptions = ["<1", "1-2", "3-10", "10+"]
     
     // Nightscout editing states
     @State private var nightscoutUrl = ""
@@ -69,7 +73,7 @@ struct ProfileView: View {
                                     showingPhotoActionSheet = true
                                 }) {
                                     HStack {
-                                        if let photo = profileService.currentProfile?.photo {
+                                        if let photo = selectedImage {
                                             Image(uiImage: photo)
                                                 .resizable()
                                                 .scaledToFill()
@@ -166,17 +170,19 @@ struct ProfileView: View {
                                 .frame(maxWidth: .infinity, alignment: .leading)
                             
                             if isEditingProfile {
-                                TextField("How many years have you had diabetes?", value: $yearsSinceDiagnosis, format: .number)
-                                    .textFieldStyle(RoundedBorderTextFieldStyle())
-                                    .keyboardType(.numberPad)
-                                    .toolbar {
-                                        ToolbarItemGroup(placement: .keyboard) {
-                                            Spacer()
-                                            Button("Done") {
-                                                hideKeyboard()
-                                            }
-                                        }
+                                Picker("Years since diagnosis", selection: $yearsSinceDiagnosisString) {
+                                    Text("Select duration").tag("")
+                                    ForEach(yearsSinceDiagnosisOptions, id: \.self) { option in
+                                        Text(option).tag(option)
                                     }
+                                }
+                                .pickerStyle(MenuPickerStyle())
+                                .font(.subheadline)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 10)
+                                .background(Color(.systemGray6))
+                                .cornerRadius(8)
                             } else {
                                 Text("\(profileService.currentProfile?.yearsSinceDiagnosis ?? 0) years")
                                     .font(.body)
@@ -523,7 +529,7 @@ struct ProfileView: View {
                 }
             }
         )
-        .sheet(isPresented: $showingImagePicker) {
+        .fullScreenCover(isPresented: $showingImagePicker) {
             ImagePicker(selectedImage: $selectedImage)
         }
         .actionSheet(isPresented: $showingPhotoActionSheet) {
@@ -552,7 +558,11 @@ struct ProfileView: View {
             state = profile.state ?? ""
             age = profile.currentAge
             yearsSinceDiagnosis = profile.yearsSinceDiagnosis
-            selectedImage = profile.photo
+            yearsSinceDiagnosisString = convertYearsToDiagnosisString(profile.yearsSinceDiagnosis)
+            // Only set selectedImage if we're not currently editing (to preserve user's selection)
+            if !isEditingProfile {
+                selectedImage = profile.photo
+            }
         }
         
         let settings = nightscoutService.settings
@@ -566,12 +576,25 @@ struct ProfileView: View {
     private func startEditingProfile() {
         isEditingProfile = true
         loadCurrentValues()
+        // Ensure selectedImage is set to current profile photo when starting to edit
+        if let profile = profileService.currentProfile {
+            selectedImage = profile.photo
+        }
     }
     
     private func saveProfile() {
+        // Convert string selection to numeric value
+        yearsSinceDiagnosis = convertDiagnosisStringToYears(yearsSinceDiagnosisString)
+        
         // Validate age
-        if age <= 13 {
-            validationMessage = "You must be at least 14 years old to use this app."
+        if age < 13 {
+            validationMessage = "You must be at least 13 years old to use this app."
+            showingValidationAlert = true
+            return
+        }
+        
+        if age > 130 {
+            validationMessage = "Please enter a valid age (13-130)."
             showingValidationAlert = true
             return
         }
@@ -680,6 +703,25 @@ struct ProfileView: View {
     
     private func hideKeyboard() {
         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+    }
+    
+    private func convertYearsToDiagnosisString(_ years: Int) -> String {
+        switch years {
+        case 0: return "<1"
+        case 1...2: return "1-2"
+        case 3...10: return "3-10"
+        default: return "10+"
+        }
+    }
+    
+    private func convertDiagnosisStringToYears(_ string: String) -> Int {
+        switch string {
+        case "<1": return 0
+        case "1-2": return 1
+        case "3-10": return 5
+        case "10+": return 10
+        default: return 0
+        }
     }
 }
 

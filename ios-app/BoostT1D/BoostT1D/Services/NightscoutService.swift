@@ -166,18 +166,33 @@ class NightscoutService: ObservableObject {
         let endTime = Int(Date().timeIntervalSince1970 * 1000)
         let startTime = endTime - (hours * 60 * 60 * 1000)
         
+        let startDate = Date(timeIntervalSince1970: Double(startTime) / 1000)
+        let endDate = Date(timeIntervalSince1970: Double(endTime) / 1000)
+        
+        // Calculate appropriate count based on time range (matching web app logic)
+        let timeDiffDays = Double(hours) / 24.0
+        let queryLimit: Int
+        if timeDiffDays >= 30 {
+            queryLimit = 10000 // For month+ views
+        } else if timeDiffDays >= 7 {
+            queryLimit = 5000  // For week+ views
+        } else {
+            queryLimit = 1000  // For short periods
+        }
+        
         
         var urlComponents = URLComponents(string: "\(settings.url)/api/v1/entries/sgv")
         urlComponents?.queryItems = [
             URLQueryItem(name: "find[date][$gte]", value: "\(startTime)"),
             URLQueryItem(name: "find[date][$lte]", value: "\(endTime)"),
-            URLQueryItem(name: "count", value: "1000")
+            URLQueryItem(name: "count", value: "\(queryLimit)")
         ]
         
         guard let url = urlComponents?.url else {
             completion(.failure(NightscoutError.invalidURL))
             return
         }
+        
         
         // Try multiple authentication methods
         self.fetchGlucoseWithHeader(url: url, settings: settings, completion: completion)
@@ -216,7 +231,6 @@ class NightscoutService: ObservableObject {
                 }
                 
                 do {
-                    
                     let glucoseEntries = try JSONDecoder().decode([NightscoutGlucoseEntry].self, from: data)
                     completion(.success(glucoseEntries))
                 } catch {

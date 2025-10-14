@@ -357,6 +357,16 @@ struct CurrentGlucoseCard: View {
         glucoseEntries.sorted { $0.date > $1.date }.first
     }
     
+    private var previousReading: NightscoutGlucoseEntry? {
+        let sortedEntries = glucoseEntries.sorted { $0.date > $1.date }
+        return sortedEntries.count > 1 ? sortedEntries[1] : nil
+    }
+    
+    private var glucoseDifference: Int? {
+        guard let current = currentReading, let previous = previousReading else { return nil }
+        return current.sgv - previous.sgv
+    }
+    
     private func getDirectionArrow(_ direction: String?) -> String {
         switch direction {
         case "DoubleUp": return "⇈"
@@ -408,10 +418,23 @@ struct CurrentGlucoseCard: View {
                                 .foregroundColor(.primary)
                         }
                         
-                        if let lastFetchTime = lastFetchTime {
-                            Text("Last updated \(formatRelativeTime(lastFetchTime))")
-                                .font(.system(size: 14))
-                                .foregroundColor(.secondary)
+                        // Measurement details
+                        VStack(alignment: .leading, spacing: 4) {
+                            if let reading = currentReading {
+                                let readingDate = Date(timeIntervalSince1970: Double(reading.date) / 1000)
+                                Text("Measured \(formatRelativeTime(readingDate))")
+                                    .font(.system(size: 14))
+                                    .foregroundColor(.secondary)
+                            }
+                            
+                            if let difference = glucoseDifference, let previous = previousReading {
+                                let differenceText = difference > 0 ? "+\(difference)" : "\(difference)"
+                                let trendSymbol = difference > 0 ? "↗" : difference < 0 ? "↘" : "→"
+                                
+                                Text("\(differenceText) from \(previous.sgv) \(trendSymbol)")
+                                    .font(.system(size: 14))
+                                    .foregroundColor(.secondary)
+                            }
                         }
                     }
                     

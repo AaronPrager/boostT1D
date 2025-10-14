@@ -18,6 +18,7 @@ struct TherapyAdjustmentView: View {
     @State private var showDisclaimer = true
     @State private var useAIAnalysis = false // Start with manual mode by default
     @State private var isClosedLoopSystem = false
+ // Debug option to force Nightscout mode
     
     private let timeRangeOptions = [3, 7]
     private let timeRangeLabels = ["3 days", "7 days"]
@@ -185,6 +186,9 @@ struct TherapyAdjustmentView: View {
                         Toggle("", isOn: $isClosedLoopSystem)
                             .labelsHidden()
                     }
+                    
+                    Divider()
+                    
                 }
                 .padding(16)
                 .background(Color(.systemGray6))
@@ -193,24 +197,24 @@ struct TherapyAdjustmentView: View {
                 
                 // Analysis Metrics - Only show if we have data
                 if metrics.dataPoints > 0 {
-                    VStack(spacing: 16) {
-                        Text("Analysis Metrics")
-                            .font(.headline)
-                        
-                        HStack(spacing: 20) {
-                            MetricCard(title: "Average BG", value: "\(metrics.averageGlucose)", unit: "mg/dL", color: .blue)
-                            MetricCard(title: "Time in Range", value: "\(metrics.timeInRange)", unit: "%", color: .green)
-                        }
-                        
-                        HStack(spacing: 20) {
-                            MetricCard(title: "Est. A1C", value: String(format: "%.1f", estimatedA1C), unit: "%", color: .orange)
-                            MetricCard(title: "Variability", value: String(format: "%.0f", metrics.coefficientOfVariation), unit: "% CV", color: glucoseVariabilityColor)
-                        }
+                VStack(spacing: 16) {
+                    Text("Analysis Metrics")
+                        .font(.headline)
+                    
+                    HStack(spacing: 20) {
+                        MetricCard(title: "Average BG", value: "\(metrics.averageGlucose)", unit: "mg/dL", color: .blue)
+                        MetricCard(title: "Time in Range", value: "\(metrics.timeInRange)", unit: "%", color: .green)
                     }
-                    .padding(16)
-                    .background(Color(.systemGray6))
-                    .cornerRadius(12)
-                    .padding(.horizontal, 20)
+                    
+                    HStack(spacing: 20) {
+                        MetricCard(title: "Est. A1C", value: String(format: "%.1f", estimatedA1C), unit: "%", color: .orange)
+                            MetricCard(title: "Variability", value: String(format: "%.0f", metrics.coefficientOfVariation), unit: "% CV", color: glucoseVariabilityColor)
+                    }
+                }
+                .padding(16)
+                .background(Color(.systemGray6))
+                .cornerRadius(12)
+                .padding(.horizontal, 20)
                 }
                 
                 // AI Key Findings
@@ -439,16 +443,24 @@ struct TherapyAdjustmentView: View {
         .onAppear {
                     if !showDisclaimer {
             loadSuggestions()
-                    }
         }
-        .onChange(of: selectedTimeRange) {
+        }
+        .onChange(of: selectedTimeRange) { newValue in
                     if !showDisclaimer {
+                        // Clear existing data first
+                        suggestions = []
+                        metrics = AnalysisMetrics()
+                        // Then load new data
             loadSuggestions()
                     }
                 }
-        .onChange(of: isClosedLoopSystem) {
+        .onChange(of: isClosedLoopSystem) { newValue in
                     if !showDisclaimer {
-            loadSuggestions()
+                        // Clear existing data first
+                        suggestions = []
+                        metrics = AnalysisMetrics()
+                        // Then load new data
+                        loadSuggestions()
                     }
                 }
             }
@@ -544,6 +556,7 @@ struct TherapyAdjustmentView: View {
             // Load local data
             glucoseEntries = localDataService.getGlucoseEntriesForTimeRange(hours: selectedTimeRange * 24)
             treatments = localDataService.getTreatmentsForTimeRange(hours: selectedTimeRange * 24)
+            
             analyzeDataAndGenerateSuggestions()
             return
         }
@@ -609,7 +622,6 @@ struct TherapyAdjustmentView: View {
                         self.safetyNotes = aiSuggestions.safetyNotes
                     case .failure(let error):
                         // Automatic fallback to rule-based analysis
-                        print("AI analysis failed: \(error), using rule-based analysis")
                         self.suggestions = self.generateRealSuggestions(
                             glucoseEntries: self.glucoseEntries,
                             treatments: self.treatments,
@@ -640,6 +652,7 @@ struct TherapyAdjustmentView: View {
             self.safetyNotes = []
             self.isLoading = false
         }
+        
     }
     
     private func convertAISuggestionsToAdjustments(_ aiSuggestions: [AISuggestion]) -> [AdjustmentSuggestion] {
@@ -854,7 +867,7 @@ struct TherapyAdjustmentView: View {
             
             if percentDiff > 10 { // More than 10% difference
                 let suggestedISF = avgActualISF * 0.95 // Be conservative, adjust by 95% of measured
-                let adjustmentPercent = Int(abs((suggestedISF - assumedISF) / assumedISF * 100))
+                let _ = Int(abs((suggestedISF - assumedISF) / assumedISF * 100))
                 
                 // Assign priority based on severity
                 let priority: Priority
@@ -1058,17 +1071,30 @@ struct TherapyAdjustmentView: View {
     }
     
     private func analyzeTreatmentPatterns(treatments: [NightscoutTreatment]) -> TreatmentAnalysis {
-        let correctionCount = treatments.filter { $0.eventType == "Correction Bolus" || $0.eventType == "Bolus" }.count
-        let carbCount = treatments.filter { $0.eventType == "Carb" || $0.eventType == "Meal Bolus" }.count
+        
+        let correctionCount = treatments.filter { 
+            $0.eventType == "Correction Bolus" || $0.eventType == "Bolus" 
+        }.count
+        // Improved carb detection - look for any treatment with carbs > 0, regardless of event type
+        let carbCount = treatments.filter { 
+            ($0.carbs != nil && $0.carbs! > 0) || 
+            $0.eventType == "Carb" || 
+            $0.eventType == "Meal Bolus" ||
+            ($0.eventType == "Bolus" && $0.carbs != nil && $0.carbs! > 0)
+        }.count
         let tempBasalCount = treatments.filter { $0.eventType == "Temp Basal" }.count
+        
+        let frequentCorrections = correctionCount > selectedTimeRange * 3
+        let frequentCarbs = carbCount > selectedTimeRange * 4
+        let frequentTempBasals = tempBasalCount > selectedTimeRange * 2
         
         return TreatmentAnalysis(
             correctionCount: correctionCount,
             carbCount: carbCount,
             tempBasalCount: tempBasalCount,
-            frequentCorrections: correctionCount > selectedTimeRange * 3, // More than 3 per day (more conservative)
-            frequentCarbs: carbCount > selectedTimeRange * 4, // More than 4 per day (more conservative)
-            frequentTempBasals: tempBasalCount > selectedTimeRange * 2 // More than 2 per day (more conservative)
+            frequentCorrections: frequentCorrections,
+            frequentCarbs: frequentCarbs,
+            frequentTempBasals: frequentTempBasals
         )
     }
     

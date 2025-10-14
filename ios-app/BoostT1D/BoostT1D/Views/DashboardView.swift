@@ -6,6 +6,9 @@ struct DashboardView: View {
     @StateObject private var profileService = UserProfileService.shared
     
     @State private var currentGlucose: Int?
+    @State private var previousGlucose: Int?
+    @State private var glucoseDifference: Int?
+    @State private var measurementTime: Date?
     @State private var currentIOB: Double?
     @State private var currentCOB: Double?
     @State private var glucoseTrend: String?
@@ -61,7 +64,10 @@ struct DashboardView: View {
                             glucose: currentGlucose,
                             trend: glucoseTrend,
                             lowGlucose: nightscoutService.settings.lowGlucose,
-                            highGlucose: nightscoutService.settings.highGlucose
+                            highGlucose: nightscoutService.settings.highGlucose,
+                            previousGlucose: previousGlucose,
+                            glucoseDifference: glucoseDifference,
+                            measurementTime: measurementTime
                         )
                         .padding(.horizontal, 20)
                         
@@ -222,7 +228,18 @@ struct DashboardView: View {
         if let latest = entries.first {
             currentGlucose = latest.sgv
             glucoseTrend = latest.direction
-            lastUpdateTime = Date(timeIntervalSince1970: Double(latest.date) / 1000)
+            measurementTime = Date(timeIntervalSince1970: Double(latest.date) / 1000)
+            lastUpdateTime = measurementTime
+            
+            // Calculate previous glucose and difference
+            if entries.count > 1 {
+                let previous = entries[1]
+                previousGlucose = previous.sgv
+                glucoseDifference = latest.sgv - previous.sgv
+            } else {
+                previousGlucose = nil
+                glucoseDifference = nil
+            }
         }
         
         // IOB and COB not available in manual mode
@@ -247,7 +264,19 @@ struct DashboardView: View {
                     if let latest = entries.first {
                         self.currentGlucose = latest.sgv
                         self.glucoseTrend = latest.direction
-                        self.lastUpdateTime = Date(timeIntervalSince1970: Double(latest.date) / 1000)
+                        self.measurementTime = Date(timeIntervalSince1970: Double(latest.date) / 1000)
+                        self.lastUpdateTime = self.measurementTime
+                        
+                        // Calculate previous glucose and difference
+                        if entries.count > 1 {
+                            let previous = entries[1]
+                            self.previousGlucose = previous.sgv
+                            self.glucoseDifference = latest.sgv - previous.sgv
+                        } else {
+                            self.previousGlucose = nil
+                            self.glucoseDifference = nil
+                        }
+                        
                         print("Dashboard: Glucose fetched successfully: \(latest.sgv)")
                     }
                     
@@ -324,6 +353,9 @@ struct GlucoseCard: View {
     let trend: String?
     let lowGlucose: Double
     let highGlucose: Double
+    let previousGlucose: Int?
+    let glucoseDifference: Int?
+    let measurementTime: Date?
     
     var body: some View {
         VStack(spacing: 12) {
@@ -360,6 +392,26 @@ struct GlucoseCard: View {
                     .font(.title3)
                     .foregroundColor(.secondary)
                     .padding(.bottom, 8)
+            }
+            
+            // Measurement details
+            if measurementTime != nil || glucoseDifference != nil {
+                VStack(spacing: 4) {
+                    if let measurementTime = measurementTime {
+                        Text("Measured \(formatRelativeTime(measurementTime))")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    if let difference = glucoseDifference, let previous = previousGlucose {
+                        let differenceText = difference > 0 ? "+\(difference)" : "\(difference)"
+                        let trendSymbol = difference > 0 ? "↗" : difference < 0 ? "↘" : "→"
+                        
+                        Text("\(differenceText) from \(previous) \(trendSymbol)")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
             }
             
             // Range indicator
@@ -418,6 +470,12 @@ struct GlucoseCard: View {
         case "DoubleDown": return "⇊"
         default: return "→"
         }
+    }
+    
+    private func formatRelativeTime(_ date: Date) -> String {
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .abbreviated
+        return formatter.localizedString(for: date, relativeTo: Date())
     }
 }
 

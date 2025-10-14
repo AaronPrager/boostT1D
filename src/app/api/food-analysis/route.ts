@@ -8,6 +8,12 @@ import { calculateIOB, calculateCOB, calculateSafeBolus, calculateSafeBolusWithN
 
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY || '');
 
+// Debug logging for API key
+console.log('🔑 Food Analysis API - Environment Check:');
+console.log('  - GOOGLE_AI_API_KEY loaded:', process.env.GOOGLE_AI_API_KEY ? 'YES' : 'NO');
+console.log('  - Key length:', process.env.GOOGLE_AI_API_KEY?.length || 0);
+console.log('  - Key starts with:', process.env.GOOGLE_AI_API_KEY?.substring(0, 10) || 'NONE');
+
 function sha1(token: string): string {
   return crypto.createHash('sha1').update(token).digest('hex');
 }
@@ -219,11 +225,18 @@ export async function POST(request: NextRequest) {
     const session = await getServerSession(authOptions);
 
     // Check if API key is configured
+    console.log('🔍 POST /api/food-analysis - Checking API key...');
+    console.log('  - Key present:', !!process.env.GOOGLE_AI_API_KEY);
+    console.log('  - Key value type:', typeof process.env.GOOGLE_AI_API_KEY);
+    
     if (!process.env.GOOGLE_AI_API_KEY) {
+      console.error('❌ GOOGLE_AI_API_KEY is not set! Returning 503 error.');
       return NextResponse.json({
         error: "Food analysis service is currently unavailable. Please try again later."
       }, { status: 503 });
     }
+    
+    console.log('✅ API key check passed, proceeding with analysis...');
 
     const formData = await request.formData();
     const imageFile = (formData.get('photo') || formData.get('image')) as File;
