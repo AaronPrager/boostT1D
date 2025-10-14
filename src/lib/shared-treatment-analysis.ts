@@ -26,7 +26,7 @@ export interface Treatment {
  * Analyzes treatment patterns to identify frequent corrections, carb treatments, and temp basals
  */
 export function analyzeTreatmentPatterns(treatments: Treatment[], timeRangeDays: number): TreatmentAnalysis {
-  const uniqueEventTypes = [...new Set(treatments.map(t => t.eventType).filter(Boolean))].sort();
+  const uniqueEventTypes = [...new Set(treatments.map(t => t.eventType).filter((et): et is string => Boolean(et)))].sort();
   const treatmentsWithCarbs = treatments.filter(t => t.carbs && t.carbs > 0);
   
   const correctionCount = treatments.filter(t => 
