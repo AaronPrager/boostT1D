@@ -23,6 +23,9 @@ type Settings = {
 type DashboardStats = {
   currentGlucose: number | null;
   currentDirection: string | null;
+  previousGlucose: number | null;
+  glucoseDifference: number | null;
+  measurementTime: string | null;
   timeInRange: number;
   timeAboveRange: number;
   timeBelowRange: number;
@@ -44,6 +47,9 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats>({
     currentGlucose: null,
     currentDirection: null,
+    previousGlucose: null,
+    glucoseDifference: null,
+    measurementTime: null,
     timeInRange: 0,
     timeAboveRange: 0,
     timeBelowRange: 0,
@@ -246,6 +252,10 @@ export default function DashboardPage() {
       // Get current glucose and direction
       const sortedReadings = readings.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
       const currentReading = sortedReadings[0];
+      const previousReading = sortedReadings[1];
+      
+      // Calculate glucose difference
+      const glucoseDifference = previousReading ? currentReading.sgv - previousReading.sgv : null;
       
       // Determine trend (simplified - could be enhanced with more sophisticated analysis)
       const recentReadings = sortedReadings.slice(0, Math.min(20, sortedReadings.length));
@@ -263,6 +273,9 @@ export default function DashboardPage() {
               setStats({
           currentGlucose: currentReading?.sgv || null,
           currentDirection: currentReading?.direction || null,
+          previousGlucose: previousReading?.sgv || null,
+          glucoseDifference: glucoseDifference,
+          measurementTime: currentReading?.date || null,
           timeInRange: Math.round(timeInRange),
           timeAboveRange: Math.round(timeAboveRange),
           timeBelowRange: Math.round(timeBelowRange),
@@ -515,11 +528,23 @@ export default function DashboardPage() {
                       {getDirectionIcon(stats.currentDirection || null)}
                     </span>
                   </div>
-                  {stats.lastUpdated && (
-                    <p className="text-sm text-gray-600 mt-2">
-                      Last updated {formatRelativeTime(stats.lastUpdated)}
-                    </p>
-                  )}
+                  
+                  {/* Measurement details */}
+                  <div className="mt-3 space-y-1">
+                    {stats.measurementTime && (
+                      <p className="text-sm text-gray-600">
+                        Measured {formatRelativeTime(stats.measurementTime)}
+                      </p>
+                    )}
+                    {stats.glucoseDifference !== null && stats.previousGlucose && (
+                      <p className="text-sm text-gray-600">
+                        {stats.glucoseDifference > 0 ? '+' : ''}{stats.glucoseDifference} from {stats.previousGlucose} 
+                        <span className="text-gray-500 ml-1">
+                          ({stats.glucoseDifference > 0 ? '↗' : stats.glucoseDifference < 0 ? '↘' : '→'})
+                        </span>
+                      </p>
+                    )}
+                  </div>
                 </div>
                 
                 {/* Sync Button and Last Updated Info */}

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { prisma } from "@/lib/prisma";
 import { authOptions } from "@/lib/auth";
+import { analyzeTreatmentPatterns, shouldAdjustCarbRatio, getCarbRatioPriority, generateCarbRatioReasoning } from "@/lib/shared-treatment-analysis";
 
 interface Reading {
   sgv: number;
@@ -234,6 +235,44 @@ export async function POST(request: Request) {
       dateRange: `${startDate.toISOString()} to ${endDate.toISOString()}`,
     });
 
+    // Fetch treatments for comprehensive analysis
+    let treatments: any[] = [];
+    try {
+      if (settings?.nightscoutUrl && settings?.nightscoutApiToken) {
+        const treatmentsUrl = `${settings.nightscoutUrl}/api/v1/treatments`;
+        const queryParams = new URLSearchParams({
+          'find[created_at][$gte]': startDate.toISOString(),
+          'find[created_at][$lte]': endDate.toISOString(),
+          'count': '1000',
+        });
+        
+        const response = await fetch(`${treatmentsUrl}?${queryParams}`, {
+          headers: {
+            'api-secret': sha1(settings.nightscoutApiToken),
+            'Accept': 'application/json',
+          },
+        });
+
+        if (response.ok) {
+          const treatmentsData = await response.json();
+          treatments = treatmentsData.filter((treatment: any) => 
+            treatment.eventType === 'Bolus' || 
+            treatment.eventType === 'SMB' ||
+            treatment.eventType === 'Temp Basal' ||
+            treatment.eventType === 'Carb Correction' ||
+            treatment.eventType === 'Note' ||
+            treatment.eventType === 'Site Change' ||
+            treatment.eventType === 'Exercise'
+          );
+          console.log('✅ Fetched treatments:', treatments.length);
+        } else {
+          console.log('⚠️ Failed to fetch treatments:', response.status);
+        }
+      }
+    } catch (error) {
+      console.log('⚠️ Error fetching treatments:', error);
+    }
+
     // Calculate minimum readings needed based on analysis period
     const minReadingsPerDay = 24; // At least 1 reading per hour
     const minReadingsNeeded = analysisDateRange * minReadingsPerDay;
@@ -326,8 +365,8 @@ function analyzeAndSuggestAdjustments(
   // Analyze by time periods for basal adjustments
   const basalAdjustments = analyzeBasalNeeds(readings, profile.basal, lowTarget, highTarget);
   
-  // Analyze carb ratios (would need meal data for full analysis)
-  const carbRatioAdjustments = analyzeCarbRatios(readings, profile.carbratio, averageGlucose, highTarget);
+  // Analyze carb ratios using both glucose patterns AND treatment patterns
+  const carbRatioAdjustments = analyzeCarbRatios(readings, profile.carbratio, averageGlucose, highTarget, treatments, analysisDateRange);
   
   // Analyze insulin sensitivity
   const sensitivityAdjustments = analyzeSensitivity(readings, profile.sens, glucoseVariability);
@@ -577,13 +616,22 @@ function getConfidenceLevel(confidence: 'low' | 'medium' | 'high'): number {
   }
 }
 
+
 function analyzeCarbRatios(
   readings: Reading[],
   currentRatios: Array<{ time: string; value: number }>,
   averageGlucose: number,
-  highTarget: number
+  highTarget: number,
+  treatments?: any[],
+  timeRangeDays?: number
 ): TherapyAdjustment[] {
   const adjustments: TherapyAdjustment[] = [];
+  
+  // Combined approach: Use both glucose patterns AND treatment analysis
+  let treatmentAnalysis: TreatmentAnalysis | null = null;
+  if (treatments && timeRangeDays) {
+    treatmentAnalysis = analyzeTreatmentPatterns(treatments, timeRangeDays);
+  }
   
   // Define meal periods with more granular analysis
   const mealPeriods = [
@@ -671,6 +719,28 @@ function analyzeCarbRatios(
       });
     }
   });
+
+  // Treatment-based carb analysis (if treatments are available)
+  if (treatmentAnalysis && shouldAdjustCarbRatio(treatmentAnalysis, timeRangeDays!)) {
+    const priority = getCarbRatioPriority(treatmentAnalysis, timeRangeDays!);
+    
+    // Find the most commonly used carb ratio time
+    const mostCommonRatio = currentRatios[0]; // Default to first ratio
+    
+    const adjustmentPercentage = -7; // Small decrease (stronger ratio)
+    const suggestedValue = Math.round((mostCommonRatio.value * (1 + adjustmentPercentage / 100)) * 10) / 10;
+    
+    adjustments.push({
+      type: 'carbratio',
+      timeSlot: 'Meal Times',
+      currentValue: mostCommonRatio.value,
+      suggestedValue: Math.max(1, suggestedValue),
+      adjustmentPercentage,
+      reasoning: generateCarbRatioReasoning(treatmentAnalysis, timeRangeDays!),
+      confidence: 'medium',
+      priority,
+    });
+  }
 
   return adjustments;
 }

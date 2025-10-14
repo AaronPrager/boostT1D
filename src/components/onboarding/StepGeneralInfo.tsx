@@ -82,13 +82,22 @@ export default function Step2GeneralInfo({ onNext, onBack, initialData }: Step2G
       newErrors.age = 'Age is required';
     } else {
       const ageNum = parseInt(formData.age);
-      if (isNaN(ageNum) || ageNum < 1 || ageNum > 120) {
-        newErrors.age = 'Please enter a valid age (1-120)';
+      if (isNaN(ageNum) || ageNum < 13 || ageNum > 130) {
+        newErrors.age = 'Please enter a valid age (13-130)';
       }
     }
 
     if (!formData.yearsSinceDiagnosis) {
       newErrors.yearsSinceDiagnosis = 'Years since diagnosis is required';
+    } else {
+      // Validate that years since diagnosis is not more than age
+      const ageNum = parseInt(formData.age);
+      if (!isNaN(ageNum)) {
+        const yearsSinceDiagnosisValue = getYearsSinceDiagnosisValue(formData.yearsSinceDiagnosis);
+        if (yearsSinceDiagnosisValue > ageNum) {
+          newErrors.yearsSinceDiagnosis = 'Years with diabetes cannot be more than your age. Please check your information.';
+        }
+      }
     }
 
     if (!formData.country) {
@@ -101,6 +110,16 @@ export default function Step2GeneralInfo({ onNext, onBack, initialData }: Step2G
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
+  };
+
+  const getYearsSinceDiagnosisValue = (value: string): number => {
+    switch (value) {
+      case '<1': return 0;
+      case '1-2': return 1;
+      case '3-10': return 5;
+      case '10+': return 10;
+      default: return 0;
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -138,8 +157,8 @@ export default function Step2GeneralInfo({ onNext, onBack, initialData }: Step2G
           <input
             type="number"
             id="age"
-            min="1"
-            max="120"
+            min="13"
+            max="130"
             value={formData.age}
             onChange={(e) => setFormData({ ...formData, age: e.target.value })}
             className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${

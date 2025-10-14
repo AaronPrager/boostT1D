@@ -288,6 +288,8 @@ export default function PersonalProfile() {
     }
     if (!profileData.age) {
       errors.age = 'Age is required.';
+    } else if (profileData.age < 13 || profileData.age > 130) {
+      errors.age = 'Please enter a valid age (13-130).';
     }
     if (!profileData.country) {
       errors.country = 'Country is required.';
@@ -295,7 +297,26 @@ export default function PersonalProfile() {
     if (profileData.country === 'US' && !profileData.state) {
       errors.state = 'State is required for US.';
     }
+    
+    // Validate years since diagnosis is not more than age
+    if (profileData.age && profileData.yearsSinceDiagnosis) {
+      const yearsSinceDiagnosisValue = getYearsSinceDiagnosisValue(profileData.yearsSinceDiagnosis);
+      if (yearsSinceDiagnosisValue > profileData.age) {
+        errors.yearsSinceDiagnosis = 'Years with diabetes cannot be more than your age. Please check your information.';
+      }
+    }
+    
     return errors;
+  };
+
+  const getYearsSinceDiagnosisValue = (value: string): number => {
+    switch (value) {
+      case '<1': return 0;
+      case '1-2': return 1;
+      case '3-10': return 5;
+      case '10+': return 10;
+      default: return 0;
+    }
   };
 
   const handleSave = async () => {
@@ -600,8 +621,8 @@ export default function PersonalProfile() {
                 {isEditing ? (
                   <input 
                     type="number" 
-                    min="1"
-                    max="120"
+                    min="13"
+                    max="130"
                     value={editingProfile.age || ''} 
                     onChange={e => setEditingProfile({ ...editingProfile, age: parseInt(e.target.value) || undefined })} 
                     className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-slate-500 transition-colors" 
@@ -697,6 +718,7 @@ export default function PersonalProfile() {
                       : 'Not provided'}
                   </p>
                 )}
+                {validationErrors.yearsSinceDiagnosis && <p className="text-red-600 text-sm font-medium">{validationErrors.yearsSinceDiagnosis}</p>}
               </div>
             </div>
 

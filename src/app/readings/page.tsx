@@ -552,12 +552,15 @@ export default function ReadingsPage() {
     // Sort readings by date and get the most recent one
     const sortedReadings = [...readings].sort((a, b) => b.date - a.date);
     const currentReading = sortedReadings[0];
+    const previousReading = sortedReadings[1];
     
     return {
       value: currentReading.sgv,
       direction: currentReading.direction || 'NONE',
       timestamp: new Date(currentReading.date),
-      source: currentReading.source
+      source: currentReading.source,
+      previousValue: previousReading?.sgv || null,
+      difference: previousReading ? currentReading.sgv - previousReading.sgv : null
     };
   };
 
@@ -628,11 +631,23 @@ export default function ReadingsPage() {
                         {DIRECTION_ARROWS[currentGlucose.direction] || '→'}
                       </span>
                     </div>
-                    {currentGlucose.timestamp && (
-                      <p className="text-sm text-gray-600 mt-2">
-                        Last updated {formatRelativeTime(currentGlucose.timestamp.toISOString())}
-                      </p>
-                    )}
+                    
+                    {/* Measurement details */}
+                    <div className="mt-2 space-y-1">
+                      {currentGlucose.timestamp && (
+                        <p className="text-sm text-gray-600">
+                          Measured {formatRelativeTime(currentGlucose.timestamp.toISOString())}
+                        </p>
+                      )}
+                      {currentGlucose.difference !== null && currentGlucose.previousValue && (
+                        <p className="text-sm text-gray-600">
+                          {currentGlucose.difference > 0 ? '+' : ''}{currentGlucose.difference} from {currentGlucose.previousValue} 
+                          <span className="text-gray-500 ml-1">
+                            ({currentGlucose.difference > 0 ? '↗' : currentGlucose.difference < 0 ? '↘' : '→'})
+                          </span>
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
               ) : (
