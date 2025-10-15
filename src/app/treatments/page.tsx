@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 
 function formatDate(date: Date) {
   return date.toISOString().slice(0, 10);
@@ -164,7 +165,13 @@ export default function TreatmentsPage() {
         hour12: false 
       }),
       treatment.eventType || treatment.type || '',
-      treatment.insulin || treatment.insulinUnits || '',
+      (() => {
+        const insulinValue = treatment.insulin || treatment.insulinUnits;
+        if (insulinValue && !isNaN(parseFloat(insulinValue))) {
+          return parseFloat(insulinValue).toFixed(2);
+        }
+        return '';
+      })(),
       treatment.carbs || treatment.carbsGrams || '',
       treatment.notes || treatment.reason || ''
     ]);
@@ -216,6 +223,8 @@ export default function TreatmentsPage() {
         notes: ''
       });
       
+      setShowManualEntry(false);
+      
       // Refresh the treatments list
       await fetchTreatments();
       
@@ -226,83 +235,118 @@ export default function TreatmentsPage() {
     }
   }
 
+  async function deleteTreatment(treatmentId: string) {
+    if (!confirm('Are you sure you want to delete this treatment?')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/treatments/${treatmentId}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        console.log('Treatment deleted successfully');
+        // Refresh treatments
+        await fetchTreatments();
+      } else {
+        const errorData = await response.json();
+        console.error('Failed to delete treatment:', errorData);
+        setError(`Failed to delete treatment: ${errorData.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Error deleting treatment:', error);
+      setError('An error occurred while deleting the treatment.');
+    }
+  }
+
   return (
     <div className="max-w-3xl mx-auto p-6">
       <h1 className="text-2xl font-bold mb-4">Nightscout Treatments</h1>
       
-              {/* Manual Mode Section - Show when Nightscout is not configured */}
-        {isManualMode && (
-          <div className="mb-4 bg-slate-50 border border-slate-200 rounded-lg p-4">
-            <div className="flex items-start">
-              <svg className="w-5 h-5 text-slate-600 mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      {/* Manual Mode Indicator Banner */}
+      {isManualMode && (
+        <div className="mb-6 bg-gradient-to-r from-orange-100 via-amber-50 to-yellow-100 border-2 border-orange-300 rounded-xl shadow-lg p-6">
+          <div className="flex items-start">
+            <div className="flex-shrink-0">
+              <svg className="h-6 w-6 text-orange-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <div className="flex-1">
-                <h3 className="text-slate-900 font-medium text-base mb-2">Manual Mode Active 💊</h3>
-                <p className="text-slate-600 text-sm mb-3">
-                  {settings.nightscoutUrl && !settings.nightscoutApiToken 
-                    ? "Nightscout URL is configured but API token is missing. You can continue in manual mode or add your API token."
-                    : "Nightscout is not configured. You can continue in manual mode or set up Nightscout for automatic sync."
+            </div>
+            <div className="ml-4 flex-1">
+              <h3 className="text-lg font-semibold text-orange-900">Manual Mode Active</h3>
+              <div className="mt-2 text-sm text-orange-800">
+                <p>
+                  {settings?.nightscoutUrl && !settings?.nightscoutApiToken 
+                    ? "Nightscout URL is configured but API token is missing. You can manually enter treatments or add your API token in your Personal Profile to enable automatic syncing."
+                    : "Nightscout is not configured. You can manually enter treatments or set up Nightscout for automatic sync with your CGM/pump."
                   }
                 </p>
-                <div className="flex flex-wrap gap-2">
-                  <a 
-                    href="/diabetes-profile" 
-                    className="inline-flex items-center px-3 py-1.5 bg-slate-700 text-white text-xs font-medium rounded-md hover:bg-slate-800 transition-colors"
-                  >
-                    <svg className="w-3 h-3 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                    {settings.nightscoutUrl && !settings.nightscoutApiToken ? "Add API Token" : "Configure Nightscout"}
-                  </a>
-                  <button
-                    onClick={() => setShowManualEntry(true)}
-                    className="inline-flex items-center px-3 py-1.5 bg-gray-600 text-white text-xs font-medium rounded-md hover:bg-gray-700 transition-colors"
-                  >
-                    <svg className="w-3 h-3 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                    </svg>
-                    Continue in Manual Mode
-                  </button>
-                </div>
+              </div>
+              <div className="mt-4 flex flex-wrap gap-3">
+                <button
+                  onClick={() => setShowManualEntry(true)}
+                  className="inline-flex items-center px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors text-sm font-medium shadow-md"
+                >
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  Add Treatment
+                </button>
+                <Link 
+                  href="/personal-profile" 
+                  className="inline-flex items-center px-4 py-2 bg-white text-orange-700 border-2 border-orange-300 rounded-lg hover:bg-orange-50 transition-colors text-sm font-medium"
+                >
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                  Configure Nightscout
+                </Link>
               </div>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
       {/* Manual Treatment Entry Form */}
       {showManualEntry && (
-        <div className="mb-6 bg-white border border-slate-200 rounded-lg p-6 shadow-sm">
+        <div className="mb-6 bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-gray-200 rounded-xl shadow-lg p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-slate-900">Add Treatment Manually</h3>
+            <h3 className="text-xl font-bold text-slate-800">Add Treatment Manually</h3>
             <button
               onClick={() => setShowManualEntry(false)}
-              className="text-slate-400 hover:text-slate-600"
+              className="text-slate-400 hover:text-slate-600 transition-colors p-2 hover:bg-white/50 rounded-lg"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Date & Time</label>
+          <div className="space-y-4">
+            {/* Date & Time Card */}
+            <div className="bg-white rounded-lg p-4 border border-gray-200 shadow-sm">
+              <label className="block text-sm font-semibold text-slate-800 mb-2">
+                Date & Time
+              </label>
               <input
                 type="datetime-local"
                 value={manualTreatment.timestamp}
                 onChange={(e) => setManualTreatment(prev => ({ ...prev, timestamp: e.target.value }))}
-                className="w-full border border-slate-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-gray-500 focus:border-gray-500"
+                className="w-full border border-slate-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
               />
             </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Treatment Type</label>
+
+            {/* Treatment Type Card */}
+            <div className="bg-white rounded-lg p-4 border border-gray-200 shadow-sm">
+              <label className="block text-sm font-semibold text-slate-800 mb-2">
+                Treatment Type
+              </label>
               <select
                 value={manualTreatment.type}
                 onChange={(e) => setManualTreatment(prev => ({ ...prev, type: e.target.value }))}
-                className="w-full border border-slate-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-gray-500 focus:border-gray-500"
+                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-gray-400 focus:border-gray-400 transition-colors bg-white"
               >
                 <option value="Bolus">Bolus</option>
                 <option value="Meal">Meal</option>
@@ -314,59 +358,72 @@ export default function TreatmentsPage() {
               </select>
             </div>
             
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Insulin (units)</label>
-              <input
-                type="number"
-                step="0.1"
-                placeholder="0.0"
-                value={manualTreatment.insulin}
-                onChange={(e) => setManualTreatment(prev => ({ ...prev, insulin: e.target.value }))}
-                className="w-full border border-slate-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-gray-500 focus:border-gray-500"
-              />
+            {/* Insulin & Carbs Cards - Side by Side */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="bg-white rounded-lg p-4 border border-gray-200 shadow-sm">
+                <label className="block text-sm font-semibold text-slate-800 mb-2">
+                  Insulin <span className="text-xs font-normal text-slate-500">(Units)</span>
+                </label>
+                <input
+                  type="number"
+                  step="0.1"
+                  placeholder="0.0"
+                  value={manualTreatment.insulin}
+                  onChange={(e) => setManualTreatment(prev => ({ ...prev, insulin: e.target.value }))}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-gray-400 focus:border-gray-400 transition-colors"
+                />
+              </div>
+              
+              <div className="bg-white rounded-lg p-4 border border-gray-200 shadow-sm">
+                <label className="block text-sm font-semibold text-slate-800 mb-2">
+                  Carbs <span className="text-xs font-normal text-slate-500">(Grams)</span>
+                </label>
+                <input
+                  type="number"
+                  step="1"
+                  placeholder="0"
+                  value={manualTreatment.carbs}
+                  onChange={(e) => setManualTreatment(prev => ({ ...prev, carbs: e.target.value }))}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-gray-400 focus:border-gray-400 transition-colors"
+                />
+              </div>
             </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Carbs (grams)</label>
-              <input
-                type="number"
-                step="1"
-                placeholder="0"
-                value={manualTreatment.carbs}
-                onChange={(e) => setManualTreatment(prev => ({ ...prev, carbs: e.target.value }))}
-                className="w-full border border-slate-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-gray-500 focus:border-gray-500"
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Blood Glucose (mg/dL)</label>
+
+            {/* Blood Glucose Card */}
+            <div className="bg-white rounded-lg p-4 border border-gray-200 shadow-sm">
+              <label className="block text-sm font-semibold text-slate-800 mb-2">
+                Blood Glucose <span className="text-xs font-normal text-slate-500">(mg/dL)</span>
+              </label>
               <input
                 type="number"
                 step="1"
                 placeholder="100"
                 value={manualTreatment.glucoseValue}
                 onChange={(e) => setManualTreatment(prev => ({ ...prev, glucoseValue: e.target.value }))}
-                className="w-full border border-slate-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-gray-500 focus:border-gray-500"
+                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-gray-400 focus:border-gray-400 transition-colors"
               />
             </div>
             
-            <div className="md:col-span-1">
-              <label className="block text-sm font-medium text-slate-700 mb-1">Notes</label>
+            {/* Notes Card */}
+            <div className="bg-white rounded-lg p-4 border border-gray-200 shadow-sm">
+              <label className="block text-sm font-semibold text-slate-800 mb-2">
+                Notes
+              </label>
               <textarea
-                rows={3}
+                rows={2}
                 placeholder="Optional notes..."
                 value={manualTreatment.notes}
                 onChange={(e) => setManualTreatment(prev => ({ ...prev, notes: e.target.value }))}
-                className="w-full border border-slate-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-gray-500 focus:border-gray-500"
+                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-gray-400 focus:border-gray-400 transition-colors"
               />
             </div>
           </div>
           
-          <div className="flex gap-3">
+          <div className="flex gap-3 mt-6">
             <button
               onClick={saveManualTreatment}
               disabled={loading}
-              className="inline-flex items-center px-4 py-2 bg-gray-600 text-white text-sm font-medium rounded-md hover:bg-gray-700 focus:ring-2 focus:ring-gray-500 disabled:opacity-50 transition-colors"
+              className="inline-flex items-center justify-center px-3 py-1.5 bg-blue-600 text-white text-sm font-semibold rounded-md hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm hover:shadow-md"
             >
               {loading ? (
                 <>
@@ -396,49 +453,49 @@ export default function TreatmentsPage() {
                   notes: ''
                 });
               }}
-              className="inline-flex items-center px-4 py-2 bg-slate-600 text-white text-sm font-medium rounded-md hover:bg-slate-700 focus:ring-2 focus:ring-slate-500 transition-colors"
+              className="px-3 py-1.5 bg-white text-slate-700 text-sm font-semibold rounded-md border border-slate-300 hover:bg-slate-50 focus:ring-2 focus:ring-slate-500 transition-all shadow-sm hover:shadow-md"
             >
-              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
-              Clear Form
+              Clear
             </button>
           </div>
         </div>
       )}
       
       {/* Filter and Date Range Section */}
-      <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6 shadow-sm">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Filter Treatments</h3>
-        <div className="space-y-6">
-          {/* Date Range */}
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700">Date Range</label>
+      <div className="bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-gray-200 rounded-xl shadow-lg p-6 mb-6">
+        <h3 className="text-xl font-bold text-slate-800 mb-4">Filter Treatments</h3>
+        <div className="space-y-4">
+          {/* Date Range Card */}
+          <div className="bg-white rounded-lg p-4 border border-gray-200 shadow-sm">
+            <label className="block text-sm font-semibold text-slate-800 mb-3">Date Range</label>
             <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs text-gray-500 mb-1">From</label>
+                  <label className="block text-xs font-medium text-slate-600 mb-1.5">From</label>
                   <input 
                     type="date" 
                     value={startDate} 
                     onChange={e => setStartDate(e.target.value)} 
-                    className="w-full border border-gray-300 rounded-md px-2 py-1.5 text-xs focus:ring-2 focus:ring-gray-500 focus:border-gray-500" 
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-gray-400 focus:border-gray-400 transition-colors" 
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-gray-500 mb-1">To</label>
+                  <label className="block text-xs font-medium text-slate-600 mb-1.5">To</label>
                   <input 
                     type="date" 
                     value={endDate} 
                     onChange={e => setEndDate(e.target.value)} 
-                    className="w-full border border-gray-300 rounded-md px-2 py-1.5 text-xs focus:ring-2 focus:ring-gray-500 focus:border-gray-500" 
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-gray-400 focus:border-gray-400 transition-colors" 
                   />
                 </div>
               </div>
               
               {/* Quick Filter Buttons */}
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-500 mr-2">Quick:</span>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs font-medium text-slate-600">Quick:</span>
                 <button
                   onClick={() => {
                     const today = new Date();
@@ -447,9 +504,9 @@ export default function TreatmentsPage() {
                     setTreatmentTypeFilter('all');
                     fetchTreatments();
                   }}
-                  className="px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded-full hover:bg-gray-200 transition-colors whitespace-nowrap"
+                  className="px-2 py-1 text-xs font-medium bg-white text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 transition-all shadow-sm hover:shadow-md whitespace-nowrap"
                 >
-                  1 day
+                  Today
                 </button>
                 <button
                   onClick={() => {
@@ -461,9 +518,9 @@ export default function TreatmentsPage() {
                     setTreatmentTypeFilter('all');
                     fetchTreatments();
                   }}
-                  className="px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded-full hover:bg-gray-200 transition-colors whitespace-nowrap"
+                  className="px-2 py-1 text-xs font-medium bg-white text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 transition-all shadow-sm hover:shadow-md whitespace-nowrap"
                 >
-                  2 days
+                  Last 2 Days
                 </button>
                 <button
                   onClick={() => {
@@ -474,21 +531,21 @@ export default function TreatmentsPage() {
                     setTreatmentTypeFilter('all');
                     fetchTreatments();
                   }}
-                  className="px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded-full hover:bg-gray-200 transition-colors whitespace-nowrap"
+                  className="px-2 py-1 text-xs font-medium bg-white text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 transition-all shadow-sm hover:shadow-md whitespace-nowrap"
                 >
-                  1 week
+                  Last Week
                 </button>
               </div>
             </div>
           </div>
           
-          {/* Treatment Type Filter */}
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700">Treatment Type</label>
+          {/* Treatment Type Filter Card */}
+          <div className="bg-white rounded-lg p-4 border border-gray-200 shadow-sm">
+            <label className="block text-sm font-semibold text-slate-800 mb-2">Treatment Type</label>
             <select
               value={treatmentTypeFilter}
               onChange={(e) => setTreatmentTypeFilter(e.target.value)}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-gray-500 focus:border-gray-500"
+              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-gray-400 focus:border-gray-400 transition-colors bg-white"
             >
               <option value="all">All Types</option>
               {getUniqueTreatmentTypes().map(type => (
@@ -497,46 +554,44 @@ export default function TreatmentsPage() {
             </select>
           </div>
           
-          {/* Fetch Button Row - Bottom Right */}
-          <div className="flex justify-end">
-            <div className="flex flex-col items-end space-y-1">
-              <button 
-                onClick={fetchTreatments} 
-                className="bg-gray-600 text-white px-3 py-2 rounded-md hover:bg-gray-700 transition-colors text-sm font-medium flex items-center"
-              >
-                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-                Fetch
-              </button>
-              {lastFetchTime && (
-                <div className="text-xs text-gray-500 text-right">
-                  Last updated: {formatRelativeTime(lastFetchTime.toISOString())}
-                </div>
-              )}
-            </div>
+          {/* Fetch Button Row */}
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-3 pt-2">
+            {lastFetchTime && (
+              <div className="text-xs text-slate-600 order-2 sm:order-1">
+                Last updated: <span className="font-medium">{formatRelativeTime(lastFetchTime.toISOString())}</span>
+              </div>
+            )}
+            <button 
+              onClick={fetchTreatments} 
+              className="order-1 sm:order-2 inline-flex items-center justify-center px-3 py-1.5 bg-blue-600 text-white text-sm font-semibold rounded-md hover:bg-blue-700 transition-all shadow-sm hover:shadow-md"
+            >
+              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              Fetch Treatments
+            </button>
           </div>
         </div>
       </div>
       {loading && <div>Loading...</div>}
       {error && (
-        <div className="text-red-600 mb-4">
-          <div className="bg-red-50 border border-red-200 rounded-md p-4">
+        <div className="text-blue-600 mb-4">
+          <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
             <div className="flex">
               <div className="flex-shrink-0">
-                <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                <svg className="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                 </svg>
               </div>
               <div className="ml-3">
-                <h3 className="text-sm font-medium text-red-800">Configuration Required</h3>
-                <div className="mt-2 text-sm text-red-700">
+                <h3 className="text-sm font-medium text-blue-800">Configuration Required</h3>
+                <div className="mt-2 text-sm text-blue-700">
                   <p>{error}</p>
                   {error.includes('API token') && (
                     <div className="mt-3">
                       <a 
                         href="/diabetes-profile" 
-                        className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                        className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                       >
                         Configure Nightscout Settings
                       </a>
@@ -576,6 +631,7 @@ export default function TreatmentsPage() {
                   <th className="border px-2 py-1">Insulin</th>
                   <th className="border px-2 py-1">Carbs</th>
                   <th className="border px-2 py-1">Notes</th>
+                  {isManualMode && <th className="border px-2 py-1">Actions</th>}
                 </tr>
               </thead>
               <tbody>
@@ -586,9 +642,33 @@ export default function TreatmentsPage() {
                        treatment.timestamp ? new Date(treatment.timestamp).toLocaleString() : ''}
                     </td>
                     <td className="border px-2 py-1">{treatment.eventType || treatment.type || ''}</td>
-                    <td className="border px-2 py-1">{treatment.insulin || treatment.insulinUnits || ''}</td>
+                    <td className="border px-2 py-1">
+                      {(() => {
+                        const insulinValue = treatment.insulin || treatment.insulinUnits;
+                        if (insulinValue && !isNaN(parseFloat(insulinValue))) {
+                          return parseFloat(insulinValue).toFixed(2);
+                        }
+                        return '';
+                      })()}
+                    </td>
                     <td className="border px-2 py-1">{treatment.carbs || treatment.carbsGrams || ''}</td>
                     <td className="border px-2 py-1">{treatment.notes || treatment.reason || ''}</td>
+                    {isManualMode && (
+                      <td className="border px-2 py-1">
+                        {treatment.id && (
+                          <button
+                            onClick={() => deleteTreatment(treatment.id)}
+                            className="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors text-xs font-medium"
+                            title="Delete treatment"
+                          >
+                            <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                            Delete
+                          </button>
+                        )}
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>

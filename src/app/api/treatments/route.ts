@@ -26,14 +26,6 @@ export async function GET(req: NextRequest) {
 
 
 
-    if (!user.settings?.nightscoutUrl) {
-      return new NextResponse('Nightscout URL not configured. Please set your Nightscout URL in settings.', { status: 400 });
-    }
-
-    if (!user.settings?.nightscoutApiToken) {
-      return new NextResponse('Nightscout API token not configured. Please go to Diabetes Profile and enter your Nightscout API token in the settings section.', { status: 400 });
-    }
-
     const { searchParams } = new URL(req.url);
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
@@ -42,73 +34,101 @@ export async function GET(req: NextRequest) {
       return new NextResponse('Start date and end date are required', { status: 400 });
     }
 
-    // Fetch treatments from Nightscout
-    const nightscoutUrl = user.settings.nightscoutUrl;
-    const apiToken = user.settings.nightscoutApiToken;
+    let allTreatments: any[] = [];
 
-    const treatmentsUrl = `${nightscoutUrl}/api/v1/treatments`;
-    
-    // Use the requested date range
-    const queryParams = new URLSearchParams({
-      'find[created_at][$gte]': new Date(parseInt(startDate)).toISOString(),
-      'find[created_at][$lte]': new Date(parseInt(endDate)).toISOString(),
-      'count': '1000', // Adjust as needed
-    });
-    
+    // Check if Nightscout is configured
+    const isNightscoutMode = user.settings?.nightscoutUrl && user.settings?.nightscoutApiToken;
 
-    
+    if (isNightscoutMode) {
+      // In Nightscout mode, only fetch from Nightscout
+      try {
+        const nightscoutUrl = user.settings.nightscoutUrl;
+        const apiToken = user.settings.nightscoutApiToken;
 
+        const treatmentsUrl = `${nightscoutUrl}/api/v1/treatments`;
+        
+        const queryParams = new URLSearchParams({
+          'find[created_at][$gte]': new Date(parseInt(startDate)).toISOString(),
+          'find[created_at][$lte]': new Date(parseInt(endDate)).toISOString(),
+          'count': '1000',
+        });
 
-    const response = await fetch(`${treatmentsUrl}?${queryParams}`, {
-      headers: {
-        'api-secret': sha1(apiToken),
-        'Content-Type': 'application/json',
-      },
-    });
+        const response = await fetch(`${treatmentsUrl}?${queryParams}`, {
+          headers: {
+            'api-secret': sha1(apiToken),
+            'Content-Type': 'application/json',
+          },
+        });
 
-    if (!response.ok) {
-      console.error('Nightscout API error:', response.status, response.statusText);
-      return new NextResponse('Failed to fetch treatments from Nightscout', { status: response.status });
+        if (response.ok) {
+          const nightscoutTreatments = await response.json();
+          
+          allTreatments = nightscoutTreatments
+            .filter((treatment: any) => 
+              treatment.eventType === 'Bolus' || 
+              treatment.eventType === 'SMB' ||
+              treatment.eventType === 'Temp Basal' ||
+              treatment.eventType === 'Carb Correction' ||
+              treatment.eventType === 'Note' ||
+              treatment.eventType === 'Site Change' ||
+              treatment.eventType === 'Exercise'
+            )
+            .map((treatment: any) => ({
+              id: treatment._id,
+              _id: treatment._id,
+              eventType: treatment.eventType,
+              insulin: treatment.insulin || 0,
+              carbs: treatment.carbs || 0,
+              glucose: treatment.glucose || null,
+              notes: treatment.notes || '',
+              created_at: treatment.created_at,
+              timestamp: treatment.timestamp,
+              duration: treatment.duration || null,
+              percent: treatment.percent || null,
+              absolute: treatment.absolute || null,
+            }));
+        } else {
+          console.warn('Failed to fetch from Nightscout');
+          allTreatments = [];
+        }
+      } catch (error) {
+        console.warn('Error fetching from Nightscout:', error);
+        allTreatments = [];
+      }
+    } else {
+      // In manual mode, only fetch from database
+      const manualTreatments = await prisma.treatment.findMany({
+        where: {
+          userId: user.id,
+          timestamp: {
+            gte: new Date(parseInt(startDate)),
+            lte: new Date(parseInt(endDate)),
+          },
+        },
+        orderBy: {
+          timestamp: 'desc',
+        },
+      });
+
+      allTreatments = manualTreatments.map(treatment => ({
+        id: treatment.id,
+        type: treatment.type,
+        eventType: treatment.type,
+        insulin: treatment.insulinUnits || 0,
+        insulinUnits: treatment.insulinUnits || 0,
+        carbs: treatment.carbsGrams || 0,
+        carbsGrams: treatment.carbsGrams || 0,
+        glucose: treatment.glucoseValue || null,
+        glucoseValue: treatment.glucoseValue || null,
+        notes: treatment.notes || '',
+        created_at: treatment.timestamp.toISOString(),
+        timestamp: treatment.timestamp.toISOString(),
+      }));
     }
 
-    const treatments = await response.json();
-    
-
-    
-
-    
-
-
-    // Filter and format treatments - include all relevant treatment types
-    const formattedTreatments = treatments
-      .filter((treatment: any) => 
-        treatment.eventType === 'Bolus' || 
-        treatment.eventType === 'SMB' ||
-        treatment.eventType === 'Temp Basal' ||
-        treatment.eventType === 'Carb Correction' ||
-        treatment.eventType === 'Note' ||
-        treatment.eventType === 'Site Change' ||
-        treatment.eventType === 'Exercise'
-      )
-      .map((treatment: any) => ({
-        id: treatment._id,
-        eventType: treatment.eventType,
-        insulin: treatment.insulin || 0,
-        carbs: treatment.carbs || 0,
-        glucose: treatment.glucose || null,
-        notes: treatment.notes || '',
-        created_at: treatment.created_at,
-        timestamp: treatment.timestamp,
-        duration: treatment.duration || null,
-        percent: treatment.percent || null,
-        absolute: treatment.absolute || null,
-      }));
-
-
-
     return NextResponse.json({
-      treatments: formattedTreatments,
-      count: formattedTreatments.length,
+      treatments: allTreatments,
+      count: allTreatments.length,
       dateRange: { startDate, endDate },
     });
 

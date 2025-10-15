@@ -237,6 +237,11 @@ interface PersonalProfileData {
   state?: string;
   phone?: string;
   occupation?: string;
+  // Settings fields
+  nightscoutUrl?: string;
+  nightscoutApiToken?: string;
+  lowGlucose?: number;
+  highGlucose?: number;
 }
 
 export default function PersonalProfile() {
@@ -251,6 +256,8 @@ export default function PersonalProfile() {
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [showApiToken, setShowApiToken] = useState(false);
+  const [isManualMode, setIsManualMode] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -270,6 +277,7 @@ export default function PersonalProfile() {
         const data = await response.json();
         setProfile(data);
         setEditingProfile(data);
+        setIsManualMode(!data.nightscoutUrl);
       }
     } catch (error) {
       console.error('Error fetching profile:', error);
@@ -352,6 +360,7 @@ export default function PersonalProfile() {
 
   const handleCancel = () => {
     setEditingProfile(profile);
+    setIsManualMode(!profile.nightscoutUrl);
     setIsEditing(false);
   };
 
@@ -754,6 +763,160 @@ export default function PersonalProfile() {
                 ) : (
                   <p className="px-4 py-3 bg-slate-50 rounded-lg text-slate-700 min-h-[80px]">{profile.about || 'Not provided'}</p>
                 )}
+              </div>
+            </div>
+
+            {/* Nightscout Settings Section */}
+            <div className="mt-8 p-6 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200">
+              <div className="flex items-center mb-6">
+                <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mr-4">
+                  <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-800">Nightscout Settings</h3>
+                  <p className="text-slate-600 text-sm">Configure your Nightscout connection and glucose thresholds</p>
+                </div>
+              </div>
+
+              {/* Manual Mode Toggle */}
+              <div className="mb-6 p-4 bg-white rounded-lg border border-blue-200">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center mr-3">
+                      <svg className="w-4 h-4 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-semibold text-slate-800">Manual Mode</h4>
+                      <p className="text-xs text-slate-600">Disable Nightscout and enter data manually</p>
+                    </div>
+                  </div>
+                  {isEditing ? (
+                    <label className="inline-flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={isManualMode}
+                        onChange={e => {
+                          const manualMode = e.target.checked;
+                          setIsManualMode(manualMode);
+                          if (manualMode) {
+                            setEditingProfile({ 
+                              ...editingProfile, 
+                              nightscoutUrl: '', 
+                              nightscoutApiToken: '' 
+                            });
+                          }
+                        }}
+                        className="form-checkbox h-5 w-5 text-orange-600 rounded focus:ring-orange-500"
+                      />
+                      <span className="ml-2 text-sm text-slate-700">Enable Manual Mode</span>
+                    </label>
+                  ) : (
+                    <div className="flex items-center">
+                      <div className={`w-3 h-3 rounded-full mr-2 ${isManualMode ? 'bg-orange-500' : 'bg-green-500'}`}></div>
+                      <span className="text-sm text-slate-700">
+                        {isManualMode ? 'Manual Mode' : 'Nightscout Mode'}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Nightscout URL */}
+                <div className="space-y-2">
+                  <label className="block text-sm font-semibold text-slate-700">Nightscout URL</label>
+                  {isEditing ? (
+                    <input 
+                      type="url" 
+                      value={editingProfile.nightscoutUrl || ''} 
+                      onChange={e => setEditingProfile({ ...editingProfile, nightscoutUrl: e.target.value })} 
+                      disabled={isManualMode}
+                      className={`w-full px-4 py-3 border rounded-lg transition-colors ${
+                        isManualMode 
+                          ? 'border-slate-200 bg-slate-50 text-slate-500 cursor-not-allowed' 
+                          : 'border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
+                      }`}
+                      placeholder="https://your-site.herokuapp.com"
+                    />
+                  ) : (
+                    <p className="px-4 py-3 bg-slate-50 rounded-lg text-slate-700">{profile.nightscoutUrl || 'Not configured'}</p>
+                  )}
+                </div>
+
+                {/* Nightscout API Token */}
+                <div className="space-y-2">
+                  <label className="block text-sm font-semibold text-slate-700">API Token</label>
+                  {isEditing ? (
+                    <div className="relative">
+                      <input 
+                        type={showApiToken ? 'text' : 'password'} 
+                        value={editingProfile.nightscoutApiToken || ''} 
+                        onChange={e => setEditingProfile({ ...editingProfile, nightscoutApiToken: e.target.value })} 
+                        disabled={isManualMode}
+                        className={`w-full px-4 py-3 pr-12 border rounded-lg transition-colors ${
+                          isManualMode 
+                            ? 'border-slate-200 bg-slate-50 text-slate-500 cursor-not-allowed' 
+                            : 'border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
+                        }`}
+                        placeholder="Your API token"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowApiToken(!showApiToken)}
+                        disabled={isManualMode}
+                        className={`absolute right-3 top-1/2 -translate-y-1/2 ${
+                          isManualMode 
+                            ? 'text-slate-400 cursor-not-allowed' 
+                            : 'text-slate-500 hover:text-slate-700'
+                        }`}
+                      >
+                        {showApiToken ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                  ) : (
+                    <p className="px-4 py-3 bg-slate-50 rounded-lg text-slate-700">
+                      {profile.nightscoutApiToken ? '••••••••••••' : 'Not configured'}
+                    </p>
+                  )}
+                </div>
+
+                {/* Low Glucose Threshold */}
+                <div className="space-y-2">
+                  <label className="block text-sm font-semibold text-slate-700">Low Glucose Threshold (mg/dL)</label>
+                  {isEditing ? (
+                    <input 
+                      type="number" 
+                      min="50" 
+                      max="120" 
+                      value={editingProfile.lowGlucose || 70} 
+                      onChange={e => setEditingProfile({ ...editingProfile, lowGlucose: parseInt(e.target.value) || 70 })} 
+                      className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" 
+                    />
+                  ) : (
+                    <p className="px-4 py-3 bg-slate-50 rounded-lg text-slate-700">{profile.lowGlucose || 70} mg/dL</p>
+                  )}
+                </div>
+
+                {/* High Glucose Threshold */}
+                <div className="space-y-2">
+                  <label className="block text-sm font-semibold text-slate-700">High Glucose Threshold (mg/dL)</label>
+                  {isEditing ? (
+                    <input 
+                      type="number" 
+                      min="120" 
+                      max="300" 
+                      value={editingProfile.highGlucose || 180} 
+                      onChange={e => setEditingProfile({ ...editingProfile, highGlucose: parseInt(e.target.value) || 180 })} 
+                      className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" 
+                    />
+                  ) : (
+                    <p className="px-4 py-3 bg-slate-50 rounded-lg text-slate-700">{profile.highGlucose || 180} mg/dL</p>
+                  )}
+                </div>
               </div>
             </div>
 

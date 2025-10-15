@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { signIn } from 'next-auth/react';
 import OnboardingLayout from '@/components/onboarding/OnboardingLayout';
 import StepAuth from '@/components/onboarding/StepAuth';
 import StepPhoto from '@/components/onboarding/StepPhoto';
@@ -93,8 +94,20 @@ export default function OnboardingPage() {
         throw new Error(registerData.message || registerData.error || 'Registration failed');
       }
 
-      // Redirect to login with success message
-      router.push('/login?message=Registration successful! Please sign in to continue.');
+      // Automatically sign in the user after successful registration
+      const signInResult = await signIn('credentials', {
+        email: formData.email,
+        password: formData.password,
+        redirect: false
+      });
+
+      if (signInResult?.error) {
+        // If auto-login fails, redirect to login page with error
+        router.push('/login?message=Registration successful! Please sign in to continue.');
+      } else {
+        // Auto-login successful, redirect to welcome page
+        router.push('/welcome');
+      }
       
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Registration failed');
