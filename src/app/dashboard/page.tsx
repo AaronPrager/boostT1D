@@ -64,15 +64,16 @@ export default function DashboardPage() {
     lowGlucose: 70,
     highGlucose: 180,
   });
-  // Track the date range for the dashboard (last 7 days)
+  // Track the date range for the dashboard (last 30 days for manual mode, 7 days for Nightscout)
   const [startDate, setStartDate] = useState(() => {
     const d = new Date();
-    d.setDate(d.getDate() - 7);
+    d.setDate(d.getDate() - 30); // Use 30 days to ensure we catch manual readings
     d.setHours(0, 0, 0, 0);
     return d;
   });
   const [endDate, setEndDate] = useState(() => {
     const d = new Date();
+    d.setDate(d.getDate() + 1); // Include tomorrow to ensure we get today's readings
     d.setHours(23, 59, 59, 999);
     return d;
   });
@@ -105,15 +106,16 @@ export default function DashboardPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
 
-  // On every dashboard visit, set date range to last week and fetch data
+  // On every dashboard visit, set date range to last 30 days and fetch data
   useEffect(() => {
     if (session && pathname === '/dashboard') {
       setLoading(true);
       setError(null);
       const newEnd = new Date();
+      newEnd.setDate(newEnd.getDate() + 1); // Include tomorrow
       newEnd.setHours(23, 59, 59, 999);
       const newStart = new Date();
-      newStart.setDate(newStart.getDate() - 7);
+      newStart.setDate(newStart.getDate() - 30); // Use 30 days for manual mode
       newStart.setHours(0, 0, 0, 0);
       setStartDate(newStart);
       setEndDate(newEnd);
@@ -218,9 +220,16 @@ export default function DashboardPage() {
       }
 
       const data = await response.json();
+      console.log('Dashboard - Raw data received:', data.length, 'readings');
+      console.log('Dashboard - Source:', source);
+      console.log('Dashboard - Date range:', useStart, 'to', useEnd);
+      console.log('Dashboard - Sample data:', data.slice(0, 2));
+      
       const readings = data.filter((r: any) => r.sgv && r.sgv > 0);
+      console.log('Dashboard - Filtered readings:', readings.length);
 
       if (readings.length === 0) {
+        console.log('Dashboard - No readings found after filtering');
         // If still loading, show a waiting message instead of an error
         if (loading || refreshing) {
           setError('Please wait, loading your data...');
@@ -232,6 +241,8 @@ export default function DashboardPage() {
         setRefreshing(false);
         return;
       }
+      
+      console.log('Dashboard - Processing', readings.length, 'readings');
 
       // Calculate statistics
       const totalReadings = readings.length;
@@ -251,8 +262,27 @@ export default function DashboardPage() {
 
       // Get current glucose and direction
       const sortedReadings = readings.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
-      const currentReading = sortedReadings[0];
-      const previousReading = sortedReadings[1];
+      
+      // In Nightscout mode, prioritize Nightscout readings over manual ones
+      let currentReading, previousReading;
+      
+      if (currentSettings.nightscoutUrl) {
+        // Find the most recent Nightscout reading
+        const nightscoutReadings = sortedReadings.filter((r: any) => r.source === 'nightscout');
+        if (nightscoutReadings.length > 0) {
+          currentReading = nightscoutReadings[0];
+          // Find the previous Nightscout reading for comparison
+          previousReading = nightscoutReadings[1];
+        } else {
+          // Fallback to manual readings if no Nightscout readings
+          currentReading = sortedReadings[0];
+          previousReading = sortedReadings[1];
+        }
+      } else {
+        // In manual mode, use the most recent reading regardless of source
+        currentReading = sortedReadings[0];
+        previousReading = sortedReadings[1];
+      }
       
       // Calculate glucose difference
       const glucoseDifference = previousReading ? currentReading.sgv - previousReading.sgv : null;
@@ -270,7 +300,7 @@ export default function DashboardPage() {
         else if (recentAvg > olderAvg + 10) trend = 'declining';
       }
 
-              setStats({
+      const newStats = {
           currentGlucose: currentReading?.sgv || null,
           currentDirection: currentReading?.direction || null,
           previousGlucose: previousReading?.sgv || null,
@@ -284,9 +314,24 @@ export default function DashboardPage() {
           totalReadings,
           lastUpdated: currentReading?.date || null,
           trend
-        });
+        };
+      
+      console.log('Dashboard - Setting stats:', newStats);
+      setStats(newStats);
 
-      setRecentReadings(sortedReadings.slice(0, 6));
+      // Filter recent readings based on mode
+      let recentReadingsToShow;
+      if (currentSettings.nightscoutUrl) {
+        // In Nightscout mode, only show Nightscout readings
+        const nightscoutReadings = sortedReadings.filter((r: any) => r.source === 'nightscout');
+        recentReadingsToShow = nightscoutReadings.slice(0, 6);
+      } else {
+        // In manual mode, show all readings
+        recentReadingsToShow = sortedReadings.slice(0, 6);
+      }
+      
+      console.log('Dashboard - Setting recent readings:', recentReadingsToShow.length);
+      setRecentReadings(recentReadingsToShow);
 
       if (showRefreshFeedback) {
         setRefreshMessage(`Successfully synced ${totalReadings} readings from ${source === 'combined' ? 'Nightscout' : 'manual data'}`);
@@ -343,20 +388,25 @@ export default function DashboardPage() {
     }
   };
 
-  const formatTime = (dateString: string) => {
-    return new Date(dateString).toLocaleTimeString('en-US', { 
+  const formatTime = (dateInput: string | number) => {
+    // Handle both string and number (timestamp) inputs
+    const date = typeof dateInput === 'number' ? new Date(dateInput) : new Date(dateInput);
+    return date.toLocaleTimeString('en-US', { 
       hour: 'numeric', 
       minute: '2-digit',
       hour12: true 
     });
   };
 
-  const formatRelativeTime = (dateString: string) => {
+  const formatRelativeTime = (dateInput: string | number) => {
     const now = new Date();
-    const date = new Date(dateString);
+    // Handle both string and number (timestamp) inputs
+    const date = typeof dateInput === 'number' ? new Date(dateInput) : new Date(dateInput);
     const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
     
-    if (diffInMinutes < 60) {
+    if (diffInMinutes < 1) {
+      return 'just now';
+    } else if (diffInMinutes < 60) {
       return `${diffInMinutes}m ago`;
     } else if (diffInMinutes < 1440) {
       return `${Math.floor(diffInMinutes / 60)}h ago`;
@@ -434,51 +484,50 @@ export default function DashboardPage() {
               <p className="text-2xl text-gray-600 max-w-3xl leading-relaxed mb-4">
                 Here&apos;s an overview of your diabetes management
               </p>
-              <p className="text-lg text-gray-500">
-                Showing data from {startDate.toLocaleDateString()} to {endDate.toLocaleDateString()}
-              </p>
+              {stats.totalReadings > 0 && (
+                <p className="text-lg text-gray-500">
+                  Showing {stats.totalReadings} readings from the last 30 days
+                </p>
+              )}
             </div>
           </div>
         </div>
 
-        {/* Nightscout Information Message */}
+        {/* Manual Mode Indicator Banner */}
         {!settings.nightscoutUrl && (
-          <div className="mb-16 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-3xl shadow-2xl border border-blue-200 p-12 max-w-4xl mx-auto">
-            <div className="text-center">
-              <h2 className="text-4xl font-bold text-gray-900 mb-6">Welcome to BoostT1D!</h2>
-              <p className="text-xl text-gray-700 mb-8 max-w-2xl mx-auto">
-                You're currently in <strong>manual mode</strong>, which means you can manually enter your glucose readings and treatments. 
-                This is perfect for getting started and testing the system.
-              </p>
-              <div className="bg-white rounded-2xl p-8 mb-8 shadow-xl border border-gray-100">
-                <h3 className="text-2xl font-bold text-gray-900 mb-4">To unlock full features, you can:</h3>
-                <ul className="text-lg text-gray-700 space-y-3 text-left max-w-2xl mx-auto">
-                  <li>• <strong>Set up Nightscout</strong> for real-time data sync from your CGM/pump</li>
-                  <li>• <strong>Use manual entry</strong> for glucose readings and treatments</li>
-                  <li>• <strong>Explore the dashboard</strong> with sample data to see how it works</li>
-                </ul>
+          <div className="mb-8 bg-gradient-to-r from-orange-100 via-amber-50 to-yellow-100 border-2 border-orange-300 rounded-xl shadow-lg p-6">
+            <div className="flex items-start">
+              <div className="flex-shrink-0">
+                <svg className="h-6 w-6 text-orange-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
               </div>
-              <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <Link 
-                  href="/diabetes-profile" 
-                  className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-8 py-4 rounded-xl text-lg font-semibold hover:from-blue-700 hover:to-blue-800 transition-all duration-200 shadow-xl hover:shadow-2xl"
-                >
-                  Configure Settings
-                </Link>
-                <Link 
-                  href="/readings" 
-                  className="border-2 border-blue-300 text-blue-700 px-8 py-4 rounded-xl text-lg font-semibold hover:border-blue-500 hover:bg-blue-50 transition-all duration-200"
-                >
-                  Add Manual Readings
-                </Link>
-                <a 
-                  href="https://nightscout.github.io/" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="border-2 border-gray-300 text-gray-700 px-8 py-4 rounded-xl text-lg font-semibold hover:border-gray-500 hover:bg-gray-50 transition-all duration-200"
-                >
-                  Learn About Nightscout
-                </a>
+              <div className="ml-4 flex-1">
+                <h3 className="text-lg font-semibold text-orange-900">Manual Mode Active</h3>
+                <div className="mt-2 text-sm text-orange-800">
+                  <p>You&apos;re currently using manual data entry. Your glucose readings and treatments are stored locally. To enable automatic syncing with your CGM/pump, configure Nightscout in your <Link href="/personal-profile" className="font-semibold underline hover:text-orange-900">Personal Profile</Link>.</p>
+                </div>
+                <div className="mt-4 flex flex-wrap gap-3">
+                  <Link 
+                    href="/readings" 
+                    className="inline-flex items-center px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors text-sm font-medium shadow-md"
+                  >
+                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                    Add Reading
+                  </Link>
+                  <Link 
+                    href="/personal-profile" 
+                    className="inline-flex items-center px-4 py-2 bg-white text-orange-700 border-2 border-orange-300 rounded-lg hover:bg-orange-50 transition-colors text-sm font-medium"
+                  >
+                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    Configure Nightscout
+                  </Link>
+                </div>
               </div>
             </div>
           </div>
@@ -533,7 +582,7 @@ export default function DashboardPage() {
                   <div className="mt-3 space-y-1">
                     {stats.measurementTime && (
                       <p className="text-sm text-gray-600">
-                        Measured {formatRelativeTime(stats.measurementTime)}
+                        Measured at {formatTime(stats.measurementTime)}
                       </p>
                     )}
                     {stats.glucoseDifference !== null && stats.previousGlucose && (
@@ -547,14 +596,8 @@ export default function DashboardPage() {
                   </div>
                 </div>
                 
-                {/* Sync Button and Last Updated Info */}
+                {/* Sync Button Info */}
                 <div className="flex items-center space-x-4">
-                  {stats.lastUpdated && (
-                    <div className="text-sm text-gray-500">
-                      <p>Last updated</p>
-                      <p>{formatRelativeTime(stats.lastUpdated)}</p>
-                    </div>
-                  )}
                   {settings.nightscoutUrl && (
                     <button
                       onClick={handleRefresh}

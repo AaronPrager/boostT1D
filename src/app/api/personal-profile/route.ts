@@ -14,11 +14,12 @@ export async function GET() {
       return new NextResponse('Unauthorized', { status: 401 });
     }
 
-    // Get the user with profile
+    // Get the user with profile and settings
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
       include: {
         profile: true,
+        settings: true,
       },
     });
 
@@ -40,6 +41,11 @@ export async function GET() {
       favoriteActivities: user.profile?.favoriteActivities || null,
       age: user.profile?.age || null,
       yearsSinceDiagnosis: user.profile?.yearsSinceDiagnosis || null,
+      // Add settings data
+      nightscoutUrl: user.settings?.nightscoutUrl || '',
+      nightscoutApiToken: user.settings?.nightscoutApiToken || '',
+      lowGlucose: user.settings?.lowGlucose || 70,
+      highGlucose: user.settings?.highGlucose || 180,
     };
 
     console.log('[GET /api/personal-profile] Returning data:', personalProfileData);
@@ -62,13 +68,14 @@ export async function PUT(req: Request) {
 
     const body = await req.json();
     console.log('[PUT /api/personal-profile] Request received, photo size:', body.photo?.length || 0);
-    const { name, about, phone, occupation, country, state, favoriteActivities, age, yearsSinceDiagnosis, photo } = body;
+    const { name, about, phone, occupation, country, state, favoriteActivities, age, yearsSinceDiagnosis, photo, nightscoutUrl, nightscoutApiToken, lowGlucose, highGlucose } = body;
 
     // Get the user
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
       include: {
         profile: true,
+        settings: true,
       },
     });
 
@@ -105,6 +112,25 @@ export async function PUT(req: Request) {
         ...profileData,
       },
     });
+
+    // Update or create settings
+    if (nightscoutUrl !== undefined || nightscoutApiToken !== undefined || lowGlucose !== undefined || highGlucose !== undefined) {
+      const settingsData = {
+        nightscoutUrl: nightscoutUrl !== undefined ? nightscoutUrl : user.settings?.nightscoutUrl || '',
+        nightscoutApiToken: nightscoutApiToken !== undefined ? nightscoutApiToken : user.settings?.nightscoutApiToken || '',
+        lowGlucose: lowGlucose !== undefined ? Number(lowGlucose) : user.settings?.lowGlucose || 70,
+        highGlucose: highGlucose !== undefined ? Number(highGlucose) : user.settings?.highGlucose || 180,
+      };
+
+      await prisma.settings.upsert({
+        where: { userId: user.id },
+        update: settingsData,
+        create: {
+          userId: user.id,
+          ...settingsData,
+        },
+      });
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {

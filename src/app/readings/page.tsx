@@ -33,6 +33,7 @@ ChartJS.register(
 );
 
 type Reading = {
+  id?: string;
   sgv: number;
   date: number;
   direction?: string;
@@ -109,7 +110,10 @@ export default function ReadingsPage() {
   });
   const [toDate, setToDate] = useState<string>(() => {
     const today = new Date();
-    return today.toISOString().split('T')[0];
+    // Add one day to ensure we capture today's readings
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return tomorrow.toISOString().split('T')[0];
   });
   const [readings, setReadings] = useState<Reading[]>([]);
   const [filteredReadings, setFilteredReadings] = useState<Reading[]>([]);
@@ -141,6 +145,15 @@ export default function ReadingsPage() {
   const [stats, setStats] = useState<Statistics | null>(null);
   const [lastFetchTime, setLastFetchTime] = useState<Date | null>(null);
   const [syncing, setSyncing] = useState(false);
+  
+  // Manual reading entry state
+  const [showAddReading, setShowAddReading] = useState(false);
+  const [newReading, setNewReading] = useState({
+    value: '',
+    date: new Date().toISOString().split('T')[0],
+    time: new Date().toTimeString().slice(0, 5),
+    direction: 'Flat'
+  });
 
   // Add the missing fetchSettings function
   const fetchSettings = async () => {
@@ -153,6 +166,91 @@ export default function ReadingsPage() {
       }
     } catch (error) {
       console.error('Error fetching settings:', error);
+    }
+  };
+
+  // Handle deleting a manual reading
+  const handleDeleteReading = async (readingId: string) => {
+    if (!confirm('Are you sure you want to delete this reading?')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/readings/${readingId}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        console.log('Reading deleted successfully');
+        // Refresh readings
+        await fetchReadings();
+      } else {
+        const errorData = await response.json();
+        console.error('Failed to delete reading:', errorData);
+        alert(`Failed to delete reading: ${errorData.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Error deleting reading:', error);
+      alert('An error occurred while deleting the reading.');
+    }
+  };
+
+  // Handle adding a new manual reading
+  const handleAddReading = async () => {
+    try {
+      const glucoseValue = parseInt(newReading.value);
+      if (isNaN(glucoseValue) || glucoseValue < 20 || glucoseValue > 600) {
+        alert('Please enter a valid glucose value between 20 and 600 mg/dL');
+        return;
+      }
+
+      const timestamp = new Date(`${newReading.date}T${newReading.time}`);
+      
+      console.log('Adding reading:', {
+        sgv: glucoseValue,
+        date: timestamp,
+        dateString: timestamp.toISOString(),
+        direction: newReading.direction
+      });
+      
+      const response = await fetch('/api/readings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          readings: [{
+            sgv: glucoseValue,
+            date: timestamp.toISOString(),
+            direction: newReading.direction,
+            type: 'sgv',
+            source: 'manual'
+          }]
+        }),
+      });
+
+      const result = await response.json();
+      console.log('API Response:', result);
+
+      if (response.ok) {
+        console.log('Reading saved successfully!');
+        // Reset form
+        setNewReading({
+          value: '',
+          date: new Date().toISOString().split('T')[0],
+          time: new Date().toTimeString().slice(0, 5),
+          direction: 'Flat'
+        });
+        setShowAddReading(false);
+        // Refresh readings - wait a bit for the database to update
+        setTimeout(async () => {
+          await fetchReadings();
+        }, 500);
+      } else {
+        console.error('Failed to save reading:', result);
+        alert(`Failed to save reading: ${result.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Error adding reading:', error);
+      alert('An error occurred while saving the reading.');
     }
   };
 
@@ -211,6 +309,7 @@ export default function ReadingsPage() {
       const filterReadings = (readings: any[]) => {
         return readings
           .map((reading: any) => ({
+            id: reading.id, // Preserve the ID for deletion
             sgv: reading.sgv,
             date: new Date(reading.date || reading.dateString).getTime(),
             direction: reading.direction,
@@ -259,6 +358,15 @@ export default function ReadingsPage() {
   };
 
 
+
+  // Set source filter based on settings
+  useEffect(() => {
+    if (settings.nightscoutUrl) {
+      setSourceFilter('nightscout');
+    } else {
+      setSourceFilter('manual');
+    }
+  }, [settings.nightscoutUrl]);
 
   useEffect(() => {
     const filtered = readings.filter(reading => {
@@ -538,7 +646,7 @@ export default function ReadingsPage() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-zinc-50 to-stone-50 flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-red-600">Error</h1>
+          <h1 className="text-2xl font-bold text-blue-600">Error</h1>
           <p className="mt-2 text-slate-600">{error}</p>
         </div>
       </div>
@@ -549,10 +657,29 @@ export default function ReadingsPage() {
   const getCurrentGlucose = () => {
     if (!readings.length) return null;
     
-    // Sort readings by date and get the most recent one
+    // Sort readings by date
     const sortedReadings = [...readings].sort((a, b) => b.date - a.date);
-    const currentReading = sortedReadings[0];
-    const previousReading = sortedReadings[1];
+    
+    // In Nightscout mode, prioritize Nightscout readings over manual ones
+    let currentReading, previousReading;
+    
+    if (settings.nightscoutUrl) {
+      // Find the most recent Nightscout reading
+      const nightscoutReadings = sortedReadings.filter(r => r.source === 'nightscout');
+      if (nightscoutReadings.length > 0) {
+        currentReading = nightscoutReadings[0];
+        // Find the previous Nightscout reading for comparison
+        previousReading = nightscoutReadings[1];
+      } else {
+        // Fallback to manual readings if no Nightscout readings
+        currentReading = sortedReadings[0];
+        previousReading = sortedReadings[1];
+      }
+    } else {
+      // In manual mode, use the most recent reading regardless of source
+      currentReading = sortedReadings[0];
+      previousReading = sortedReadings[1];
+    }
     
     return {
       value: currentReading.sgv,
@@ -621,9 +748,9 @@ export default function ReadingsPage() {
                     <h2 className="text-lg font-semibold text-gray-900 mb-2">Current Glucose</h2>
                     <div className="flex items-center space-x-3">
                       <span className={`text-4xl font-bold px-4 py-2 rounded-lg ${
-                        currentGlucose.value < settings.lowGlucose ? 'bg-red-100 text-red-700' :
-                        currentGlucose.value > settings.highGlucose ? 'bg-orange-100 text-orange-700' :
-                        'bg-green-100 text-green-700'
+                        currentGlucose.value < settings.lowGlucose ? 'bg-blue-100 text-blue-700' :
+                        currentGlucose.value > settings.highGlucose ? 'bg-indigo-100 text-indigo-700' :
+                        'bg-blue-100 text-blue-700'
                       }`}>
                         {currentGlucose.value}
                       </span>
@@ -752,50 +879,147 @@ export default function ReadingsPage() {
         </div>
       </div>
       
-      {/* Nightscout Information Message */}
+      {/* Manual Mode - Add Reading Card */}
       {!settings.nightscoutUrl && (
-        <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-6">
-          <div className="flex items-start">
-            <svg className="w-6 h-6 text-blue-600 mr-4 mt-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <div className="flex-1">
-              <h3 className="text-blue-900 font-semibold text-lg mb-2">Manual Mode Active 📊</h3>
-              <p className="text-blue-800 mb-3">
-                You're currently viewing manually entered glucose readings. This is perfect for tracking your data when you don't have real-time CGM/pump data available.
-              </p>
-              <div className="bg-blue-100 rounded-lg p-4 mb-3">
-                <h4 className="text-blue-900 font-medium mb-2">To enhance your experience:</h4>
-                <ul className="text-blue-800 text-sm space-y-1">
-                  <li>• <strong>Set up Nightscout</strong> for automatic real-time data sync</li>
-                  <li>• <strong>Continue manual entry</strong> for readings and treatments</li>
-                  <li>• <strong>View your data</strong> in charts and statistics below</li>
-                </ul>
-              </div>
-              <div className="flex flex-wrap gap-3">
-                <a 
-                  href="/diabetes-profile" 
-                  className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors"
-                >
-                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+        <div className="mb-8">
+          <div className="bg-gradient-to-br from-orange-50 to-amber-50 border-2 border-orange-200 rounded-xl shadow-lg p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center">
+                <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mr-4">
+                  <svg className="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                   </svg>
-                  Configure Settings
-                </a>
-                <a 
-                  href="https://nightscout.github.io/" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center px-4 py-2 bg-white text-blue-600 text-sm font-medium rounded-md border border-blue-300 hover:bg-blue-50 transition-colors"
-                >
-                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                  </svg>
-                  Learn About Nightscout
-                </a>
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900">Manual Mode</h2>
+                  <p className="text-gray-600">Add and track your glucose readings manually</p>
+                </div>
               </div>
+              {!showAddReading && (
+                <button
+                  onClick={() => setShowAddReading(true)}
+                  className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors font-semibold flex items-center gap-2"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  Add Reading
+                </button>
+              )}
             </div>
+
+            {/* Add Reading Form */}
+            {showAddReading && (
+              <div className="bg-white rounded-lg border-2 border-gray-300 p-4 space-y-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-base font-semibold text-gray-900">New Glucose Reading</h3>
+                  <button
+                    onClick={() => setShowAddReading(false)}
+                    className="text-gray-500 hover:text-gray-700"
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Glucose Value */}
+                  <div className="border border-gray-300 rounded-md p-4 bg-gradient-to-r from-blue-50 to-indigo-50">
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Glucose Value (mg/dL)
+                    </label>
+                    <input
+                      type="number"
+                      min="20"
+                      max="600"
+                      value={newReading.value}
+                      onChange={e => setNewReading({ ...newReading, value: e.target.value })}
+                      className="w-full border border-gray-400 rounded-md py-2 px-3 text-sm font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="100"
+                    />
+                  </div>
+
+                  {/* Direction */}
+                  <div className="border border-gray-300 rounded-md p-4 bg-gradient-to-r from-purple-50 to-pink-50">
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Trend Direction
+                    </label>
+                    <select
+                      value={newReading.direction}
+                      onChange={e => setNewReading({ ...newReading, direction: e.target.value })}
+                      className="w-full border border-gray-400 rounded-md py-2 px-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="DoubleDown">⇊ Double Down</option>
+                      <option value="SingleDown">↓ Single Down</option>
+                      <option value="FortyFiveDown">↘ Forty-Five Down</option>
+                      <option value="Flat">→ Flat</option>
+                      <option value="FortyFiveUp">↗ Forty-Five Up</option>
+                      <option value="SingleUp">↑ Single Up</option>
+                      <option value="DoubleUp">⇈ Double Up</option>
+                    </select>
+                  </div>
+
+                  {/* Date */}
+                  <div className="border-2 border-gray-300 rounded-lg p-5 bg-gradient-to-r from-green-50 to-emerald-50">
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Date
+                    </label>
+                    <input
+                      type="date"
+                      value={newReading.date}
+                      onChange={e => setNewReading({ ...newReading, date: e.target.value })}
+                      className="w-full border border-gray-400 rounded-md py-2 px-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+
+                  {/* Time */}
+                  <div className="border-2 border-gray-300 rounded-lg p-5 bg-gradient-to-r from-amber-50 to-yellow-50">
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Time
+                    </label>
+                    <input
+                      type="time"
+                      value={newReading.time}
+                      onChange={e => setNewReading({ ...newReading, time: e.target.value })}
+                      className="w-full border border-gray-400 rounded-md py-2 px-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex gap-4 pt-4">
+                  <button
+                    onClick={() => setShowAddReading(false)}
+                    className="px-3 py-1.5 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors font-semibold"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleAddReading}
+                    className="px-3 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors font-semibold text-sm"
+                  >
+                    Save Reading
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Info Section */}
+            {!showAddReading && (
+              <div className="mt-6 p-4 bg-white rounded-lg border border-orange-200">
+                <div className="flex items-start gap-3">
+                  <svg className="w-5 h-5 text-orange-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <div className="flex-1">
+                    <p className="text-sm text-gray-700">
+                      <strong>Manual Mode:</strong> Track your glucose readings manually. For automatic syncing, configure Nightscout in your <a href="/personal-profile" className="text-blue-600 hover:underline">Personal Profile</a>.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -874,17 +1098,17 @@ export default function ReadingsPage() {
         <div className="mt-6">
           <h3 className="text-lg font-semibold mb-4">Time in Range</h3>
           <div className="grid grid-cols-3 gap-4">
-            <div className="text-center p-4 bg-gradient-to-br from-red-50 to-red-100 rounded-lg border border-red-200">
-              <p className="text-sm text-red-600 font-medium">Below</p>
-              <p className="text-xl font-bold text-red-700">{statistics.timeBelowRange}%</p>
+            <div className="text-center p-4 bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg border border-blue-200">
+              <p className="text-sm text-blue-600 font-medium">Below</p>
+              <p className="text-xl font-bold text-blue-700">{statistics.timeBelowRange}%</p>
             </div>
-            <div className="text-center p-4 bg-gradient-to-br from-green-50 to-green-100 rounded-lg border border-green-200">
-              <p className="text-sm text-green-600 font-medium">In Range</p>
-              <p className="text-xl font-bold text-green-700">{statistics.timeInRange}%</p>
+            <div className="text-center p-4 bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg border border-blue-200">
+              <p className="text-sm text-blue-600 font-medium">In Range</p>
+              <p className="text-xl font-bold text-blue-700">{statistics.timeInRange}%</p>
             </div>
-            <div className="text-center p-4 bg-gradient-to-br from-orange-50 to-orange-100 rounded-lg border border-orange-200">
-              <p className="text-sm text-orange-600 font-medium">Above</p>
-              <p className="text-xl font-bold text-orange-700">{statistics.timeAboveRange}%</p>
+            <div className="text-center p-4 bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-lg border border-indigo-200">
+              <p className="text-sm text-indigo-600 font-medium">Above</p>
+              <p className="text-xl font-bold text-indigo-700">{statistics.timeAboveRange}%</p>
             </div>
           </div>
         </div>
@@ -922,6 +1146,9 @@ export default function ReadingsPage() {
                   <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Time</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Glucose</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Direction</th>
+                  {!settings.nightscoutUrl && (
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Actions</th>
+                  )}
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-slate-200">
@@ -946,6 +1173,29 @@ export default function ReadingsPage() {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
                       {reading.direction ? DIRECTION_ARROWS[reading.direction] || reading.direction : '-'}
                     </td>
+                    {!settings.nightscoutUrl && (
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        {reading.source === 'manual' && reading.id ? (
+                          <button
+                            onClick={() => {
+                              console.log('Deleting reading:', reading.id);
+                              handleDeleteReading(reading.id!);
+                            }}
+                            className="inline-flex items-center px-3 py-1 bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors text-xs font-medium"
+                            title="Delete reading"
+                          >
+                            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                            Delete
+                          </button>
+                        ) : (
+                          <span className="text-xs text-gray-400">
+                            {reading.source === 'manual' ? 'No ID' : 'N/A'}
+                          </span>
+                        )}
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
