@@ -288,6 +288,7 @@ struct ProfileView: View {
                             
                             Toggle("", isOn: $isManualMode)
                                 .toggleStyle(SwitchToggleStyle())
+                                .disabled(!isEditingNightscout)
                         }
                         
                         if !isManualMode {
