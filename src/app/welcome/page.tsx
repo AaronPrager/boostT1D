@@ -2,13 +2,63 @@
 
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
+
+interface PersonalProfileData {
+  name?: string;
+  email?: string;
+  about?: string;
+  photo?: string;
+  phone?: string;
+  occupation?: string;
+  country?: string;
+  state?: string;
+  favoriteActivities?: string;
+  age?: number;
+  yearsSinceDiagnosis?: string;
+  nightscoutUrl?: string;
+  nightscoutApiToken?: string;
+  lowGlucose?: number;
+  highGlucose?: number;
+}
 
 export default function WelcomePage() {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const [profile, setProfile] = useState<PersonalProfileData | null>(null);
+  const [profileLoading, setProfileLoading] = useState(true);
+
+  // Fetch user profile data
+  useEffect(() => {
+    const fetchProfile = async () => {
+      if (!session?.user?.email) {
+        setProfileLoading(false);
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/personal-profile');
+        if (response.ok) {
+          const data = await response.json();
+          setProfile(data);
+        } else {
+          console.error('Failed to fetch profile:', response.status);
+        }
+      } catch (error) {
+        console.error('Error fetching profile:', error);
+      } finally {
+        setProfileLoading(false);
+      }
+    };
+
+    if (session?.user?.email) {
+      fetchProfile();
+    } else {
+      setProfileLoading(false);
+    }
+  }, [session?.user?.email]);
 
   useEffect(() => {
     console.log('Welcome page useEffect - status:', status, 'session:', !!session);
@@ -28,8 +78,8 @@ export default function WelcomePage() {
     }
   }, [session, status, router]);
 
-  // Show loading state while checking authentication
-  if (status === 'loading') {
+  // Show loading state while checking authentication or profile
+  if (status === 'loading' || profileLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50 flex items-center justify-center">
         <div className="text-center">
@@ -213,6 +263,27 @@ export default function WelcomePage() {
               Find Buddies
             </button>
           </div>
+
+          {/* Insulin Access Dashboard - Only show for US users */}
+          {profile?.country === 'US' && (
+            <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-8 hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 group flex flex-col">
+              <div className="w-16 h-16 bg-gradient-to-br from-teal-500 to-teal-600 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
+                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                </svg>
+              </div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-4">Insulin Access Dashboard</h3>
+              <p className="text-gray-600 text-lg mb-6 flex-grow">
+                Explore congressional districts and their insulin access risk scores to understand policy impacts on diabetes care.
+              </p>
+              <button
+                onClick={() => window.open('https://cac-ia2.vercel.app', '_blank')}
+                className="w-full bg-gradient-to-r from-teal-500 to-teal-600 text-white px-6 py-3 rounded-xl text-lg font-semibold hover:from-teal-600 hover:to-teal-700 transition-all duration-200 shadow-lg hover:shadow-xl mt-auto"
+              >
+                View Dashboard
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Getting Started Section */}

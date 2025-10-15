@@ -97,6 +97,30 @@ struct WelcomeView: View {
                             .buttonStyle(PlainButtonStyle())
                         }
                         
+                        // Group 4: Policy & Advocacy (US Only)
+                        if profileService.currentProfile?.country == "United States" {
+                            // Divider
+                            Divider()
+                                .padding(.vertical, 8)
+                            
+                            VStack(spacing: 8) {
+                                // Insulin Access Dashboard
+                                Button(action: {
+                                    if let url = URL(string: "https://cac-ia2.vercel.app") {
+                                        UIApplication.shared.open(url)
+                                    }
+                                }) {
+                                    MenuButtonContent(
+                                        icon: "map.fill",
+                                        title: "Insulin Access Dashboard",
+                                        subtitle: "Congressional district risk analysis",
+                                        color: .teal
+                                    )
+                                }
+                                .buttonStyle(PlainButtonStyle())
+                            }
+                        }
+                        
                     }
                     .padding(.horizontal, 20)
                     

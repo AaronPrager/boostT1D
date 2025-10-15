@@ -151,6 +151,23 @@ struct DashboardView: View {
                             )
                         }
                         .buttonStyle(PlainButtonStyle())
+                        
+                        // Insulin Access Dashboard - Only show for US users
+                        if profileService.currentProfile?.country == "United States" {
+                            Button(action: {
+                                if let url = URL(string: "https://cac-ia2.vercel.app") {
+                                    UIApplication.shared.open(url)
+                                }
+                            }) {
+                                QuickActionRow(
+                                    icon: "map.fill",
+                                    title: "Insulin Access Dashboard",
+                                    subtitle: "Congressional district risk analysis",
+                                    color: .teal
+                                )
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                        }
                     }
                     .padding(.horizontal, 20)
                     

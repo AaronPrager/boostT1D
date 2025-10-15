@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct MainLandingView: View {
+    @StateObject private var profileService = UserProfileService.shared
     @State private var showingProfileSetup = false
     @State private var showingAbout = false
     
@@ -59,6 +60,35 @@ struct MainLandingView: View {
                         .background(Color.blue)
                         .foregroundColor(.white)
                         .cornerRadius(12)
+                    }
+                    
+                    // Insulin Access Dashboard - Only show for US users
+                    if profileService.currentProfile?.country == "United States" {
+                        Button(action: {
+                            if let url = URL(string: "https://cac-ia2.vercel.app") {
+                                UIApplication.shared.open(url)
+                            }
+                        }) {
+                            HStack {
+                                Image(systemName: "map.fill")
+                                    .font(.title2)
+                                
+                                VStack(spacing: 2) {
+                                    Text("Insulin Access Dashboard")
+                                        .font(.headline)
+                                        .fontWeight(.semibold)
+                                    
+                                    Text("Congressional district risk analysis")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                            .padding(.horizontal, 30)
+                            .padding(.vertical, 12)
+                            .background(Color.teal)
+                            .foregroundColor(.white)
+                            .cornerRadius(12)
+                        }
                     }
                 }
                 
