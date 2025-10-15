@@ -39,11 +39,15 @@ export async function GET(req: NextRequest) {
     // Check if Nightscout is configured
     const isNightscoutMode = user.settings?.nightscoutUrl && user.settings?.nightscoutApiToken;
 
-    if (isNightscoutMode) {
+    if (isNightscoutMode && user.settings) {
       // In Nightscout mode, only fetch from Nightscout
       try {
         const nightscoutUrl = user.settings.nightscoutUrl;
         const apiToken = user.settings.nightscoutApiToken;
+
+        if (!nightscoutUrl || !apiToken) {
+          throw new Error('Nightscout URL or API token is missing');
+        }
 
         const treatmentsUrl = `${nightscoutUrl}/api/v1/treatments`;
         
