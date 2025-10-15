@@ -5,7 +5,7 @@ import prisma from '@/lib/prisma';
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getServerSession(authOptions);
 
@@ -14,7 +14,7 @@ export async function DELETE(
   }
 
   try {
-    const readingId = params.id;
+    const { id: readingId } = await params;
 
     if (!readingId) {
       return NextResponse.json({ error: 'Reading ID is required' }, { status: 400 });

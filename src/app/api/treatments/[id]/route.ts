@@ -5,7 +5,7 @@ import prisma from '@/lib/prisma';
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getServerSession(authOptions);
 
@@ -14,7 +14,7 @@ export async function DELETE(
   }
 
   try {
-    const treatmentId = params.id;
+    const { id: treatmentId } = await params;
 
     if (!treatmentId) {
       return NextResponse.json({ error: 'Treatment ID is required' }, { status: 400 });
