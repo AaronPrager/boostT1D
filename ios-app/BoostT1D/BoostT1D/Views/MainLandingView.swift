@@ -10,23 +10,16 @@ struct MainLandingView: View {
             VStack(spacing: 40) {
                 Spacer()
                 
-                // App Logo and Title
+                // App Logo
                 VStack(spacing: 20) {
-                    // Custom BoostT1D Heart Blood Drop Logo - Clickable
+                    // Main Logo - Clickable
                     Button(action: {
                         showingAbout = true
                     }) {
-                        AppIconView(size: 120)
-                    }
-                    .buttonStyle(PlainButtonStyle())
-                    
-                    // BoostT1D Title - Clickable
-                    Button(action: {
-                        showingAbout = true
-                    }) {
-                        Text("BoostT1D")
-                            .font(.system(size: 36, weight: .heavy, design: .rounded))
-                            .foregroundColor(.blue)
+                        Image("MainLogo")
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(width: 280, height: 280)
                     }
                     .buttonStyle(PlainButtonStyle())
                     
@@ -98,10 +91,6 @@ struct MainLandingView: View {
                 VStack(spacing: 8) {
                     Text("Welcome to BoostT1D")
                         .font(.caption)
-                        .foregroundColor(.secondary)
-                    
-                    Text("Tap Get Started to begin your diabetes management journey")
-                        .font(.caption2)
                         .foregroundColor(.secondary)
                 }
                 .padding(.bottom, 20)
