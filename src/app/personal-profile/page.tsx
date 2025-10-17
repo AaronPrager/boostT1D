@@ -459,15 +459,6 @@ export default function PersonalProfile() {
     return state ? state.name : stateCode;
   };
 
-  const formatDate = (dateString: string) => {
-    if (!dateString) return 'Not provided';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      year: 'numeric', 
-      month: 'long', 
-      day: 'numeric' 
-    });
-  };
 
   const handleDeleteProfile = async () => {
     setDeleting(true);
