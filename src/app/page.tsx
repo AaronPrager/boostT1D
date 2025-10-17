@@ -49,10 +49,10 @@ export default function Home() {
               />
             </div>
             <nav className="flex space-x-6">
-              <a href="/login" className="text-gray-700 hover:text-blue-600 px-4 py-2 text-sm font-semibold transition-colors hover:bg-blue-50 rounded-lg" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}>
+              <a href="/login" className="text-gray-700 hover:text-blue-600 px-4 py-2 text-sm font-semibold transition-colors hover:bg-blue-50 rounded-lg font-sans">
                 Sign In
               </a>
-              <a href="/onboarding" className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-2 rounded-lg text-sm font-semibold hover:from-blue-700 hover:to-blue-800 transition-all duration-200 shadow-lg hover:shadow-xl" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}>
+              <a href="/onboarding" className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-2 rounded-lg text-sm font-semibold hover:from-blue-700 hover:to-blue-800 transition-all duration-200 shadow-lg hover:shadow-xl font-sans">
                 Get Started
               </a>
             </nav>
@@ -94,8 +94,8 @@ export default function Home() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
             </div>
-            <h3 className="text-3xl font-bold text-gray-900 mb-6" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}>AI-Powered Food Analysis</h3>
-            <p className="text-xl text-gray-700 leading-relaxed mb-8 max-w-2xl mx-auto" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}>
+            <h3 className="text-3xl font-bold text-gray-900 mb-6 font-sans">AI-Powered Food Analysis</h3>
+            <p className="text-xl text-gray-700 leading-relaxed mb-8 max-w-2xl mx-auto font-sans">
               Get instant carb estimates for your meals using cutting-edge AI photo analysis technology for precise diabetes management.
             </p>
             
@@ -131,9 +131,9 @@ export default function Home() {
               </div>
             </div>
             
-            <h3 className="text-3xl font-bold text-gray-900 mb-4 text-center" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}>Aaron Prager</h3>
-            <p className="text-xl text-gray-700 font-semibold mb-4 text-center" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}>Student Developer & Creator</p>
-            <p className="text-lg text-gray-700 text-center leading-relaxed mb-8 max-w-2xl" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}>
+            <h3 className="text-3xl font-bold text-gray-900 mb-4 text-center font-sans">Aaron Prager</h3>
+            <p className="text-xl text-gray-700 font-semibold mb-4 text-center font-sans">Student Developer & Creator</p>
+            <p className="text-lg text-gray-700 text-center leading-relaxed mb-8 max-w-2xl font-sans">
               Hey! I'm Aaron, a junior at the British International School of Boston. I'm passionate about using tech to make diabetes management easier and more effective. I built this platform to help people like you take control of their health with smart tools and AI-powered insights.
             </p>
           </div>

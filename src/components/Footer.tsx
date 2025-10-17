@@ -22,57 +22,18 @@ export default function Footer() {
             </p>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-            <div>
-              <h4 className="text-white font-semibold mb-3">Legal Information</h4>
-              <ul className="space-y-2">
-                <li>
-                  <a href="/legal/privacy" className="text-gray-300 hover:text-blue-400 transition-colors text-sm">
-                    Privacy Policy
-                  </a>
-                </li>
-                <li>
-                  <a href="/legal/terms" className="text-gray-300 hover:text-blue-400 transition-colors text-sm">
-                    Terms of Service
-                  </a>
-                </li>
-                <li>
-                  <a href="/legal/disclaimer" className="text-gray-300 hover:text-blue-400 transition-colors text-sm">
-                    Medical Disclaimer
-                  </a>
-                </li>
-                <li>
-                  <a href="/legal/hipaa" className="text-gray-300 hover:text-blue-400 transition-colors text-sm">
-                    HIPAA Compliance
-                  </a>
-                </li>
-              </ul>
-            </div>
-            
-            <div>
-              <h4 className="text-white font-semibold mb-3">Support & Contact</h4>
-              <ul className="space-y-2">
-                <li>
-                  <a href="mailto:support@boostt1d.com" className="text-gray-300 hover:text-blue-400 transition-colors text-sm">
-                    support@boostt1d.com
-                  </a>
-                </li>
-                <li>
-                  <a href="mailto:privacy@boostt1d.com" className="text-gray-300 hover:text-blue-400 transition-colors text-sm">
-                    privacy@boostt1d.com
-                  </a>
-                </li>
-                <li>
-                  <a href="/contact" className="text-gray-300 hover:text-blue-400 transition-colors text-sm">
-                    Contact Us
-                  </a>
-                </li>
-                <li>
-                  <a href="/help" className="text-gray-300 hover:text-blue-400 transition-colors text-sm">
-                    Help Center
-                  </a>
-                </li>
-              </ul>
+          <div className="mb-6">
+            <h4 className="text-white font-semibold mb-4 text-center">Legal Information</h4>
+            <div className="flex flex-wrap justify-center gap-6">
+              <a href="/legal/privacy" className="text-gray-300 hover:text-blue-400 transition-colors text-sm">
+                Privacy Policy
+              </a>
+              <a href="/legal/terms" className="text-gray-300 hover:text-blue-400 transition-colors text-sm">
+                Terms of Service
+              </a>
+              <a href="/legal/disclaimer" className="text-gray-300 hover:text-blue-400 transition-colors text-sm">
+                Medical Disclaimer
+              </a>
             </div>
           </div>
         </div>

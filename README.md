@@ -116,6 +116,7 @@ BoostT1D addresses these challenges through an integrated platform that combines
 
 *Made with love for the Type 1 Diabetes community*
 
+
 ## Congressional App Challenge Submission
 
 **BoostT1D** is an AI-powered diabetes management platform designed to empower people with Type 1 Diabetes to take control of their health through intelligent insights, personalized recommendations, and seamless data integration.
