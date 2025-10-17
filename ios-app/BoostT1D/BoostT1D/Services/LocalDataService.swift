@@ -15,7 +15,6 @@ class LocalDataService: ObservableObject {
         loadLocalData()
     }
     
-    // MARK: - Glucose Entries
     func addGlucoseEntry(value: Int, notes: String? = nil) {
         let entry = NightscoutGlucoseEntry(
             sgv: value,
@@ -35,7 +34,6 @@ class LocalDataService: ObservableObject {
         saveToUserDefaults()
     }
     
-    // MARK: - Treatments
     func addTreatment(type: String, insulin: Double? = nil, carbs: Double? = nil, notes: String? = nil) {
         let treatment = NightscoutTreatment(
             _id: UUID().uuidString,
@@ -67,7 +65,6 @@ class LocalDataService: ObservableObject {
         saveToUserDefaults()
     }
     
-    // MARK: - Data Management
     private func cleanupOldData() {
         let cutoffDate = Date().timeIntervalSince1970 - maxDataAge
         
@@ -111,7 +108,6 @@ class LocalDataService: ObservableObject {
         }
     }
     
-    // MARK: - Data Access
     func getGlucoseEntriesForTimeRange(hours: Int) -> [NightscoutGlucoseEntry] {
         let endDate = Date()
         let startDate = Calendar.current.date(byAdding: .hour, value: -hours, to: endDate) ?? endDate

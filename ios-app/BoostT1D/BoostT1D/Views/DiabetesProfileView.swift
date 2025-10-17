@@ -166,19 +166,17 @@ struct DiabetesProfileView: View {
                             // Basal Rates
                             if let basal = profileData.basal, !basal.isEmpty {
                                 VStack(alignment: .leading, spacing: 12) {
-                                    Text("Basal Rates")
-                                        .font(.headline)
+                                    ProfileSectionHeader(
+                                        title: ProfileFieldLabels.basalRatesTitle,
+                                        description: ProfileFieldLabels.basalRatesDescription
+                                    )
                                     
                                     ForEach(basal, id: \.time) { rate in
-                                        HStack {
-                                            Text(rate.time)
-                                                .font(.subheadline)
-                                                .foregroundColor(.secondary)
-                                            Spacer()
-                                            Text(String(format: "%.2f U/hr", rate.value))
-                                                .font(.subheadline)
-                                                .fontWeight(.medium)
-                                        }
+                                        ProfileFieldRow(
+                                            title: rate.time,
+                                            value: String(format: "%.2f", rate.value),
+                                            units: ProfileFieldLabels.basalRatesUnits
+                                        )
                                     }
                                 }
                                 .padding(16)
@@ -189,19 +187,16 @@ struct DiabetesProfileView: View {
                             // Carb Ratios
                             if let carbRatio = profileData.carb_ratio ?? profileData.carbratio, !carbRatio.isEmpty {
                                 VStack(alignment: .leading, spacing: 12) {
-                                    Text("Carb Ratios")
-                                        .font(.headline)
+                                    ProfileSectionHeader(
+                                        title: ProfileFieldLabels.carbRatioTitle,
+                                        description: ProfileFieldLabels.carbRatioDescription
+                                    )
                                     
                                     ForEach(carbRatio, id: \.time) { ratio in
-                                        HStack {
-                                            Text(ratio.time)
-                                                .font(.subheadline)
-                                                .foregroundColor(.secondary)
-                                            Spacer()
-                                            Text(String(format: "1:%.0f", ratio.value))
-                                                .font(.subheadline)
-                                                .fontWeight(.medium)
-                                        }
+                                        ProfileFieldRow(
+                                            title: ratio.time,
+                                            value: String(format: ProfileFieldLabels.carbRatioFormat, ratio.value)
+                                        )
                                     }
                                 }
                                 .padding(16)
@@ -212,19 +207,16 @@ struct DiabetesProfileView: View {
                             // Insulin Sensitivity Factors
                             if let sensitivity = profileData.sensitivity ?? profileData.sens, !sensitivity.isEmpty {
                                 VStack(alignment: .leading, spacing: 12) {
-                                    Text("Insulin Sensitivity Factors")
-                                        .font(.headline)
+                                    ProfileSectionHeader(
+                                        title: ProfileFieldLabels.isfTitle,
+                                        description: ProfileFieldLabels.isfDescription
+                                    )
                                     
                                     ForEach(sensitivity, id: \.time) { sens in
-                                        HStack {
-                                            Text(sens.time)
-                                                .font(.subheadline)
-                                                .foregroundColor(.secondary)
-                                            Spacer()
-                                            Text(String(format: "%.0f mg/dl per U", sens.value))
-                                                .font(.subheadline)
-                                                .fontWeight(.medium)
-                                        }
+                                        ProfileFieldRow(
+                                            title: sens.time,
+                                            value: String(format: "%.0f", sens.value)
+                                        )
                                     }
                                 }
                                 .padding(16)
@@ -236,19 +228,16 @@ struct DiabetesProfileView: View {
                             if let targetLow = profileData.target_low, let targetHigh = profileData.target_high,
                                !targetLow.isEmpty && !targetHigh.isEmpty {
                                 VStack(alignment: .leading, spacing: 12) {
-                                    Text("Target Ranges")
-                                        .font(.headline)
+                                    ProfileSectionHeader(
+                                        title: ProfileFieldLabels.targetRangeTitle,
+                                        description: ProfileFieldLabels.targetRangeDescription
+                                    )
                                     
                                     ForEach(Array(zip(targetLow, targetHigh)), id: \.0.time) { (low, high) in
-                                        HStack {
-                                            Text(low.time)
-                                                .font(.subheadline)
-                                                .foregroundColor(.secondary)
-                                            Spacer()
-                                            Text(String(format: "%.0f - %.0f mg/dl", low.value, high.value))
-                                                .font(.subheadline)
-                                                .fontWeight(.medium)
-                                        }
+                                        ProfileFieldRow(
+                                            title: low.time,
+                                            value: String(format: ProfileFieldLabels.targetRangeFormat, low.value, high.value)
+                                        )
                                     }
                                 }
                                 .padding(16)
@@ -259,18 +248,15 @@ struct DiabetesProfileView: View {
                             // DIA (Duration of Insulin Action)
                             if let dia = profileData.dia {
                                 VStack(alignment: .leading, spacing: 12) {
-                                    Text("Duration of Insulin Action")
-                                        .font(.headline)
+                                    ProfileSectionHeader(
+                                        title: ProfileFieldLabels.diaTitle,
+                                        description: ProfileFieldLabels.diaDescription
+                                    )
                                     
-                                    HStack {
-                                        Text("DIA")
-                                            .font(.subheadline)
-                                            .foregroundColor(.secondary)
-                                        Spacer()
-                                        Text(String(format: "%.1f hours", dia))
-                                            .font(.subheadline)
-                                            .fontWeight(.medium)
-                                    }
+                                    ProfileFieldRow(
+                                        title: "DIA",
+                                        value: String(format: "%.1f", dia)
+                                    )
                                 }
                                 .padding(16)
                                 .background(Color(.systemGray6))
@@ -280,8 +266,10 @@ struct DiabetesProfileView: View {
                             // Override Presets
                             if let overrides = profile.overridePresets, !overrides.isEmpty {
                                 VStack(alignment: .leading, spacing: 12) {
-                                    Text("Override Presets")
-                                        .font(.headline)
+                                    ProfileSectionHeader(
+                                        title: ProfileFieldLabels.overridePresetsTitle,
+                                        description: ProfileFieldLabels.overridePresetsDescription
+                                    )
                                     
                                     ForEach(overrides, id: \.name) { preset in
                                         VStack(alignment: .leading, spacing: 4) {
@@ -324,8 +312,10 @@ struct DiabetesProfileView: View {
                             // Notes
                             if let notes = profileData.notes, !notes.isEmpty {
                                 VStack(alignment: .leading, spacing: 12) {
-                                    Text("Notes")
-                                        .font(.headline)
+                                    ProfileSectionHeader(
+                                        title: ProfileFieldLabels.notesTitle,
+                                        description: ProfileFieldLabels.notesDescription
+                                    )
                                     
                                     Text(notes)
                                         .font(.subheadline)
@@ -455,7 +445,6 @@ struct DiabetesProfileView: View {
                     // Also save to local storage as backup
                     self.diabetesProfileService.saveLocalProfile(fetchedProfile)
                 case .failure(let error):
-                    print("Diabetes Profile Error: \(error)")
                     self.errorMessage = error.localizedDescription
                 }
             }

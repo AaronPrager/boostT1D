@@ -824,8 +824,6 @@ struct FoodAnalysisView: View {
     }
 }
 
-// MARK: - Data Models
-
 struct InsulinRecommendation {
     let carbBolusUnits: Double
     let correctionUnits: Double

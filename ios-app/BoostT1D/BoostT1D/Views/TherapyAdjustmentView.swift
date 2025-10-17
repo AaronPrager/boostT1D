@@ -1391,7 +1391,6 @@ struct AdjustmentCard: View {
     }
 }
 
-// MARK: - Data Models
 struct AdjustmentSuggestion {
     let id: UUID
     let type: AdjustmentType

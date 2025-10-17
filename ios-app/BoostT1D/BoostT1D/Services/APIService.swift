@@ -324,7 +324,6 @@ class APIService: ObservableObject {
     }
 }
 
-// MARK: - Gemini API Models
 struct GeminiRequest: Codable {
     let contents: [Content]
 }
@@ -361,7 +360,6 @@ struct Candidate: Codable {
     let content: Content
 }
 
-// MARK: - Therapy Analysis Models
 struct AITherapySuggestions: Codable {
     let suggestions: [AISuggestion]
     let overallConfidence: Double

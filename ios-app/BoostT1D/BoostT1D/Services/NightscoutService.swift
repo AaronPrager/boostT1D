@@ -60,9 +60,6 @@ class NightscoutService: ObservableObject {
         
         let testURL = URL(string: "\(cleanURL)/api/v1/status")!
         
-        print("Testing Nightscout connection to: \(testURL)")
-        print("Using token: [HIDDEN]")
-        
         // Try api-secret header first (most common)
         testConnectionWithHeader(url: testURL, token: token, headerField: "api-secret") { success, message in
             if success {
@@ -86,9 +83,7 @@ class NightscoutService: ObservableObject {
         request.setValue(sha1(token), forHTTPHeaderField: headerField)
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
-        
-        print("Trying authentication with header: \(headerField)")
-        
+                
         URLSession.shared.dataTask(with: request) { data, response, error in
             DispatchQueue.main.async {
                 if let error = error {
@@ -97,8 +92,6 @@ class NightscoutService: ObservableObject {
                 }
                 
                 if let httpResponse = response as? HTTPURLResponse {
-                    print("Nightscout response status with \(headerField): \(httpResponse.statusCode)")
-                    
                     if httpResponse.statusCode == 200 {
                         completion(true, "Connected!")
                     } else if httpResponse.statusCode == 401 {
@@ -132,9 +125,7 @@ class NightscoutService: ObservableObject {
         var request = URLRequest(url: testURL)
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
-        
-        print("Testing Nightscout connection with query param to: \(testURL)")
-        
+                
         URLSession.shared.dataTask(with: request) { data, response, error in
             DispatchQueue.main.async {
                 if let error = error {
@@ -143,8 +134,6 @@ class NightscoutService: ObservableObject {
                 }
                 
                 if let httpResponse = response as? HTTPURLResponse {
-                    print("Nightscout query param response status: \(httpResponse.statusCode)")
-                    
                     if httpResponse.statusCode == 200 {
                         completion(true, "Connected!")
                     } else {
@@ -319,13 +308,10 @@ class NightscoutService: ObservableObject {
         var request = URLRequest(url: finalUrl)
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        
-        print("Trying query parameter for glucose data")
-        
+                
         URLSession.shared.dataTask(with: request) { data, response, error in
             DispatchQueue.main.async {
                 if let error = error {
-                    print("Glucose API Error with query param: \(error)")
                     completion(.failure(error))
                     return
                 }
@@ -334,23 +320,15 @@ class NightscoutService: ObservableObject {
                     completion(.failure(NightscoutError.noData))
                     return
                 }
-                
-                // Debug: Print the raw response for query param
-                if let responseString = String(data: data, encoding: .utf8) {
-                    print("Query Param Response: \(String(responseString.prefix(200)))...")
-                }
-                
+
                 do {
                     let glucoseEntries = try JSONDecoder().decode([NightscoutGlucoseEntry].self, from: data)
-                    print("Successfully decoded \(glucoseEntries.count) glucose entries with query param")
                     completion(.success(glucoseEntries))
                 } catch {
-                    print("JSON Decoding Error with query param: \(error)")
                     // Try parsing as TSV format
                     if let responseString = String(data: data, encoding: .utf8) {
                         let glucoseEntries = self.parseTSVGlucoseData(responseString)
                         if !glucoseEntries.isEmpty {
-                            print("Successfully parsed \(glucoseEntries.count) glucose entries from TSV format with query param")
                             completion(.success(glucoseEntries))
                         } else {
                             completion(.failure(error))
@@ -386,13 +364,11 @@ class NightscoutService: ObservableObject {
                 
                 // Parse timestamp
                 guard let timestamp = Int64(timestampString) else {
-                    print("Failed to parse timestamp: \(timestampString)")
                     continue
                 }
                 
                 // Parse SGV value
                 guard let sgv = Int(sgvString) else {
-                    print("Failed to parse SGV: \(sgvString)")
                     continue
                 }
                 
@@ -496,7 +472,6 @@ class NightscoutService: ObservableObject {
                     completion(.success(treatments))
                 } catch {
                     if let responseString = String(data: data, encoding: .utf8) {
-                        print("Response: \(responseString)")
                     }
                     completion(.failure(error))
                 }
@@ -563,9 +538,7 @@ class NightscoutService: ObservableObject {
                             iob = bolusIOB
                             source = "pump.iob.bolusiob"
                         }
-                        
-                        print("IOB found: \(iob) from \(source)")
-                        
+                                                
                         let iobResult = IOBResult(
                             iob: iob,
                             activity: 0,
@@ -578,9 +551,6 @@ class NightscoutService: ObservableObject {
                         completion(.failure(NightscoutError.noData))
                     }
                 } catch {
-                    if let jsonString = String(data: data, encoding: .utf8) {
-                        print("IOB devicestatus response: \(jsonString.prefix(500))")
-                    }
                     completion(.failure(error))
                 }
             }
@@ -639,9 +609,7 @@ class NightscoutService: ObservableObject {
                             cob = cobValue
                             source = "openaps.cob.cob"
                         }
-                        
-                        print("COB found: \(cob) from \(source)")
-                        
+                                                
                         let cobResult = COBResult(
                             cob: cob,
                             time: latestStatus.created_at ?? ISO8601DateFormatter().string(from: Date())
@@ -651,9 +619,6 @@ class NightscoutService: ObservableObject {
                         completion(.failure(NightscoutError.noData))
                     }
                 } catch {
-                    if let jsonString = String(data: data, encoding: .utf8) {
-                        print("COB devicestatus response: \(jsonString.prefix(500))")
-                    }
                     completion(.failure(error))
                 }
             }

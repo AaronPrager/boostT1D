@@ -83,7 +83,7 @@ struct ManualProfileEntryView: View {
                         // Basal Rate Schedule
                         VStack(alignment: .leading, spacing: 12) {
                             HStack {
-                                Text("Basal Rate Schedule")
+                                Text(ProfileFieldLabels.basalRatesTitle)
                                     .font(.headline)
                                 
                                 Spacer()
@@ -98,7 +98,7 @@ struct ManualProfileEntryView: View {
                                 }
                             }
                             
-                            Text("Configure basal rates by time intervals")
+                            Text(ProfileFieldLabels.basalRatesDescription)
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                             
@@ -144,9 +144,6 @@ struct ManualProfileEntryView: View {
                                 .padding(.vertical, 2)
                             }
                             
-                            Text("Units: U/hr")
-                                .font(.caption2)
-                                .foregroundColor(.secondary)
                         }
                         
                         Divider()
@@ -154,7 +151,7 @@ struct ManualProfileEntryView: View {
                         // Carb Ratio Schedule
                         VStack(alignment: .leading, spacing: 12) {
                             HStack {
-                                Text("Insulin to Carb Ratio (I:C)")
+                                Text(ProfileFieldLabels.carbRatioTitle)
                                     .font(.headline)
                                 
                                 Spacer()
@@ -169,7 +166,7 @@ struct ManualProfileEntryView: View {
                                 }
                             }
                             
-                            Text("1 unit of insulin covers X grams of carbs")
+                            Text(ProfileFieldLabels.carbRatioDescription)
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                             
@@ -221,9 +218,6 @@ struct ManualProfileEntryView: View {
                                 .padding(.vertical, 2)
                             }
                             
-                            Text("Units: grams (g)")
-                                .font(.caption2)
-                                .foregroundColor(.secondary)
                         }
                         
                         Divider()
@@ -231,7 +225,7 @@ struct ManualProfileEntryView: View {
                         // Insulin Sensitivity Factor Schedule
                         VStack(alignment: .leading, spacing: 12) {
                             HStack {
-                                Text("Insulin Sensitivity Factor (ISF)")
+                                Text(ProfileFieldLabels.isfTitle)
                                     .font(.headline)
                                 
                                 Spacer()
@@ -246,7 +240,7 @@ struct ManualProfileEntryView: View {
                                 }
                             }
                             
-                            Text("1 unit of insulin lowers glucose by X mg/dL")
+                            Text(ProfileFieldLabels.isfDescription)
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                             
@@ -298,7 +292,7 @@ struct ManualProfileEntryView: View {
                                 .padding(.vertical, 2)
                             }
                             
-                            Text("Units: mg/dL")
+                            Text("Units: \(ProfileFieldLabels.isfUnits)")
                                 .font(.caption2)
                                 .foregroundColor(.secondary)
                         }
@@ -307,7 +301,7 @@ struct ManualProfileEntryView: View {
                         
                         // Target Range
                         VStack(alignment: .leading, spacing: 8) {
-                            Text("Target Glucose Range")
+                            Text(ProfileFieldLabels.targetRangeTitle)
                                 .font(.headline)
                             
                             HStack(spacing: 12) {
@@ -348,7 +342,7 @@ struct ManualProfileEntryView: View {
                                 }
                             }
                             
-                            Text("Typical range: 80-120 mg/dL")
+                            Text(ProfileFieldLabels.targetRangeDescription)
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                         }
@@ -357,7 +351,7 @@ struct ManualProfileEntryView: View {
                         
                         // Notes
                         VStack(alignment: .leading, spacing: 8) {
-                            Text("Notes (Optional)")
+                            Text("\(ProfileFieldLabels.notesTitle) (Optional)")
                                 .font(.headline)
                             
                             TextField("Add any notes about your profile...", text: $notes)
@@ -500,7 +494,6 @@ struct ManualProfileEntryView: View {
         showingSuccess = true
     }
     
-    // MARK: - Basal Interval Management
     
     private func addBasalInterval() {
         // Find the next available time slot
@@ -582,9 +575,7 @@ struct ManualProfileEntryView: View {
         let allSlots = generateAllTimeSlots()
         return allSlots.filter { $0 == currentTime || !usedTimes.contains($0) }
     }
-    
-    // MARK: - ISF Interval Management
-    
+        
     private func addISFInterval() {
         let usedTimes = Set(isfIntervals.map { $0.time })
         let allTimeSlots = generateAllTimeSlots()
@@ -613,8 +604,6 @@ struct ManualProfileEntryView: View {
         let allSlots = generateAllTimeSlots()
         return allSlots.filter { $0 == currentTime || !usedTimes.contains($0) }
     }
-    
-    // MARK: - Load Existing Profile
     
     private func loadExistingProfile() {
         guard !hasLoadedExistingProfile else { return }

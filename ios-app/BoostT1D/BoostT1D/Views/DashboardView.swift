@@ -301,8 +301,6 @@ struct DashboardView: View {
                             self.previousGlucose = nil
                             self.glucoseDifference = nil
                         }
-                        
-                        print("Dashboard: Glucose fetched successfully: \(latest.sgv)")
                     }
                     
                     // Fetch IOB/COB
@@ -311,7 +309,6 @@ struct DashboardView: View {
                 case .failure(let error):
                     self.errorMessage = error.localizedDescription
                     self.isLoading = false
-                    print("Dashboard: Failed to fetch glucose: \(error.localizedDescription)")
                 }
             }
         }
@@ -324,10 +321,8 @@ struct DashboardView: View {
             case .success(let iobResult):
                 DispatchQueue.main.async {
                     self.currentIOB = iobResult.iob
-                    print("Dashboard: IOB fetched successfully: \(iobResult.iob)")
                 }
             case .failure(let error):
-                print("Dashboard: IOB not available (this is normal if IOB plugin isn't enabled): \(error.localizedDescription)")
                 DispatchQueue.main.async {
                     self.currentIOB = nil
                 }
@@ -339,10 +334,8 @@ struct DashboardView: View {
                 case .success(let cobResult):
                     DispatchQueue.main.async {
                         self.currentCOB = cobResult.cob
-                        print("Dashboard: COB fetched successfully: \(cobResult.cob)")
                     }
                 case .failure(let error):
-                    print("Dashboard: COB not available (this is normal if COB plugin isn't enabled): \(error.localizedDescription)")
                     DispatchQueue.main.async {
                         self.currentCOB = nil
                     }
@@ -372,7 +365,7 @@ struct DashboardView: View {
     }
 }
 
-// MARK: - Glucose Card Component
+// Glucose Card Component
 struct GlucoseCard: View {
     let glucose: Int?
     let trend: String?
@@ -504,7 +497,6 @@ struct GlucoseCard: View {
     }
 }
 
-// MARK: - Range Indicator Component
 struct RangeIndicator: View {
     let label: String
     let value: Any
@@ -535,7 +527,6 @@ struct RangeIndicator: View {
     }
 }
 
-// MARK: - Dashboard Metric Card Component
 struct DashboardMetricCard: View {
     let title: String
     let value: String
@@ -578,7 +569,6 @@ struct DashboardMetricCard: View {
     }
 }
 
-// MARK: - Quick Action Row Component
 struct QuickActionRow: View {
     let icon: String
     let title: String
@@ -621,7 +611,6 @@ struct QuickActionRow: View {
 }
 
 
-// MARK: - Error View Component
 struct ErrorView: View {
     let message: String
     let onRetry: () -> Void

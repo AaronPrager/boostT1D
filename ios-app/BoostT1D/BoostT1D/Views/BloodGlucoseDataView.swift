@@ -346,7 +346,6 @@ struct StatCard: View {
     }
 }
 
-// MARK: - Current Glucose Card
 struct CurrentGlucoseCard: View {
     let glucoseEntries: [NightscoutGlucoseEntry]
     let lastFetchTime: Date?
@@ -458,7 +457,6 @@ struct CurrentGlucoseCard: View {
     }
 }
 
-// MARK: - Statistics Section
 struct StatisticsSection: View {
     let statistics: BloodGlucoseDataView.GlucoseStatistics
     let totalReadings: Int
@@ -528,7 +526,6 @@ struct StatisticsSection: View {
     }
 }
 
-// MARK: - Time in Range Card
 struct TimeInRangeCard: View {
     let title: String
     let percentage: Double
@@ -557,7 +554,6 @@ struct TimeInRangeCard: View {
     }
 }
 
-// MARK: - Tab Button
 struct TabButton: View {
     let title: String
     let icon: String

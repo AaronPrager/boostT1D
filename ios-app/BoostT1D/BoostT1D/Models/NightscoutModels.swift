@@ -1,6 +1,5 @@
 import Foundation
 
-// MARK: - Nightscout Settings
 struct NightscoutSettings: Codable {
     var url: String
     var apiToken: String
@@ -17,7 +16,6 @@ struct NightscoutSettings: Codable {
     }
 }
 
-// MARK: - Glucose Entry
 struct NightscoutGlucoseEntry: Codable, Identifiable {
     let id = UUID()
     let sgv: Int
@@ -31,7 +29,6 @@ struct NightscoutGlucoseEntry: Codable, Identifiable {
     }
 }
 
-// MARK: - Treatment
 struct NightscoutTreatment: Codable {
     let _id: String?
     let id: String?
@@ -61,7 +58,6 @@ struct NightscoutTreatment: Codable {
     }
 }
 
-// MARK: - IOB/COB Results
 struct IOBResult: Codable {
     let iob: Double
     let activity: Double
@@ -75,7 +71,6 @@ struct COBResult: Codable {
     let time: String
 }
 
-// MARK: - Time Value
 struct TimeValue: Codable, Identifiable, Equatable {
     let id = UUID()
     let time: String
@@ -103,7 +98,6 @@ extension TimeValue {
     }
 }
 
-// MARK: - Diabetes Profile
 struct DiabetesProfile: Codable, Equatable {
     let _id: String?
     let defaultProfile: String?
@@ -156,7 +150,6 @@ struct PumpSettings: Codable, Equatable {
     let delivering: Bool?
 }
 
-// MARK: - Device Status (for IOB/COB)
 struct DeviceStatus: Decodable {
     let created_at: String?
     let openaps: [String: Any]?
@@ -185,7 +178,6 @@ struct DeviceStatus: Decodable {
     }
 }
 
-// Helper for decoding unknown types
 struct AnyCodable: Codable {
     let value: Any
     
@@ -210,6 +202,5 @@ struct AnyCodable: Codable {
     }
     
     func encode(to encoder: Encoder) throws {
-        // Not needed for our use case
     }
 }

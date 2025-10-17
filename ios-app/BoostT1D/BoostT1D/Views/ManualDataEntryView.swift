@@ -108,7 +108,6 @@ struct ManualDataEntryView: View {
         }
     }
     
-    // MARK: - Form Views
     private var glucoseEntryForm: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Glucose Reading (mg/dL)")
@@ -168,7 +167,6 @@ struct ManualDataEntryView: View {
         .padding(.horizontal)
     }
     
-    // MARK: - Helper Properties
     private var canSave: Bool {
         switch selectedEntryType {
         case .glucose:
@@ -183,7 +181,6 @@ struct ManualDataEntryView: View {
         }
     }
     
-    // MARK: - Actions
     private func saveEntry() {
         switch selectedEntryType {
         case .glucose:

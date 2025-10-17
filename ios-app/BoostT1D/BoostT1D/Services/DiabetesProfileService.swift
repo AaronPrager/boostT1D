@@ -33,15 +33,9 @@ class DiabetesProfileService: ObservableObject {
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         
-        print("Fetching diabetes profile from: \(url)")
-        print("Using token: [HIDDEN]")
-        print("Settings URL: \(settings.url)")
-        print("Settings token length: \(settings.apiToken.count)")
-        
         URLSession.shared.dataTask(with: request) { data, response, error in
             DispatchQueue.main.async {
                 if let error = error {
-                    print("Profile API Error: \(error)")
                     completion(.failure(error))
                     return
                 }
@@ -52,7 +46,6 @@ class DiabetesProfileService: ObservableObject {
                 }
                 
                 if httpResponse.statusCode == 401 {
-                    print("Profile API 401 - Unauthorized")
                     completion(.failure(DiabetesProfileError.unauthorized))
                     return
                 }
@@ -60,11 +53,6 @@ class DiabetesProfileService: ObservableObject {
                 guard let data = data else {
                     completion(.failure(DiabetesProfileError.noData))
                     return
-                }
-                
-                // Debug: Print the raw response
-                if let jsonString = String(data: data, encoding: .utf8) {
-                    print("Profile API Response: \(String(jsonString.prefix(500)))...")
                 }
                 
                 do {
@@ -76,31 +64,15 @@ class DiabetesProfileService: ObservableObject {
                         return
                     }
                     
-                    print("Successfully decoded \(profiles.count) profiles, using first one")
                     completion(.success(profiles[0]))
                 } catch {
-                    print("JSON Decoding Error: \(error)")
-                    if let decodingError = error as? DecodingError {
-                        switch decodingError {
-                        case .typeMismatch(let type, let context):
-                            print("Type mismatch: expected \(type), context: \(context)")
-                        case .valueNotFound(let type, let context):
-                            print("Value not found: \(type), context: \(context)")
-                        case .keyNotFound(let key, let context):
-                            print("Key not found: \(key), context: \(context)")
-                        case .dataCorrupted(let context):
-                            print("Data corrupted: \(context)")
-                        @unknown default:
-                            print("Unknown decoding error")
-                        }
-                    }
                     completion(.failure(error))
                 }
             }
         }.resume()
     }
     
-    // MARK: - Local Profile Management
+    // Local Profile Management
     func saveLocalProfile(_ profile: DiabetesProfile) {
         localProfile = profile
         if let data = try? JSONEncoder().encode(profile) {
