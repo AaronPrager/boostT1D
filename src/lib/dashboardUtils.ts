@@ -44,22 +44,6 @@ export const formatTime = (dateInput: string | number) => {
   });
 };
 
-export const formatRelativeTime = (dateInput: string | number) => {
-  const now = new Date();
-  // Handle both string and number (timestamp) inputs
-  const date = typeof dateInput === 'number' ? new Date(dateInput) : new Date(dateInput);
-  const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
-  
-  if (diffInMinutes < 1) {
-    return 'just now';
-  } else if (diffInMinutes < 60) {
-    return `${diffInMinutes}m ago`;
-  } else if (diffInMinutes < 1440) {
-    return `${Math.floor(diffInMinutes / 60)}h ago`;
-  } else {
-    return `${Math.floor(diffInMinutes / 1440)}d ago`;
-  }
-};
 
 export const getVariabilityColor = (variability: number) => {
   if (variability < 20) return 'text-green-600';
