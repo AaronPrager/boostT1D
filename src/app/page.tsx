@@ -10,34 +10,21 @@ export default function Home() {
   const router = useRouter();
 
   useEffect(() => {
-    if (status === 'loading') return; // Still loading, wait
-    
+    if (status === 'loading') return;
     if (session) {
-      // User is logged in, redirect to welcome page
       router.replace('/welcome');
     }
-    // If not logged in, stay on this page and show the welcome content
   }, [session, status, router]);
 
-  // Show loading state while checking authentication
-  if (status === 'loading') {
+  // Show loading state while checking authentication or redirecting
+  if (status === 'loading' || session) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-400 mx-auto mb-4"></div>
-          <p className="text-gray-600 font-medium">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // If user is logged in, show loading while redirecting
-  if (session) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-400 mx-auto mb-4"></div>
-          <p className="text-gray-600 font-medium">Redirecting to welcome page...</p>
+          <p className="text-gray-600 font-medium">
+            {status === 'loading' ? 'Loading...' : 'Redirecting...'}
+          </p>
         </div>
       </div>
     );
@@ -79,13 +66,13 @@ export default function Home() {
           <div className="inline-flex items-center px-6 py-3 bg-blue-100 text-blue-800 text-sm font-semibold rounded-full mb-8">
             Professional Diabetes Management Platform
           </div>
-          <h1 className="text-6xl md:text-7xl font-bold mb-8 leading-tight" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}>
+          <h1 className="text-6xl md:text-7xl font-bold mb-8 leading-tight font-sans">
             <span className="block leading-tight text-gray-900">Take Control of Your</span>
             <span className="block leading-tight bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">
               Diabetes Management
             </span>
           </h1>
-          <p className="text-2xl text-gray-600 max-w-4xl mx-auto leading-relaxed mb-12" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}>
+          <p className="text-2xl text-gray-600 max-w-4xl mx-auto leading-relaxed mb-12 font-sans">
             BoostT1D provides intelligent diabetes management tools with AI-powered insights, 
             comprehensive glucose tracking, and personalized therapy recommendations.
           </p>
