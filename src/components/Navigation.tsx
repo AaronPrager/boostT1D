@@ -90,20 +90,21 @@ export default function Navigation() {
 
   return (
     <nav className="bg-white shadow-xl border-b-2 border-blue-600 mb-6" ref={dropdownRef}>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-20">
           {/* Logo */}
           <div className="flex items-center">
             <div className="flex-shrink-0">
-              <Link href="/" className="flex items-center text-2xl font-bold text-gray-900 hover:text-blue-600 transition-colors">
-                <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg flex items-center justify-center mr-3">
-                  <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
-                  </svg>
-                </div>
-                <span className="text-2xl font-bold text-gray-900">
-                  BoostT1D
-                </span>
+              <Link href="/" className="flex items-center hover:opacity-80 transition-opacity">
+                <div 
+                  className="w-40 h-16 bg-white flex items-center justify-center"
+                  style={{
+                    backgroundImage: 'url(/favicon-256x256.png?v=4)',
+                    backgroundSize: 'contain',
+                    backgroundRepeat: 'no-repeat',
+                    backgroundPosition: 'center'
+                  }}
+                />
               </Link>
             </div>
           </div>
