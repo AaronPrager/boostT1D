@@ -21,11 +21,6 @@ export async function POST(request: Request) {
 
   try {
     const data = await request.json();
-    console.log('Received data structure:', {
-      hasReadings: !!data.readings,
-      readingsLength: data.readings?.length,
-      sampleReading: data.readings?.[0],
-    });
 
     if (!data.readings || !Array.isArray(data.readings)) {
       console.error('Invalid data structure:', data);
@@ -52,20 +47,10 @@ export async function POST(request: Request) {
         // Handle Nightscout format (has date and dateString fields)
         if (reading.date && !reading.timestamp) {
           reading.date = new Date(reading.date);
-          console.log('Processing Nightscout reading:', { 
-            rawData: reading,
-            processedDate: reading.date,
-            sgv: reading.sgv,
-            direction: reading.direction
-          });
+
         } else if (reading.timestamp && !reading.date) {
           reading.date = new Date(reading.timestamp);
-          console.log('Processing Nightscout reading:', {
-            rawData: reading,
-            processedDate: reading.date,
-            sgv: reading.sgv,
-            direction: reading.direction
-          });
+
         }
 
         if (!reading.date) {
@@ -141,14 +126,6 @@ export async function POST(request: Request) {
         // Ensure source is set correctly
         const source = reading.source || 'nightscout';
 
-        console.log('Creating reading:', {
-          date: reading.date,
-          sgv: reading.sgv,
-          direction: reading.direction,
-          source: source,
-          originalSource: reading.source
-        });
-
         return {
           id: `manual_${reading.date.getTime()}_${reading.sgv}`,
           userId: user.id,
@@ -160,7 +137,6 @@ export async function POST(request: Request) {
       })
     });
 
-    console.log(`Successfully stored ${createdReadings.count} readings`);
     return NextResponse.json({
       message: `Stored ${createdReadings.count} new readings`,
       count: createdReadings.count
@@ -246,14 +222,6 @@ export async function GET(request: Request) {
 
     // Fetch Nightscout readings if source is 'nightscout' or 'combined'
     if (source === 'nightscout' || source === 'combined' || !source) {
-      console.log('Fetching Nightscout readings with filter:', {
-        userId: user.id,
-        source: 'nightscout',
-        timeFilter,
-        timeFilterKeys: Object.keys(timeFilter),
-        hasTimeFilter: Object.keys(timeFilter).length > 0,
-        queryLimit
-      });
 
       const nightscoutReadings = await prisma.glucoseReading.findMany({
         where: {
@@ -267,12 +235,6 @@ export async function GET(request: Request) {
         take: queryLimit,
       });
 
-      console.log('Found Nightscout readings:', {
-        count: nightscoutReadings.length,
-        sample: nightscoutReadings[0],
-        timeRange: timeFilter
-      });
-      
       // Map database readings to frontend format (timestamp -> date)
       const mappedNightscoutReadings: Reading[] = nightscoutReadings.map(reading => ({
         id: reading.id,
@@ -288,11 +250,6 @@ export async function GET(request: Request) {
 
     // Fetch Manual readings if source is 'manual' or 'combined'
     if (source === 'manual' || source === 'combined' || !source) {
-      console.log('Fetching manual readings with filter:', {
-        userId: user.id,
-        source: 'manual',
-        timeFilter
-      });
 
       // Get manual glucose readings
       const manualReadings = await prisma.glucoseReading.findMany({
@@ -306,8 +263,6 @@ export async function GET(request: Request) {
         },
         take: queryLimit,
       });
-
-      console.log('Found manual readings:', manualReadings.length);
 
       // Map database readings to frontend format (timestamp -> date)
       const mappedManualReadings: Reading[] = manualReadings.map(reading => ({
@@ -339,8 +294,6 @@ export async function GET(request: Request) {
         },
       });
 
-      console.log('Found BG treatments:', treatments.length);
-
       // Convert treatments to reading format
       const treatmentReadings: Reading[] = treatments
         .filter(t => t.glucoseValue !== null)
@@ -354,13 +307,7 @@ export async function GET(request: Request) {
       }));
 
       allReadings = [...allReadings, ...mappedManualReadings, ...treatmentReadings];
-      
-      console.log('Data breakdown before deduplication:', {
-        nightscout: allReadings.length - mappedManualReadings.length - treatmentReadings.length,
-        manual: mappedManualReadings.length,
-        treatments: treatmentReadings.length,
-        total: allReadings.length
-      });
+
     }
 
     // Deduplicate readings based on timestamp and glucose value
@@ -393,13 +340,6 @@ export async function GET(request: Request) {
       return timeB - timeA;
     });
 
-    console.log('Total readings after deduplication:', sortedReadings.length);
-    console.log('Readings breakdown:', {
-      total: allReadings.length,
-      unique: sortedReadings.length,
-      duplicates: allReadings.length - sortedReadings.length
-    });
-    
     return NextResponse.json(sortedReadings);
   } catch (error) {
     console.error('Failed to fetch readings:', error);

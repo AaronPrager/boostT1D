@@ -109,7 +109,7 @@ export default function TreatmentsPage() {
 
   const syncWithNightscout = async () => {
     try {
-      console.log('Syncing treatments with Nightscout...');
+
       const response = await fetch('/api/nightscout/sync', {
         method: 'POST',
         headers: {
@@ -118,7 +118,7 @@ export default function TreatmentsPage() {
       });
 
       if (response.ok) {
-        console.log('Nightscout sync completed successfully');
+
         // Refresh treatments data after successful sync
         await fetchTreatments();
       } else {
@@ -246,7 +246,7 @@ export default function TreatmentsPage() {
       });
 
       if (response.ok) {
-        console.log('Treatment deleted successfully');
+
         // Refresh treatments
         await fetchTreatments();
       } else {

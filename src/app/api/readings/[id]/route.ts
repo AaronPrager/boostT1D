@@ -55,7 +55,6 @@ export async function DELETE(
       where: { id: readingId },
     });
 
-    console.log(`Deleted manual reading ${readingId} for user ${user.email}`);
     return NextResponse.json({ message: 'Reading deleted successfully' });
   } catch (error) {
     console.error('Failed to delete reading:', error);

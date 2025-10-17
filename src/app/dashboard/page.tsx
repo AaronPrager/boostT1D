@@ -167,7 +167,7 @@ export default function DashboardPage() {
 
   const syncWithNightscout = async () => {
     try {
-      console.log('Syncing with Nightscout...');
+
       const response = await fetch('/api/nightscout/sync', {
         method: 'POST',
         headers: {
@@ -176,7 +176,7 @@ export default function DashboardPage() {
       });
 
       if (response.ok) {
-        console.log('Nightscout sync completed successfully');
+
         // Refresh dashboard data after successful sync
         await fetchDashboardData();
       } else {
@@ -220,16 +220,11 @@ export default function DashboardPage() {
       }
 
       const data = await response.json();
-      console.log('Dashboard - Raw data received:', data.length, 'readings');
-      console.log('Dashboard - Source:', source);
-      console.log('Dashboard - Date range:', useStart, 'to', useEnd);
-      console.log('Dashboard - Sample data:', data.slice(0, 2));
-      
+
       const readings = data.filter((r: any) => r.sgv && r.sgv > 0);
-      console.log('Dashboard - Filtered readings:', readings.length);
 
       if (readings.length === 0) {
-        console.log('Dashboard - No readings found after filtering');
+
         // If still loading, show a waiting message instead of an error
         if (loading || refreshing) {
           setError('Please wait, loading your data...');
@@ -241,8 +236,6 @@ export default function DashboardPage() {
         setRefreshing(false);
         return;
       }
-      
-      console.log('Dashboard - Processing', readings.length, 'readings');
 
       // Calculate statistics
       const totalReadings = readings.length;
@@ -315,8 +308,7 @@ export default function DashboardPage() {
           lastUpdated: currentReading?.date || null,
           trend
         };
-      
-      console.log('Dashboard - Setting stats:', newStats);
+
       setStats(newStats);
 
       // Filter recent readings based on mode
@@ -329,8 +321,7 @@ export default function DashboardPage() {
         // In manual mode, show all readings
         recentReadingsToShow = sortedReadings.slice(0, 6);
       }
-      
-      console.log('Dashboard - Setting recent readings:', recentReadingsToShow.length);
+
       setRecentReadings(recentReadingsToShow);
 
       if (showRefreshFeedback) {
@@ -349,8 +340,6 @@ export default function DashboardPage() {
   const handleRefresh = async () => {
     await fetchDashboardData(startDate, endDate, true);
   };
-
-
 
   const getGlucoseStatus = (glucose: number) => {
     if (glucose < settings.lowGlucose) return { color: 'bg-red-100 text-red-800', status: 'Low' };
@@ -421,11 +410,9 @@ export default function DashboardPage() {
     return 'text-red-600';
   };
 
-
-
   // Check if session is still loading
   if (status === 'loading') {
-    console.log('Dashboard - Session loading...');
+
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -438,7 +425,7 @@ export default function DashboardPage() {
   }
 
   if (!session) {
-    console.log('Dashboard - No session found, showing access denied');
+
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -454,8 +441,6 @@ export default function DashboardPage() {
       </div>
     );
   }
-
-  console.log('Dashboard - Session found, rendering dashboard');
 
   if (loading) {
     return (

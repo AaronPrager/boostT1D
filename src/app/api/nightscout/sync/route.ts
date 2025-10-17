@@ -27,8 +27,6 @@ export async function POST(req: Request) {
       return new NextResponse('Unauthorized', { status: 401 });
     }
 
-    console.log('Starting Nightscout sync for user:', session.user.email);
-
     // Get user settings including Nightscout URL and API token
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
@@ -58,8 +56,6 @@ export async function POST(req: Request) {
 
     // Construct the Nightscout API endpoint
     const url = `${baseUrl}/api/v1/entries/sgv?find[date][$gte]=${startDate.getTime()}&find[date][$lte]=${endDate.getTime()}&count=2000`;
-
-    console.log('Fetching from Nightscout:', url);
 
     const timeoutMs = 30000; // 30 second timeout
 
@@ -102,8 +98,6 @@ export async function POST(req: Request) {
       if (!Array.isArray(nightscoutData)) {
         return new NextResponse("Invalid data format received from Nightscout", { status: 500 });
       }
-
-      console.log(`Fetched ${nightscoutData.length} readings from Nightscout`);
 
       // Transform Nightscout data to our format
       const readings = nightscoutData.map((reading: any) => ({
@@ -150,8 +144,6 @@ export async function POST(req: Request) {
         !existingTimestamps.has(reading.date.getTime())
       );
 
-      console.log(`Found ${newReadings.length} new readings to store out of ${readings.length} total`);
-
       if (newReadings.length === 0) {
         return NextResponse.json({ 
           message: 'No new readings to store - all data is up to date',
@@ -171,8 +163,6 @@ export async function POST(req: Request) {
           source: reading.source
         }))
       });
-
-      console.log(`Successfully stored ${createdReadings.count} new readings`);
 
       return NextResponse.json({
         message: `Successfully synced ${createdReadings.count} new readings from Nightscout`,

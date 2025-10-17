@@ -61,8 +61,6 @@ export async function GET(req: Request) {
     // Construct the Nightscout API endpoint
     const url = `${baseUrl}/api/v1/entries/sgv?find[date][$gte]=${startDate}&find[date][$lte]=${endDate}&count=1000`;
 
-    console.log('Fetching from Nightscout:', url);
-
     const timeoutMs = 30000; // 30 second timeout
 
     try {

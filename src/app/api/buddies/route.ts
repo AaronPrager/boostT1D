@@ -156,7 +156,7 @@ export async function GET() {
         }
       });
     } catch {
-      console.log("BuddyConnection operations not available, continuing without connection status");
+
       existingConnections = [];
     }
 

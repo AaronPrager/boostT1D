@@ -43,8 +43,7 @@ export async function GET() {
 
     // Fetch profile from Nightscout
     const nsUrl = new URL('/api/v1/profile.json', baseUrl);
-    console.log('Fetching Nightscout profile from:', nsUrl.toString());
-    
+
     // Add API token if available
     const headers: HeadersInit = {
       'Accept': 'application/json',
@@ -54,9 +53,9 @@ export async function GET() {
     // Type guard for possible custom fields on settings
     const nsApiToken = (user.settings as Record<string, unknown>).nightscoutApiToken as string | undefined;
     if (nsApiToken) {
-      console.log('Using API token for authentication');
+
       const hashedToken = sha1(nsApiToken);
-      console.log('Using hashed token:', hashedToken);
+
       headers['api-secret'] = hashedToken;
     }
 
@@ -64,9 +63,7 @@ export async function GET() {
       method: 'GET',
       headers 
     });
-    
-    console.log('Nightscout response status:', response.status);
-    
+
     if (!response.ok) {
       const errorText = await response.text();
       console.error('Nightscout error response:', {
@@ -85,8 +82,7 @@ export async function GET() {
     }
 
     const profiles = await response.json();
-    console.log('Raw Nightscout response:', JSON.stringify(profiles, null, 2));
-    
+
     // Ensure we have profile data
     if (!Array.isArray(profiles) || profiles.length === 0) {
       return NextResponse.json({ error: 'No profiles found in Nightscout' }, { status: 404 });
@@ -94,8 +90,7 @@ export async function GET() {
 
     // Get the most recent profile (first one)
     const defaultProfile = profiles[0];
-    console.log('Selected profile:', JSON.stringify(defaultProfile, null, 2));
-    
+
     // Try different known Nightscout profile structures
     let profileData;
     let profileName;
@@ -122,8 +117,6 @@ export async function GET() {
       }, { status: 404 });
     }
 
-    console.log('Found profile data:', JSON.stringify(profileData, null, 2));
-    
     // Format all settings for our application to match the frontend Profile type
     const formattedProfile = {
       name: profileName,
@@ -162,7 +155,6 @@ export async function GET() {
       })).sort((a: {time: string}, b: {time: string}) => a.time.localeCompare(b.time)) || []
     };
 
-    console.log('Formatted profile with all settings:', JSON.stringify(formattedProfile, null, 2));
     return NextResponse.json(formattedProfile);
   } catch (error) {
     console.error('Error fetching Nightscout profile:', {

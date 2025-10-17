@@ -48,12 +48,11 @@ export async function PUT(request: Request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
-      console.log('Session in PUT:', { session });
+
       return new NextResponse('Unauthorized', { status: 401 });
     }
 
     const body = await request.json();
-    console.log('Fetching settings for user:', session.user.email);
 
     // Get the user
     const user = await prisma.user.findUnique({
@@ -61,7 +60,7 @@ export async function PUT(request: Request) {
     });
 
     if (!user) {
-      console.log('No user found for email:', session.user.email);
+
       return new NextResponse('User not found', { status: 404 });
     }
 
