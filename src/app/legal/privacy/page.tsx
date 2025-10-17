@@ -52,13 +52,7 @@ export default function PrivacyPolicy() {
           <section>
             <h2 className="text-xl font-semibold text-gray-900 mb-4">5. Contact Us</h2>
             <p>
-              If you have any questions about this Privacy Policy, please contact us at{' '}
-              <a 
-                href="mailto:support@boostt1d.com" 
-                className="text-indigo-600 hover:text-indigo-800"
-              >
-                support@boostt1d.com
-              </a>
+              If you have any questions about this Privacy Policy, please contact us through the contact form on our website.
             </p>
           </section>
 

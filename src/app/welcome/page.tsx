@@ -6,31 +6,17 @@ import { useEffect, useState } from 'react';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
 
-interface PersonalProfileData {
-  name?: string;
-  email?: string;
-  about?: string;
-  photo?: string;
-  phone?: string;
-  occupation?: string;
+interface ProfileData {
   country?: string;
-  state?: string;
-  favoriteActivities?: string;
-  age?: number;
-  yearsSinceDiagnosis?: string;
-  nightscoutUrl?: string;
-  nightscoutApiToken?: string;
-  lowGlucose?: number;
-  highGlucose?: number;
 }
 
 export default function WelcomePage() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const [profile, setProfile] = useState<PersonalProfileData | null>(null);
+  const [profile, setProfile] = useState<ProfileData | null>(null);
   const [profileLoading, setProfileLoading] = useState(true);
 
-  // Fetch user profile data
+  // Fetch user profile data (only country needed for US-specific features)
   useEffect(() => {
     const fetchProfile = async () => {
       if (!session?.user?.email) {
@@ -42,12 +28,10 @@ export default function WelcomePage() {
         const response = await fetch('/api/personal-profile');
         if (response.ok) {
           const data = await response.json();
-          setProfile(data);
-        } else {
-          console.error('Failed to fetch profile:', response.status);
+          setProfile({ country: data.country });
         }
       } catch (error) {
-        console.error('Error fetching profile:', error);
+        // Silently fail - US features will just not show
       } finally {
         setProfileLoading(false);
       }
@@ -61,45 +45,25 @@ export default function WelcomePage() {
   }, [session?.user?.email]);
 
   useEffect(() => {
-
-    if (status === 'loading') {
-
-      return; // Still loading, wait
-    }
-    
+    if (status === 'loading') return;
     if (!session) {
-
       router.replace('/');
-    } else {
-
     }
   }, [session, status, router]);
 
   // Show loading state while checking authentication or profile
-  if (status === 'loading' || profileLoading) {
+  if (status === 'loading' || profileLoading || !session) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-400 mx-auto mb-4"></div>
-          <p className="text-gray-600 font-medium">Loading...</p>
+          <p className="text-gray-600 font-medium">
+            {status === 'loading' ? 'Loading...' : 'Redirecting...'}
+          </p>
         </div>
       </div>
     );
   }
-
-  // If user is not logged in, show loading while redirecting
-  if (!session) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-400 mx-auto mb-4"></div>
-          <p className="text-gray-600 font-medium">Redirecting...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Add a simple test to see if the page is loading
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50">
