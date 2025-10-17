@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { getGlucoseStatus, getDirectionIcon, getTrendIcon, formatTime, formatRelativeTime, getVariabilityColor } from '@/lib/dashboardUtils';
 
 type Reading = {
   id: string;
@@ -341,113 +342,29 @@ export default function DashboardPage() {
     await fetchDashboardData(startDate, endDate, true);
   };
 
-  const getGlucoseStatus = (glucose: number) => {
-    if (glucose < settings.lowGlucose) return { color: 'bg-red-100 text-red-800', status: 'Low' };
-    if (glucose > settings.highGlucose) return { color: 'bg-yellow-100 text-yellow-800', status: 'High' };
-    return { color: 'bg-green-100 text-green-800', status: 'In Range' };
-  };
 
-  const getDirectionIcon = (direction: string | null) => {
-    switch (direction) {
-      case 'NONE': return '⟷';
-      case 'DoubleUp': return '⇈';
-      case 'SingleUp': return '↑';
-      case 'FortyFiveUp': return '↗';
-      case 'Flat': return '→';
-      case 'FortyFiveDown': return '↘';
-      case 'SingleDown': return '↓';
-      case 'DoubleDown': return '⇊';
-      case 'NOT COMPUTABLE': return '-';
-      case 'RATE OUT OF RANGE': return '⚠️';
-      case 'Slight Rise': return '↗';
-      case 'Slight Fall': return '↘';
-      case 'Rise': return '↑';
-      case 'Fall': return '↓';
-      case 'Rapid Rise': return '⇈';
-      case 'Rapid Fall': return '⇊';
-      default: return '→';
-    }
-  };
-
-  const getTrendIcon = (trend: string) => {
-    switch (trend) {
-      case 'improving': return '📈';
-      case 'declining': return '📉';
-      default: return '➡️';
-    }
-  };
-
-  const formatTime = (dateInput: string | number) => {
-    // Handle both string and number (timestamp) inputs
-    const date = typeof dateInput === 'number' ? new Date(dateInput) : new Date(dateInput);
-    return date.toLocaleTimeString('en-US', { 
-      hour: 'numeric', 
-      minute: '2-digit',
-      hour12: true 
-    });
-  };
-
-  const formatRelativeTime = (dateInput: string | number) => {
-    const now = new Date();
-    // Handle both string and number (timestamp) inputs
-    const date = typeof dateInput === 'number' ? new Date(dateInput) : new Date(dateInput);
-    const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
-    
-    if (diffInMinutes < 1) {
-      return 'just now';
-    } else if (diffInMinutes < 60) {
-      return `${diffInMinutes}m ago`;
-    } else if (diffInMinutes < 1440) {
-      return `${Math.floor(diffInMinutes / 60)}h ago`;
-    } else {
-      return `${Math.floor(diffInMinutes / 1440)}d ago`;
-    }
-  };
-
-  const getVariabilityColor = (variability: number) => {
-    if (variability < 20) return 'text-green-600';
-    if (variability < 30) return 'text-yellow-600';
-    return 'text-red-600';
-  };
-
-  // Check if session is still loading
-  if (status === 'loading') {
-
+  // Loading and authentication states
+  if (status === 'loading' || !session || loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-400 mx-auto mb-4"></div>
-          <h1 className="text-2xl font-bold text-gray-900">Loading...</h1>
-          <p className="mt-2 text-gray-600">Checking your authentication status.</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!session) {
-
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900">Access Denied</h1>
-          <p className="mt-2 text-gray-600">Please sign in to view your dashboard.</p>
-          <Link 
-            href="/login"
-            className="mt-4 inline-block bg-gray-900 text-white px-4 py-2 rounded-md hover:bg-gray-800 transition-colors"
-          >
-            Sign In
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900">Loading Dashboard...</h1>
-          <p className="mt-2 text-gray-600">Fetching your latest data.</p>
+          <h1 className="text-2xl font-bold text-gray-900">
+            {status === 'loading' ? 'Loading...' : !session ? 'Access Denied' : 'Loading Dashboard...'}
+          </h1>
+          <p className="mt-2 text-gray-600">
+            {status === 'loading' ? 'Checking your authentication status.' : 
+             !session ? 'Please sign in to view your dashboard.' : 
+             'Fetching your latest data.'}
+          </p>
+          {!session && (
+            <Link 
+              href="/login"
+              className="mt-4 inline-block bg-gray-900 text-white px-4 py-2 rounded-md hover:bg-gray-800 transition-colors"
+            >
+              Sign In
+            </Link>
+          )}
         </div>
       </div>
     );
@@ -555,7 +472,7 @@ export default function DashboardPage() {
                 <div className="flex-1">
                   <h2 className="text-2xl font-bold text-gray-900 mb-4">Current Glucose</h2>
                   <div className="flex items-center space-x-3">
-                    <span className={`text-4xl font-bold px-4 py-2 rounded-lg ${getGlucoseStatus(stats.currentGlucose).color}`}>
+                    <span className={`text-4xl font-bold px-4 py-2 rounded-lg ${getGlucoseStatus(stats.currentGlucose, settings.lowGlucose, settings.highGlucose).color}`}>
                       {stats.currentGlucose}
                     </span>
                     <span className="text-2xl">

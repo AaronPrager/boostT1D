@@ -1,8 +1,7 @@
 'use client';
 
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -43,7 +42,6 @@ type Reading = {
 };
 
 type Settings = {
-  nightscoutUrl: string;
   lowGlucose: number;
   highGlucose: number;
 };
@@ -101,7 +99,6 @@ export default function ReadingsPage() {
   const [treatments, setTreatments] = useState<Treatment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [nightscoutUrl, setNightscoutUrl] = useState('');
   const [fromDate, setFromDate] = useState<string>(() => {
     const today = new Date();
     const weekAgo = new Date(today);
@@ -138,7 +135,6 @@ export default function ReadingsPage() {
     },
   });
   const [settings, setSettings] = useState<Settings>({
-    nightscoutUrl: '',
     lowGlucose: 70,
     highGlucose: 180,
   });
@@ -162,7 +158,6 @@ export default function ReadingsPage() {
       if (res.ok) {
         const data = await res.json();
         setSettings(data);
-        setNightscoutUrl(data.nightscoutUrl || '');
       }
     } catch (error) {
       console.error('Error fetching settings:', error);
