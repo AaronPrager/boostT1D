@@ -9,11 +9,6 @@ struct ContentView: View {
                 // User has completed profile, show main app
                 NavigationView {
                     DashboardView()
-                        .toolbar {
-                            ToolbarItem(placement: .navigationBarLeading) {
-                                AppIconView(size: 30)
-                            }
-                        }
                 }
             } else {
                 // First time user, show onboarding

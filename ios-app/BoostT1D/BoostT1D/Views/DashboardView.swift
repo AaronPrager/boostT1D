@@ -176,42 +176,50 @@ struct DashboardView: View {
                 Spacer(minLength: 40)
             }
         }
-        .navigationTitle("BoostT1D")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
-                HStack(spacing: 12) {
-                    // Profile Photo Button
-                    Button(action: {
-                        showingProfileEdit = true
-                    }) {
-                        if let profile = profileService.currentProfile {
-                            if let photo = profile.photo {
-                                Image(uiImage: photo)
-                                    .resizable()
-                                    .scaledToFill()
-                                    .frame(width: 32, height: 32)
-                                    .clipShape(Circle())
-                                    .overlay(
-                                        Circle()
-                                            .stroke(Color.blue.opacity(0.3), lineWidth: 1.5)
-                                    )
-                            } else {
-                                Image(systemName: "person.circle.fill")
-                                    .font(.system(size: 28))
-                                    .foregroundColor(.blue)
-                            }
+            ToolbarItem(placement: .principal) {
+                // App Logo in center
+                Image("MainLogo")
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(height: 40)
+                    .fontWeight(.bold)
+            }
+            
+            ToolbarItem(placement: .navigationBarLeading) {
+                // Profile Photo Button
+                Button(action: {
+                    showingProfileEdit = true
+                }) {
+                    if let profile = profileService.currentProfile {
+                        if let photo = profile.photo {
+                            Image(uiImage: photo)
+                                .resizable()
+                                .scaledToFill()
+                                .frame(width: 32, height: 32)
+                                .clipShape(Circle())
+                                .overlay(
+                                    Circle()
+                                        .stroke(Color.blue.opacity(0.3), lineWidth: 1.5)
+                                )
+                        } else {
+                            Image(systemName: "person.circle.fill")
+                                .font(.system(size: 28))
+                                .foregroundColor(.blue)
                         }
                     }
-                    
-                    // Menu Button
-                    Button(action: {
-                        showingMenuView = true
-                    }) {
-                        Image(systemName: "line.3.horizontal")
-                            .font(.system(size: 20))
-                            .foregroundColor(.blue)
-                    }
+                }
+            }
+            
+            ToolbarItem(placement: .navigationBarTrailing) {
+                // Menu Button
+                Button(action: {
+                    showingMenuView = true
+                }) {
+                    Image(systemName: "line.3.horizontal")
+                        .font(.system(size: 20))
+                        .foregroundColor(.blue)
                 }
             }
         }

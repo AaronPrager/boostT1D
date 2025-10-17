@@ -86,14 +86,6 @@ struct MainLandingView: View {
                 }
                 
                 Spacer()
-                
-                // Footer
-                VStack(spacing: 8) {
-                    Text("Welcome to BoostT1D")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-                .padding(.bottom, 20)
             }
             .fullScreenCover(isPresented: $showingProfileSetup) {
                 OnboardingView()
