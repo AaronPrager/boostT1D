@@ -55,9 +55,7 @@ export default function TherapyAdjustmentPage() {
         const response = await fetch('/api/settings');
         if (response.ok) {
           const data = await response.json();
-          console.log('Therapy Adjustment - Settings fetched:', data);
-          console.log('Therapy Adjustment - nightscoutUrl:', data.nightscoutUrl);
-          console.log('Therapy Adjustment - Manual mode?', !data.nightscoutUrl);
+
           setSettings(data);
         }
       } catch (error) {
@@ -74,10 +72,6 @@ export default function TherapyAdjustmentPage() {
     setLoading(true);
     setError(null);
 
-    console.log('Fetching therapy adjustments with date range:', analysisDateRange);
-    console.log('analysisDateRange type:', typeof analysisDateRange);
-    console.log('analysisDateRange value:', analysisDateRange);
-
     try {
       const response = await fetch('/api/therapy-adjustment', {
         method: 'POST',
@@ -87,16 +81,8 @@ export default function TherapyAdjustmentPage() {
         body: JSON.stringify({ analysisDateRange }),
       });
 
-      console.log('Response status:', response.status);
-      console.log('Response ok:', response.ok);
-      console.log('Response headers:', Object.fromEntries(response.headers.entries()));
-      
       const data = await response.json();
-      
-      console.log('Therapy adjustment API response:', data);
-      console.log('Response data type:', typeof data);
-      console.log('Response data keys:', Object.keys(data || {}));
-      
+
       if (!response.ok) {
         // Handle API errors with detailed messages
         if (data.error && data.message) {
@@ -123,7 +109,7 @@ export default function TherapyAdjustmentPage() {
         
         if (hasRequiredFields) {
           setSuggestions(data);
-          console.log('Suggestions set:', data);
+
         } else {
           console.error('Invalid response structure:', data);
           setError('Invalid response format from server. Please try again.');
@@ -154,7 +140,7 @@ export default function TherapyAdjustmentPage() {
 
   // Debug: Monitor analysisDateRange changes
   useEffect(() => {
-    console.log('analysisDateRange changed to:', analysisDateRange);
+
   }, [analysisDateRange]);
 
   const getPriorityColor = (priority: string) => {
@@ -239,9 +225,6 @@ export default function TherapyAdjustmentPage() {
     return null;
   }
 
-  console.log('Therapy Adjustment - Rendering with settings:', settings);
-  console.log('Therapy Adjustment - Should show banner?', !settings.nightscoutUrl);
-
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -313,7 +296,7 @@ export default function TherapyAdjustmentPage() {
                   value={analysisDateRange}
                   onChange={(e) => {
                     const newValue = Number(e.target.value);
-                    console.log('Dropdown changed from', analysisDateRange, 'to', newValue);
+
                     setAnalysisDateRange(newValue);
                   }}
                   className="border border-gray-300 rounded-md px-3 py-2 text-sm"

@@ -74,12 +74,7 @@ export default function AnalysisPage() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        console.log('API returned error response:', {
-          status: response.status,
-          statusText: response.statusText,
-          errorData
-        });
-        
+
         if (errorData.error === 'DIABETES_PROFILE_NOT_SETUP') {
           setError('Please set up your diabetes profile first before analyzing therapy adjustments. Go to Diabetes Profile to configure your settings.');
         } else if (errorData.error && errorData.message) {
@@ -96,11 +91,11 @@ export default function AnalysisPage() {
       const data = await response.json();
       
       if (data.error) {
-        console.log('Response data contains error:', data.error);
+
         setError(data.message || data.error);
         setSuggestions(null);
       } else {
-        console.log('Setting suggestions successfully:', data);
+
         setSuggestions(data);
       }
     } catch (error) {
@@ -252,7 +247,7 @@ export default function AnalysisPage() {
                   value={analysisDateRange}
                   onChange={(e) => {
                     const newValue = Number(e.target.value);
-                    console.log('Dropdown changed from', analysisDateRange, 'to', newValue);
+
                     setAnalysisDateRange(newValue);
                   }}
                   className="border border-gray-300 rounded-md px-3 py-2 text-sm"
@@ -271,8 +266,6 @@ export default function AnalysisPage() {
               </button>
             </div>
           </div>
-
-
 
           {/* Manual Mode Section - Show when diabetes profile is not set up */}
           {error && error.includes('diabetes profile') && (
@@ -446,7 +439,6 @@ export default function AnalysisPage() {
             </p>
           </div>
               )}
-
 
             </>
           )}

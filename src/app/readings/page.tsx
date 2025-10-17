@@ -181,7 +181,7 @@ export default function ReadingsPage() {
       });
 
       if (response.ok) {
-        console.log('Reading deleted successfully');
+
         // Refresh readings
         await fetchReadings();
       } else {
@@ -205,14 +205,7 @@ export default function ReadingsPage() {
       }
 
       const timestamp = new Date(`${newReading.date}T${newReading.time}`);
-      
-      console.log('Adding reading:', {
-        sgv: glucoseValue,
-        date: timestamp,
-        dateString: timestamp.toISOString(),
-        direction: newReading.direction
-      });
-      
+
       const response = await fetch('/api/readings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -228,10 +221,9 @@ export default function ReadingsPage() {
       });
 
       const result = await response.json();
-      console.log('API Response:', result);
 
       if (response.ok) {
-        console.log('Reading saved successfully!');
+
         // Reset form
         setNewReading({
           value: '',
@@ -356,8 +348,6 @@ export default function ReadingsPage() {
       }
     }
   };
-
-
 
   // Set source filter based on settings
   useEffect(() => {
@@ -1024,9 +1014,6 @@ export default function ReadingsPage() {
         </div>
       )}
 
-
-
-
       {/* Tab Navigation */}
       <div className="bg-white rounded-lg shadow mb-8">
         <div className="border-b border-gray-200">
@@ -1178,7 +1165,7 @@ export default function ReadingsPage() {
                         {reading.source === 'manual' && reading.id ? (
                           <button
                             onClick={() => {
-                              console.log('Deleting reading:', reading.id);
+
                               handleDeleteReading(reading.id!);
                             }}
                             className="inline-flex items-center px-3 py-1 bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors text-xs font-medium"

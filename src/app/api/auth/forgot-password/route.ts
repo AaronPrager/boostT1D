@@ -48,8 +48,6 @@ export async function POST(request: NextRequest) {
 
     // TODO: Send email with reset link
     // For now, we'll just log it (you can integrate with your email service later)
-    console.log('Password reset requested for:', email);
-    console.log('Reset URL:', resetUrl);
 
     // In production, you would send an email here using a service like:
     // - SendGrid

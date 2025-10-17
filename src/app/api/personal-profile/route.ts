@@ -5,12 +5,11 @@ import { authOptions } from "@/lib/auth";
 
 export async function GET() {
   try {
-    console.log('[GET /api/personal-profile] Request received');
+
     const session = await getServerSession(authOptions);
-    console.log('[GET /api/personal-profile] Session:', session?.user?.email);
-    
+
     if (!session || !session.user?.email) {
-      console.log('[GET /api/personal-profile] Unauthorized - no session');
+
       return new NextResponse('Unauthorized', { status: 401 });
     }
 
@@ -24,7 +23,7 @@ export async function GET() {
     });
 
     if (!user) {
-      console.log('[GET /api/personal-profile] User not found');
+
       return new NextResponse('User not found', { status: 404 });
     }
 
@@ -48,7 +47,6 @@ export async function GET() {
       highGlucose: user.settings?.highGlucose || 180,
     };
 
-    console.log('[GET /api/personal-profile] Returning data:', personalProfileData);
     return NextResponse.json(personalProfileData);
   } catch (error) {
     console.error('[GET /api/personal-profile] Error:', error);
@@ -67,7 +65,7 @@ export async function PUT(req: Request) {
     }
 
     const body = await req.json();
-    console.log('[PUT /api/personal-profile] Request received, photo size:', body.photo?.length || 0);
+
     const { name, about, phone, occupation, country, state, favoriteActivities, age, yearsSinceDiagnosis, photo, nightscoutUrl, nightscoutApiToken, lowGlucose, highGlucose } = body;
 
     // Get the user

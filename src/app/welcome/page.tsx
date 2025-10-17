@@ -61,20 +61,17 @@ export default function WelcomePage() {
   }, [session?.user?.email]);
 
   useEffect(() => {
-    console.log('Welcome page useEffect - status:', status, 'session:', !!session);
-    console.log('Session details:', session);
-    
+
     if (status === 'loading') {
-      console.log('Still loading session...');
+
       return; // Still loading, wait
     }
     
     if (!session) {
-      console.log('No session found, redirecting to home');
+
       router.replace('/');
     } else {
-      console.log('Session found, staying on welcome page');
-      console.log('User:', session.user);
+
     }
   }, [session, status, router]);
 
@@ -102,11 +99,8 @@ export default function WelcomePage() {
     );
   }
 
-  console.log('Welcome page rendering - status:', status, 'session:', !!session);
-  
   // Add a simple test to see if the page is loading
-  console.log('Welcome page is rendering successfully!');
-  
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50">
       <Navigation />

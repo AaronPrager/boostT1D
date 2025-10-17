@@ -9,10 +9,6 @@ import { calculateIOB, calculateCOB, calculateSafeBolus, calculateSafeBolusWithN
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY || '');
 
 // Debug logging for API key
-console.log('🔑 Food Analysis API - Environment Check:');
-console.log('  - GOOGLE_AI_API_KEY loaded:', process.env.GOOGLE_AI_API_KEY ? 'YES' : 'NO');
-console.log('  - Key length:', process.env.GOOGLE_AI_API_KEY?.length || 0);
-console.log('  - Key starts with:', process.env.GOOGLE_AI_API_KEY?.substring(0, 10) || 'NONE');
 
 function sha1(token: string): string {
   return crypto.createHash('sha1').update(token).digest('hex');
@@ -225,18 +221,13 @@ export async function POST(request: NextRequest) {
     const session = await getServerSession(authOptions);
 
     // Check if API key is configured
-    console.log('🔍 POST /api/food-analysis - Checking API key...');
-    console.log('  - Key present:', !!process.env.GOOGLE_AI_API_KEY);
-    console.log('  - Key value type:', typeof process.env.GOOGLE_AI_API_KEY);
-    
+
     if (!process.env.GOOGLE_AI_API_KEY) {
       console.error('❌ GOOGLE_AI_API_KEY is not set! Returning 503 error.');
       return NextResponse.json({
         error: "Food analysis service is currently unavailable. Please try again later."
       }, { status: 503 });
     }
-    
-    console.log('✅ API key check passed, proceeding with analysis...');
 
     const formData = await request.formData();
     const imageFile = (formData.get('photo') || formData.get('image')) as File;
@@ -275,13 +266,6 @@ Please be as accurate as possible and consider typical serving sizes. Respond in
       // Default to JPEG if no valid MIME type
       mimeType = 'image/jpeg';
     }
-    
-    console.log('📸 Image details:', {
-      name: imageFile.name,
-      size: imageFile.size,
-      type: imageFile.type,
-      finalMimeType: mimeType
-    });
 
     const imagePart = {
       inlineData: {
@@ -343,17 +327,9 @@ Please be as accurate as possible and consider typical serving sizes. Respond in
         currentGlucose = await getCurrentGlucose(session.user.email);
         
         // Try to get IOB from Nightscout first
-        console.log('🔄 Starting IOB fetch process...');
-        console.log('📡 Nightscout URL:', user.settings.nightscoutUrl);
-        console.log('🔑 API Token length:', user.settings.nightscoutApiToken?.length || 0);
-        console.log('🔑 API Token (first 10 chars):', user.settings.nightscoutApiToken?.substring(0, 10) + '...');
-        console.log('🔑 API Secret length:', (user.settings as any)?.nightscoutApiSecret?.length || 0);
-        console.log('🔑 API Secret (first 10 chars):', (user.settings as any)?.nightscoutApiSecret?.substring(0, 10) + '...');
-        console.log('🔑 Full settings object keys:', Object.keys(user.settings));
-        
+
         try {
-          console.log('🔑 Using raw API token for IOB fetch');
-          
+
           // Test if token might be empty or whitespace
           const token = user.settings.nightscoutApiToken?.trim();
           if (!token) {
@@ -366,10 +342,6 @@ Please be as accurate as possible and consider typical serving sizes. Respond in
           );
           
           nightscoutIOB = iobResult.iob;
-          console.log('✅ Nightscout IOB fetch successful:', {
-            iob: nightscoutIOB,
-            source: iobResult.source
-          });
 
           // Also fetch COB from Nightscout
           try {
@@ -379,12 +351,9 @@ Please be as accurate as possible and consider typical serving sizes. Respond in
             );
             
             nightscoutCOB = cobResult.cob;
-            console.log('✅ Nightscout COB fetch successful:', {
-              cob: nightscoutCOB,
-              source: cobResult.source
-            });
+
           } catch (cobError) {
-            console.log('⚠️ Failed to fetch Nightscout COB, will use manual calculation:', cobError);
+
           }
         } catch (error) {
           console.error('❌ Failed to fetch Nightscout IOB, falling back to manual calculation:', error);
@@ -397,13 +366,13 @@ Please be as accurate as possible and consider typical serving sizes. Respond in
           
           // Fallback: fetch recent treatments for manual IOB and COB calculation
           try {
-            console.log('🔄 Attempting fallback to manual IOB and COB calculation...');
+
             recentTreatments = await fetchRecentTreatments(
               user.settings.nightscoutUrl,
               user.settings.nightscoutApiToken,
               6 // Look back 6 hours
             );
-            console.log('📊 Fetched recent treatments for manual IOB/COB:', recentTreatments.length, 'treatments');
+
           } catch (fallbackError) {
             console.error('❌ Failed to fetch recent treatments for IOB/COB:', fallbackError);
           }
@@ -429,56 +398,43 @@ Please be as accurate as possible and consider typical serving sizes. Respond in
       let currentIOB = nightscoutIOB;
       let iobResult = null;
       let safetyWarnings: string[] = [];
-      
-      console.log('🧮 IOB decision logic:');
-      console.log('  - Nightscout IOB:', nightscoutIOB);
-      console.log('  - Recent treatments count:', recentTreatments.length);
-      
+
       if (nightscoutIOB > 0) {
         // Use Nightscout IOB
-        console.log('✅ Using Nightscout IOB:', nightscoutIOB);
+
       } else if (recentTreatments.length > 0) {
         // Fallback to manual IOB calculation
-        console.log('🔄 Falling back to manual IOB calculation...');
+
         iobResult = calculateIOB(recentTreatments);
         currentIOB = iobResult.totalIOB;
         safetyWarnings = iobResult.safetyWarnings;
-        console.log('✅ Using calculated IOB:', currentIOB);
+
       } else {
-        console.log('⚠️ No IOB data available - using 0');
-        
+
         // Add helpful guidance if Nightscout failed
         if (nightscoutError) {
           safetyWarnings.push(`⚠️ Nightscout IOB unavailable: ${nightscoutError}`);
           safetyWarnings.push('💡 Please check your Nightscout settings in Diabetes Profile');
         }
       }
-      
-      console.log('🎯 Final IOB for calculations:', currentIOB);
-      
+
       // Calculate COB (Carbs on Board)
       let currentCOB = nightscoutCOB;
       let cobResult = null;
-      
-      console.log('🧮 COB decision logic:');
-      console.log('  - Nightscout COB:', nightscoutCOB);
-      console.log('  - Recent treatments count:', recentTreatments.length);
-      
+
       if (nightscoutCOB > 0) {
         // Use Nightscout COB
-        console.log('✅ Using Nightscout COB:', nightscoutCOB);
+
       } else if (recentTreatments.length > 0) {
         // Fallback to manual COB calculation
-        console.log('🔄 Falling back to manual COB calculation...');
+
         cobResult = calculateCOB(recentTreatments);
         currentCOB = cobResult.totalCOB;
-        console.log('✅ Using calculated COB:', currentCOB);
+
       } else {
-        console.log('⚠️ No COB data available - using 0');
+
       }
-      
-      console.log('🎯 Final COB for calculations:', currentCOB);
-      
+
       // Use the appropriate safe bolus calculation
       if (currentGlucose && currentSensitivity && targetGlucose) {
         let safeBolusResult;

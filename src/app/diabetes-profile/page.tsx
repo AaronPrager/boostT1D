@@ -21,7 +21,6 @@ type Profile = {
   units: string;
 };
 
-
 export default function DiabetesProfilePage() {
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -50,13 +49,6 @@ export default function DiabetesProfilePage() {
   const isFirstTime = !profile;
 
   // Debug logging
-  console.log('Diabetes Profile State:', { 
-    manualMode, 
-    manualEditMode, 
-    profile: !!profile, 
-    isFirstTime, 
-    loading 
-  });
 
   useEffect(() => {
     // Only redirect if session is definitely not available (not loading)
@@ -83,7 +75,7 @@ export default function DiabetesProfilePage() {
         const data = await response.json();
         // If no Nightscout URL is configured, enable manual mode
         const isManual = !data.nightscoutUrl;
-        console.log('Manual mode check:', { nightscoutUrl: data.nightscoutUrl, isManual });
+
         setManualMode(isManual);
         }
       } catch (error) {
@@ -104,7 +96,7 @@ export default function DiabetesProfilePage() {
       if (localResponse.ok) {
         const localProfile = await localResponse.json();
         if (localProfile && Object.keys(localProfile).length > 0) {
-          console.log('Loaded profile from database');
+
           setProfile(localProfile);
           setLoadingMessage('Profile loaded from database');
           setProfileSource('local');
@@ -115,13 +107,12 @@ export default function DiabetesProfilePage() {
 
       // If in manual mode, don't try to fetch from Nightscout
       if (manualMode) {
-        console.log('Manual mode enabled - no profile found in database, waiting for manual configuration');
+
         setLoadingMessage('No profile configured. Click "Configure Manual Settings" to get started.');
         setProfile(null);
         return;
       }
 
-      console.log('No profile found in database, attempting to fetch from Nightscout');
       setLoadingMessage('No profile found in database. Checking Nightscout...');
       
       await refreshProfileFromNightscout();
@@ -136,7 +127,7 @@ export default function DiabetesProfilePage() {
   };
 
   const refreshProfileFromNightscout = async () => {
-    console.log('🔄 Starting Nightscout profile refresh...');
+
     setLoading(true);
     setError(null);
     setLoadingMessage('Fetching profile from Nightscout...');
@@ -151,7 +142,7 @@ export default function DiabetesProfilePage() {
 
       if (nsResponse.ok) {
         const nsProfile = await nsResponse.json();
-        console.log('Successfully fetched profile from Nightscout');
+
         setProfile(nsProfile);
         
         setLoadingMessage('Saving profile to database...');
@@ -164,7 +155,7 @@ export default function DiabetesProfilePage() {
         });
 
         if (saveResponse.ok) {
-          console.log('Profile automatically saved to database');
+
           setLoadingMessage('Profile downloaded and saved successfully');
           setProfileSource('nightscout');
           setLastSavedTime(new Date().toLocaleString());
@@ -173,42 +164,35 @@ export default function DiabetesProfilePage() {
         }
       } else {
         const errorData = await nsResponse.json().catch(() => null);
-        console.log('❌ Nightscout profile fetch failed:', {
-          status: nsResponse.status,
-          statusText: nsResponse.statusText,
-          errorData
-        });
-        
+
         if (nsResponse.status === 400) {
           // Do not set an error if Nightscout is not configured
-          console.log('ℹ️ Nightscout not configured (400)');
+
           setLoadingMessage('');
         } else if (nsResponse.status === 401) {
           // Handle authentication errors with clear guidance
           const errorMessage = errorData?.error || 'Authentication failed';
-          console.log('🔐 Authentication error (401):', errorMessage);
+
           setError('Nightscout URL or API token may be incorrect.');
         } else if (nsResponse.status === 404) {
-          console.log('📄 Profile not found (404)');
+
           setError('Profile not found in Nightscout.');
         } else {
           const errorMessage = errorData?.error || `HTTP ${nsResponse.status}: ${nsResponse.statusText}`;
-          console.log('🚫 Other error:', errorMessage);
+
           setError('Failed to fetch profile from Nightscout.');
         }
       }
     } catch (err) {
       console.error('❌ Error refreshing profile:', err);
       const errorMessage = err instanceof Error ? err.message : 'Failed to refresh profile from Nightscout';
-      console.log('🚫 Setting error message:', errorMessage);
+
       setError('Failed to connect to Nightscout. Check your URL and API token.');
       setLoadingMessage('');
     } finally {
       setLoading(false);
     }
   };
-
-
 
   const formatTimeValue = (timeValue: TimeValue) => {
     const time = timeValue.time.padStart(5, '0');
@@ -482,7 +466,7 @@ export default function DiabetesProfilePage() {
               <button 
                 type="button" 
                 onClick={() => {
-                  console.log('Edit button clicked, setting manualEditMode to true');
+
                   setManualEditMode(true);
                 }} 
                 className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"

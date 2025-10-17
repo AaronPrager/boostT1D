@@ -47,7 +47,6 @@ export async function DELETE(
       where: { id: treatmentId },
     });
 
-    console.log(`Deleted treatment ${treatmentId} for user ${user.email}`);
     return NextResponse.json({ message: 'Treatment deleted successfully' });
   } catch (error) {
     console.error('Failed to delete treatment:', error);

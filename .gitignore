@@ -6,8 +6,7 @@
 .pnp.js
 .yarn/install-state.gz
 
-# testing
-/coverage
+
 
 # next.js
 /.next/
@@ -92,3 +91,91 @@ iOSInjectionProject/
 
 # Xcode Scheme Files
 *.xcscheme
+
+# Linting and Code Quality
+.eslintignore
+.eslintrc.json
+eslintconfig.mjs
+
+# IDE and Editor Files (if used)
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS Generated Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Coverage directory
+coverage/
+*.lcov
+
+# Dependency directories
+node_modules/
+jspm_packages/
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarn-integrity
+
+# Environment variables
+.env
+.env.test
+.env.production
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Next.js build output
+.next
+out
+
+# Temporary folders
+tmp/
+temp/
+
+# iOS Specific Additional
+ios-app/BoostT1D/BoostT1D.xcodeproj/project.xcworkspace/xcuserdata/
+ios-app/BoostT1D/BoostT1D.xcodeproj/xcuserdata/
+ios-app/BoostT1D/BoostT1D.xcodeproj/project.xcworkspace/
+ios-app/BoostT1D/BoostT1D.xcworkspace/
+ios-app/BoostT1D/BoostT1D.xcworkspace/xcuserdata/
+ios-app/BoostT1D/BoostT1D.xcworkspace/
+ios-app/BoostT1D/DerivedData/
+ios-app/BoostT1D/*.hmap
+ios-app/BoostT1D/*.ipa
+ios-app/BoostT1D/*.dSYM.zip
+ios-app/BoostT1D/*.dSYM
+ios-app/BoostT1D/Pods/
+ios-app/BoostT1D/*.podspec
+ios-app/BoostT1D/Podfile.lock
+ios-app/BoostT1D/Carthage/Build/
+ios-app/BoostT1D/fastlane/report.xml
+ios-app/BoostT1D/fastlane/Preview.html
+ios-app/BoostT1D/fastlane/screenshots/**/*.png
+ios-app/BoostT1D/fastlane/test_output
+ios-app/BoostT1D/iOSInjectionProject/
+ios-app/BoostT1D/*.xcscheme

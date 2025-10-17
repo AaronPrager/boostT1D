@@ -52,22 +52,18 @@ interface AdjustmentSuggestions {
 
 export async function POST(request: Request) {
   try {
-    console.log('Therapy adjustment API called');
-    
+
     const session = await getServerSession(authOptions);
     if (!session || !session.user?.email) {
-      console.log('Unauthorized access attempt');
+
       return new NextResponse('Unauthorized', { status: 401 });
     }
 
-    console.log('User authenticated:', session.user.email);
-
     const { analysisDateRange = 1 } = await request.json();
-    console.log('Analysis date range requested:', analysisDateRange);
-    
+
     // Validate date range - ensure it doesn't exceed 7 days
     if (analysisDateRange > 7) {
-      console.log('Invalid date range requested:', analysisDateRange);
+
       return NextResponse.json({
         error: 'Invalid date range',
         message: 'Analysis period cannot exceed 7 days for therapy adjustments'
@@ -75,17 +71,15 @@ export async function POST(request: Request) {
     }
 
     // Get user
-    console.log('Looking up user by email:', session.user.email);
+
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
     });
 
     if (!user) {
-      console.log('User not found in database');
+
       return new NextResponse('User not found', { status: 404 });
     }
-    
-    console.log('User found:', user.id);
 
     // Get current diabetes profile - try BasalProfile first, then fall back to Profile.data
     let basalProfile = await prisma.basalProfile.findUnique({
@@ -105,7 +99,7 @@ export async function POST(request: Request) {
       });
       
       if (profile && profile.data && typeof profile.data === 'object') {
-        console.log('Found diabetes profile in Profile.data:', Object.keys(profile.data));
+
         // Create a mock basalProfile structure from Profile.data
         const profileData = profile.data as any;
         
@@ -147,19 +141,10 @@ export async function POST(request: Request) {
               high: profileData.target_high[index]?.value || target.value || 0
             }))
           };
-          console.log('Created legacy profile structure from Profile.data');
+
         }
       }
     }
-
-    console.log('Diabetes profile lookup result:', {
-      userId: user.id,
-      found: !!basalProfile,
-      basalRates: basalProfile?.BasalRate?.length || 0,
-      carbRatios: basalProfile?.CarbRatio?.length || 0,
-      sensitivities: basalProfile?.Sensitivity?.length || 0,
-      targetRanges: basalProfile?.TargetRange?.length || 0,
-    });
 
     if (!basalProfile) {
       return new NextResponse(
@@ -213,13 +198,6 @@ export async function POST(request: Request) {
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - analysisDateRange);
 
-    console.log('Fetching readings for therapy adjustment:', {
-      userId: user.id,
-      startDate: startDate.toISOString(),
-      endDate: endDate.toISOString(),
-      analysisDateRange,
-    });
-
     const readings = await prisma.glucoseReading.findMany({
       where: {
         userId: user.id,
@@ -229,11 +207,6 @@ export async function POST(request: Request) {
         },
       },
       orderBy: { timestamp: 'asc' },
-    });
-
-    console.log('Readings fetch result:', {
-      totalReadings: readings.length,
-      dateRange: `${startDate.toISOString()} to ${endDate.toISOString()}`,
     });
 
     // Fetch treatments for comprehensive analysis
@@ -265,13 +238,13 @@ export async function POST(request: Request) {
             treatment.eventType === 'Site Change' ||
             treatment.eventType === 'Exercise'
           );
-          console.log('✅ Fetched treatments:', treatments.length);
+
         } else {
-          console.log('⚠️ Failed to fetch treatments:', response.status);
+
         }
       }
     } catch (error) {
-      console.log('⚠️ Error fetching treatments:', error);
+
     }
 
     // Calculate minimum readings needed based on analysis period
@@ -302,15 +275,6 @@ export async function POST(request: Request) {
       source: r.source,
     }));
 
-
-
-    console.log('About to call analyzeAndSuggestAdjustments with:', {
-      readingsCount: transformedReadings.length,
-      profileDataKeys: Object.keys(profileData),
-      lowTarget,
-      highTarget
-    });
-
     // Analyze patterns and generate suggestions
     const suggestions = analyzeAndSuggestAdjustments(
       transformedReadings,
@@ -318,15 +282,6 @@ export async function POST(request: Request) {
       lowTarget,
       highTarget
     );
-
-    console.log('analyzeAndSuggestAdjustments returned:', {
-      suggestionsType: typeof suggestions,
-      suggestionsKeys: Object.keys(suggestions || {}),
-      basalCount: suggestions?.basalAdjustments?.length || 0,
-      carbCount: suggestions?.carbRatioAdjustments?.length || 0,
-      sensCount: suggestions?.sensitivityAdjustments?.length || 0,
-      targetCount: suggestions?.targetAdjustments?.length || 0
-    });
 
     return NextResponse.json(suggestions);
   } catch (error) {
@@ -618,7 +573,6 @@ function getConfidenceLevel(confidence: 'low' | 'medium' | 'high'): number {
     default: return 0;
   }
 }
-
 
 function analyzeCarbRatios(
   readings: Reading[],

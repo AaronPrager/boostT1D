@@ -38,8 +38,7 @@ function LoginForm() {
     setSuccessMessage('');
     
     try {
-      console.log('Attempting login with:', data.email);
-      
+
       // Use NextAuth without redirect, handle manually
       const result = await signIn('credentials', {
         email: data.email,
@@ -47,14 +46,11 @@ function LoginForm() {
         redirect: false,
       });
 
-      console.log('SignIn result:', result);
-      
       if (result?.error) {
         console.error('SignIn error:', result.error);
         setError('Invalid email or password. Please try again.');
       } else if (result?.ok) {
-        console.log('Login successful, waiting for session to establish...');
-        
+
         // Wait for session to be established
         let attempts = 0;
         const maxAttempts = 10;
@@ -62,7 +58,7 @@ function LoginForm() {
         while (attempts < maxAttempts) {
           const session = await getSession();
           if (session) {
-            console.log('Session established, redirecting to welcome page');
+
             router.push('/welcome');
             return;
           }
