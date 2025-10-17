@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
+import { formatRelativeTime } from '@/lib/dashboardUtils';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -42,6 +43,7 @@ type Reading = {
 };
 
 type Settings = {
+  nightscoutUrl: string;
   lowGlucose: number;
   highGlucose: number;
 };
@@ -135,6 +137,7 @@ export default function ReadingsPage() {
     },
   });
   const [settings, setSettings] = useState<Settings>({
+    nightscoutUrl: '',
     lowGlucose: 70,
     highGlucose: 180,
   });
@@ -434,25 +437,6 @@ export default function ReadingsPage() {
     });
   };
 
-  // Add the missing formatRelativeTime function
-  const formatRelativeTime = (dateString: string) => {
-    const now = new Date();
-    const date = new Date(dateString);
-    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-
-    if (diffInSeconds < 60) {
-      return 'Just now';
-    } else if (diffInSeconds < 3600) {
-      const minutes = Math.floor(diffInSeconds / 60);
-      return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
-    } else if (diffInSeconds < 86400) {
-      const hours = Math.floor(diffInSeconds / 3600);
-      return `${hours} hour${hours > 1 ? 's' : ''} ago`;
-    } else {
-      const days = Math.floor(diffInSeconds / 86400);
-      return `${days} day${days > 1 ? 's' : ''} ago`;
-    }
-  };
 
   // Chart data and options
   const groupReadingsByDay = (readings: Reading[], uniqueDays: string[]): { [key: string]: Reading[] } => {
