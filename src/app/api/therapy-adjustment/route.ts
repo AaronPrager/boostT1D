@@ -81,6 +81,11 @@ export async function POST(request: Request) {
       return new NextResponse('User not found', { status: 404 });
     }
 
+    // Get settings for Nightscout configuration check
+    const settings = await prisma.settings.findUnique({
+      where: { userId: user.id },
+    });
+
     // Get current diabetes profile - try BasalProfile first, then fall back to Profile.data
     let basalProfile = await prisma.basalProfile.findUnique({
       where: { userId: user.id },
@@ -146,7 +151,9 @@ export async function POST(request: Request) {
       }
     }
 
-    if (!basalProfile) {
+    // Only require diabetes profile if user doesn't have Nightscout configured
+    // If they have Nightscout, let them proceed to see data status
+    if (!basalProfile && (!settings?.nightscoutUrl || !settings?.nightscoutApiToken)) {
       return new NextResponse(
         JSON.stringify({ 
           error: 'DIABETES_PROFILE_NOT_SETUP',
@@ -160,7 +167,8 @@ export async function POST(request: Request) {
     }
 
     // Transform the database data to match the ProfileData interface
-    const profileData: ProfileData = {
+    // If no basalProfile but user has Nightscout, use default values
+    const profileData: ProfileData = basalProfile ? {
       basal: basalProfile.BasalRate.map(rate => ({
         time: rate.startTime,
         value: rate.rate
@@ -183,12 +191,18 @@ export async function POST(request: Request) {
       })),
       dia: basalProfile.dia || 3,
       units: basalProfile.units || 'mmol/L'
+    } : {
+      // Default profile data when no diabetes profile is set up
+      basal: [{ time: '00:00', value: 1.0 }],
+      carbratio: [{ time: '00:00', value: 15.0 }],
+      sens: [{ time: '00:00', value: 50.0 }],
+      target_low: [{ time: '00:00', value: 80.0 }],
+      target_high: [{ time: '00:00', value: 180.0 }],
+      dia: 6,
+      units: 'mg/dl'
     };
 
-    // Get settings for targets
-    const settings = await prisma.settings.findUnique({
-      where: { userId: user.id },
-    });
+    // Settings already fetched above
 
     const lowTarget = settings?.lowGlucose || 70;
     const highTarget = settings?.highGlucose || 180;
