@@ -106,6 +106,42 @@ export default function AnalysisPage() {
     }
   };
 
+  const handleSyncData = async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      // Call the Nightscout sync API
+      const response = await fetch('/api/nightscout/sync', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        setError(errorData.message || 'Failed to sync data from Nightscout. Please check your Nightscout configuration.');
+        return;
+      }
+
+      const result = await response.json();
+      
+      if (result.success) {
+        // Clear any existing error and refresh the analysis
+        setError(null);
+        await fetchAdjustmentSuggestions();
+      } else {
+        setError(result.message || 'Failed to sync data from Nightscout.');
+      }
+    } catch (error) {
+      console.error('Error syncing data:', error);
+      setError('Failed to sync data from Nightscout. Please check your connection and try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case 'high': return 'text-red-700 bg-red-50 border-red-200';
@@ -267,50 +303,133 @@ export default function AnalysisPage() {
             </div>
           </div>
 
-          {/* Manual Mode Section - Show when diabetes profile is not set up */}
-          {error && error.includes('diabetes profile') && (
+          {/* Error Messages - Show specific errors based on API response */}
+          {error && (
             <div className="mb-6 bg-gray-50 border border-gray-200 rounded-lg p-6">
               <div className="flex items-start">
                 <svg className="w-6 h-6 text-gray-600 mr-4 mt-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 <div className="flex-1">
-                  <h3 className="text-gray-900 font-semibold text-lg mb-2">Manual Mode Active 📊</h3>
+                  <h3 className="text-gray-900 font-semibold text-lg mb-2">
+                    {error.includes('No glucose data available') ? 'No Data Available 📊' : 
+                     error.includes('Insufficient data') ? 'Insufficient Data 📊' : 
+                     error.includes('diabetes profile') ? 'Profile Setup Required 📊' :
+                     'Analysis Error'}
+                  </h3>
                   <p className="text-gray-700 mb-3">
-                    You're currently in manual mode. To get AI-powered therapy adjustment suggestions, you need to set up your diabetes profile with your current therapy settings.
+                    {error}
                   </p>
-                  <div className="bg-gray-100 rounded-lg p-4 mb-3">
-                    <h4 className="text-gray-900 font-medium mb-2">To enable therapy analysis:</h4>
-                    <ul className="text-gray-700 text-sm space-y-1">
-                      <li>• <strong>Configure your diabetes profile</strong> with current basal rates, carb ratios, and sensitivity factors</li>
-                      <li>• <strong>Set up Nightscout</strong> for automatic real-time data sync (optional)</li>
-                      <li>• <strong>Add glucose readings</strong> manually or via Nightscout</li>
-                      <li>• <strong>Get AI-powered suggestions</strong> for therapy adjustments</li>
-                    </ul>
-                  </div>
-                  <div className="flex flex-wrap gap-3">
-                    <a 
-                      href="/diabetes-profile" 
-                      className="inline-flex items-center px-4 py-2 bg-gray-600 text-white text-sm font-medium rounded-md hover:bg-gray-700 transition-colors"
-                    >
-                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      </svg>
-                      Configure Diabetes Profile
-                    </a>
-                    <a 
-                      href="https://nightscout.github.io/" 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center px-4 py-2 bg-white text-gray-600 text-sm font-medium rounded-md border border-gray-300 hover:bg-gray-50 transition-colors"
-                    >
-                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                      </svg>
-                      Learn About Nightscout
-                    </a>
-                  </div>
+                  
+                  {/* Show general help for analysis errors */}
+                  {!error.includes('No glucose data available') && !error.includes('Insufficient data') && !error.includes('diabetes profile') && (
+                    <div className="bg-gray-50 rounded-lg p-4 mb-3">
+                      <h4 className="text-gray-900 font-medium mb-2">To resolve this issue:</h4>
+                      <ul className="text-gray-700 text-sm space-y-1 mb-3">
+                        <li>• <strong>Set up your diabetes profile</strong> with basal rates, carb ratios, and sensitivity factors</li>
+                        <li>• <strong>Add glucose readings</strong> manually or sync from Nightscout</li>
+                        <li>• <strong>Configure Nightscout</strong> for automatic data sync</li>
+                        <li>• <strong>Ensure you have enough data</strong> - at least 24 readings per day</li>
+                      </ul>
+                      <div className="flex flex-wrap gap-3">
+                        <a 
+                          href="/diabetes-profile" 
+                          className="inline-flex items-center px-4 py-2 bg-orange-600 text-white text-sm font-medium rounded-md hover:bg-orange-700 transition-colors"
+                        >
+                          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          </svg>
+                          Set Up Diabetes Profile
+                        </a>
+                        <a 
+                          href="/readings" 
+                          className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors"
+                        >
+                          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                          </svg>
+                          Add BG Data
+                        </a>
+                        <a 
+                          href="/personal-profile" 
+                          className="inline-flex items-center px-4 py-2 bg-gray-600 text-white text-sm font-medium rounded-md hover:bg-gray-700 transition-colors"
+                        >
+                          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                          </svg>
+                          Configure Nightscout
+                        </a>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Show sync button for data-related errors */}
+                  {(error.includes('No glucose data available') || error.includes('Insufficient data')) && (
+                    <div className="bg-blue-50 rounded-lg p-4 mb-3">
+                      <h4 className="text-blue-900 font-medium mb-2">To get started:</h4>
+                      <ul className="text-blue-800 text-sm space-y-1 mb-3">
+                        <li>• <strong>Sync from Nightscout</strong> to automatically download your glucose data</li>
+                        <li>• <strong>Add manual readings</strong> if you don't use Nightscout</li>
+                        <li>• <strong>Wait for data collection</strong> - we need at least 24 readings per day</li>
+                      </ul>
+                      <div className="flex flex-wrap gap-3">
+                        <button 
+                          onClick={handleSyncData}
+                          disabled={loading}
+                          className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        >
+                          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                          </svg>
+                          {loading ? 'Syncing...' : 'Sync from Nightscout'}
+                        </button>
+                        <a 
+                          href="/readings" 
+                          className="inline-flex items-center px-4 py-2 bg-gray-600 text-white text-sm font-medium rounded-md hover:bg-gray-700 transition-colors"
+                        >
+                          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                          </svg>
+                          Add Manual Readings
+                        </a>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Show profile setup for diabetes profile errors */}
+                  {error.includes('diabetes profile') && (
+                    <div className="bg-orange-50 rounded-lg p-4 mb-3">
+                      <h4 className="text-orange-900 font-medium mb-2">To enable therapy analysis:</h4>
+                      <ul className="text-orange-800 text-sm space-y-1 mb-3">
+                        <li>• <strong>Configure your diabetes profile</strong> with current basal rates, carb ratios, and sensitivity factors</li>
+                        <li>• <strong>Set up Nightscout</strong> for automatic real-time data sync (optional)</li>
+                        <li>• <strong>Add glucose readings</strong> manually or via Nightscout</li>
+                        <li>• <strong>Get AI-powered suggestions</strong> for therapy adjustments</li>
+                      </ul>
+                      <div className="flex flex-wrap gap-3">
+                        <a 
+                          href="/diabetes-profile" 
+                          className="inline-flex items-center px-4 py-2 bg-orange-600 text-white text-sm font-medium rounded-md hover:bg-orange-700 transition-colors"
+                        >
+                          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          </svg>
+                          Configure Diabetes Profile
+                        </a>
+                        <a 
+                          href="/personal-profile" 
+                          className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors"
+                        >
+                          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                          </svg>
+                          Configure Nightscout
+                        </a>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
