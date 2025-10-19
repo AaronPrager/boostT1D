@@ -56,6 +56,10 @@ ios-app/BoostT1D/BoostT1D/Configuration/Config.swift
 **/APIKeys.swift
 **/api-keys.swift
 
+# Keep template files
+!**/Config.swift.template
+!**/config.swift.template
+
 # Development Team and Signing
 ios-app/BoostT1D/BoostT1D.xcodeproj/project.xcworkspace/xcuserdata/
 ios-app/BoostT1D/BoostT1D.xcodeproj/xcuserdata/
