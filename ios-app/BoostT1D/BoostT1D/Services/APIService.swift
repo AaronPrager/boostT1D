@@ -17,6 +17,12 @@ class APIService: ObservableObject {
                                    isClosedLoop: Bool = false,
                                    completion: @escaping (Result<AITherapySuggestions, Error>) -> Void) {
         
+        // Check if API key is available
+        guard !apiKey.isEmpty else {
+            completion(.failure(NSError(domain: "APIService", code: 1001, userInfo: [NSLocalizedDescriptionKey: "AI features are not available. API key not configured."])))
+            return
+        }
+        
         // Prepare glucose data summary
         let glucoseSummary = prepareGlucoseSummary(glucoseEntries: glucoseEntries, lowGlucose: lowGlucose, highGlucose: highGlucose)
         
@@ -232,6 +238,12 @@ class APIService: ObservableObject {
     }
     
     func analyzeFood(image: UIImage, completion: @escaping (Result<FoodAnalysis, Error>) -> Void) {
+        // Check if API key is available
+        guard !apiKey.isEmpty else {
+            completion(.failure(NSError(domain: "APIService", code: 1001, userInfo: [NSLocalizedDescriptionKey: "AI features are not available. API key not configured."])))
+            return
+        }
+        
         guard let imageData = image.jpegData(compressionQuality: 0.8) else {
             completion(.failure(CarbEstimationError.imageProcessingFailed))
             return

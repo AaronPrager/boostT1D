@@ -1,9 +1,11 @@
 import SwiftUI
+import os.log
 
 struct TherapyAdjustmentView: View {
     @StateObject private var nightscoutService = NightscoutService.shared
     @StateObject private var apiService = APIService.shared
     @StateObject private var localDataService = LocalDataService.shared
+    
     @State private var selectedTimeRange: Int = 3
     @State private var suggestions: [AdjustmentSuggestion] = []
     @State private var metrics: AnalysisMetrics = AnalysisMetrics()
@@ -441,9 +443,9 @@ struct TherapyAdjustmentView: View {
                 .foregroundColor(.blue)
         })
         .onAppear {
-                    if !showDisclaimer {
-            loadSuggestions()
-        }
+            if !showDisclaimer {
+                loadSuggestions()
+            }
         }
         .onChange(of: selectedTimeRange) { newValue in
                     if !showDisclaimer {
@@ -465,6 +467,24 @@ struct TherapyAdjustmentView: View {
                 }
             }
         }
+    }
+    
+    private func resetToInitialState() {
+        // Reset all state variables to initial values
+        suggestions = []
+        metrics = AnalysisMetrics()
+        glucoseEntries = []
+        treatments = []
+        isLoading = false
+        errorMessage = nil
+        analysisMethod = .ruleBased
+        aiConfidence = 0.0
+        keyFindings = []
+        safetyNotes = []
+        showDisclaimer = true
+        useAIAnalysis = false
+        isClosedLoopSystem = false
+        selectedTimeRange = 3
     }
     
     private var groupedSuggestions: [SuggestionGroup] {

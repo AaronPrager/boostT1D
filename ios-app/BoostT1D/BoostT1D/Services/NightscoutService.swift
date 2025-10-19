@@ -83,7 +83,7 @@ class NightscoutService: ObservableObject {
         request.setValue(sha1(token), forHTTPHeaderField: headerField)
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
-                
+        
         URLSession.shared.dataTask(with: request) { data, response, error in
             DispatchQueue.main.async {
                 if let error = error {
@@ -125,7 +125,7 @@ class NightscoutService: ObservableObject {
         var request = URLRequest(url: testURL)
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
-                
+        
         URLSession.shared.dataTask(with: request) { data, response, error in
             DispatchQueue.main.async {
                 if let error = error {
@@ -308,7 +308,7 @@ class NightscoutService: ObservableObject {
         var request = URLRequest(url: finalUrl)
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-                
+        
         URLSession.shared.dataTask(with: request) { data, response, error in
             DispatchQueue.main.async {
                 if let error = error {
@@ -320,7 +320,7 @@ class NightscoutService: ObservableObject {
                     completion(.failure(NightscoutError.noData))
                     return
                 }
-
+                
                 do {
                     let glucoseEntries = try JSONDecoder().decode([NightscoutGlucoseEntry].self, from: data)
                     completion(.success(glucoseEntries))
@@ -546,7 +546,7 @@ class NightscoutService: ObservableObject {
                             basaliob: 0,
                             time: latestStatus.created_at ?? ISO8601DateFormatter().string(from: Date())
                         )
-                        completion(.success(iobResult))
+                    completion(.success(iobResult))
                     } else {
                         completion(.failure(NightscoutError.noData))
                     }
@@ -589,32 +589,73 @@ class NightscoutService: ObservableObject {
                 do {
                     // Devicestatus returns an array
                     let devicestatusArray = try JSONDecoder().decode([DeviceStatus].self, from: data)
-                    
                     if let latestStatus = devicestatusArray.first {
+                        
                         // Try to find COB in various locations within devicestatus
                         var cob: Double = 0
                         var source = "not_found"
                         
-                        // Check openaps.suggested.COB
+                        // Check openaps.suggested.COB (exact match to web version)
                         if let openaps = latestStatus.openaps,
                            let suggested = openaps["suggested"] as? [String: Any],
-                           let cobValue = suggested["COB"] as? Double {
-                            cob = cobValue
-                            source = "openaps.suggested.COB"
+                           let cobValue = suggested["COB"] {
+                            // Handle both Int and Double types
+                            if let cobDouble = cobValue as? Double, cobDouble != 0 {
+                                cob = cobDouble
+                                source = "openaps.suggested.COB"
+                            } else if let cobInt = cobValue as? Int, cobInt != 0 {
+                                cob = Double(cobInt)
+                                source = "openaps.suggested.COB"
+                            }
                         }
-                        // Check openaps.cob.cob
+                        // Check openaps.cob (direct value)
+                        else if let openaps = latestStatus.openaps,
+                                let cobValue = openaps["cob"] {
+                            // Handle both Int and Double types
+                            if let cobDouble = cobValue as? Double, cobDouble != 0 {
+                                cob = cobDouble
+                                source = "openaps.cob"
+                            } else if let cobInt = cobValue as? Int, cobInt != 0 {
+                                cob = Double(cobInt)
+                                source = "openaps.cob"
+                            }
+                        }
+                        // Check openaps.cob.cob (nested)
                         else if let openaps = latestStatus.openaps,
                                 let cobData = openaps["cob"] as? [String: Any],
-                                let cobValue = cobData["cob"] as? Double {
-                            cob = cobValue
-                            source = "openaps.cob.cob"
+                                let cobValue = cobData["cob"] {
+                            // Handle both Int and Double types
+                            if let cobDouble = cobValue as? Double, cobDouble != 0 {
+                                cob = cobDouble
+                                source = "openaps.cob.cob"
+                            } else if let cobInt = cobValue as? Int, cobInt != 0 {
+                                cob = Double(cobInt)
+                                source = "openaps.cob.cob"
+                            }
+                        }
+                        // Check direct cob field (some Nightscout setups)
+                        else if let cobValue = latestStatus.openaps?["cob"] {
+                            // Handle both Int and Double types
+                            if let cobDouble = cobValue as? Double, cobDouble != 0 {
+                                cob = cobDouble
+                                source = "cob"
+                            } else if let cobInt = cobValue as? Int, cobInt != 0 {
+                                cob = Double(cobInt)
+                                source = "cob"
+                            }
                         }
                                                 
+                        // Validate COB value (match web version validation)
+                        if cob.isNaN || cob < 0 {
+                            cob = 0
+                            source = "invalid_value"
+                        }
+                        
                         let cobResult = COBResult(
                             cob: cob,
                             time: latestStatus.created_at ?? ISO8601DateFormatter().string(from: Date())
                         )
-                        completion(.success(cobResult))
+                    completion(.success(cobResult))
                     } else {
                         completion(.failure(NightscoutError.noData))
                     }
@@ -624,6 +665,7 @@ class NightscoutService: ObservableObject {
             }
         }.resume()
     }
+    
 }
 
 enum NightscoutError: Error, LocalizedError {

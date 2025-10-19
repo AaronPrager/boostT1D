@@ -363,20 +363,27 @@ struct FoodAnalysisView: View {
                 if currentCOB > 0 {
                     calculationNote += "\n🍞 CARBS ON BOARD (COB):\n"
                     calculationNote += "   \(String(format: "%.1f", currentCOB))g ÷ \(String(format: "%.1f", currentCarbRatio.value)) = \(String(format: "%.1f", iobNeededForCOB))u needed\n"
+                    calculationNote += "   (Insulin already working on existing carbs)\n"
                 }
                 
-                calculationNote += "\n💉 INSULIN ON BOARD (IOB):\n"
+                calculationNote += "\n💉 INSULIN ON BOARD (IOB) ANALYSIS:\n"
                 calculationNote += "   Total IOB: \(String(format: "%.1f", currentIOB))u\n"
                 if currentCOB > 0 {
-                    calculationNote += "   IOB for COB: \(String(format: "%.1f", iobNeededForCOB))u\n"
+                    calculationNote += "   IOB for existing COB: \(String(format: "%.1f", iobNeededForCOB))u\n"
                     calculationNote += "   Available IOB: \(String(format: "%.1f", currentIOB))u - \(String(format: "%.1f", iobNeededForCOB))u = \(String(format: "%.1f", availableIOB))u\n"
+                    calculationNote += "   (Only leftover IOB can cover new meal)\n"
+                } else {
+                    calculationNote += "   Available IOB: \(String(format: "%.1f", currentIOB))u\n"
+                    calculationNote += "   (All IOB available for new meal)\n"
                 }
                 
                 calculationNote += "\n✅ SAFE BOLUS CALCULATION:\n"
                 if currentCOB > 0 {
                     calculationNote += "   \(String(format: "%.1f", totalUnits))u needed - \(String(format: "%.1f", availableIOB))u available = \(String(format: "%.1f", safeBolus))u\n"
+                    calculationNote += "   (Subtract only the IOB not already working on existing carbs)\n"
                 } else {
                     calculationNote += "   \(String(format: "%.1f", totalUnits))u needed - \(String(format: "%.1f", currentIOB))u IOB = \(String(format: "%.1f", safeBolus))u\n"
+                    calculationNote += "   (Subtract all active IOB to prevent insulin stacking)\n"
                 }
                 
                 // Safety warnings
