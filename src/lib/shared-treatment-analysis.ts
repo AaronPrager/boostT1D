@@ -85,7 +85,7 @@ export function getCarbRatioPriority(treatmentAnalysis: TreatmentAnalysis, timeR
 /**
  * Generates carb ratio adjustment reasoning based on treatment analysis
  */
-export function generateCarbRatioReasoning(treatmentAnalysis: TreatmentAnalysis, timeRangeDays: number): string {
+export function generateCarbRatioReasoning(treatmentAnalysis: TreatmentAnalysis, timeRangeDays: number, mealPeriodName: string = 'Meal times'): string {
   const carbsPerDay = treatmentAnalysis.carbCount / timeRangeDays;
-  return `Treatment analysis: ${treatmentAnalysis.carbCount} carb treatments in ${timeRangeDays} days (${carbsPerDay.toFixed(1)} per day). Consider stronger carb ratio to reduce post-meal corrections.`;
+  return `${mealPeriodName} analysis: ${treatmentAnalysis.carbCount} carb treatments in ${timeRangeDays} days (${carbsPerDay.toFixed(1)} per day). Consider stronger carb ratio to reduce post-meal corrections.`;
 }

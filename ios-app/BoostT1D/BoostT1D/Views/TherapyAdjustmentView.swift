@@ -5,6 +5,7 @@ struct TherapyAdjustmentView: View {
     @StateObject private var nightscoutService = NightscoutService.shared
     @StateObject private var apiService = APIService.shared
     @StateObject private var localDataService = LocalDataService.shared
+    @StateObject private var diabetesProfileService = DiabetesProfileService.shared
     
     @State private var selectedTimeRange: Int = 3
     @State private var suggestions: [AdjustmentSuggestion] = []
@@ -20,6 +21,7 @@ struct TherapyAdjustmentView: View {
     @State private var showDisclaimer = true
     @State private var useAIAnalysis = false // Start with manual mode by default
     @State private var isClosedLoopSystem = false
+    @State private var profile: DiabetesProfile? = nil
  // Debug option to force Nightscout mode
     
     private let timeRangeOptions = [3, 7]
@@ -444,6 +446,7 @@ struct TherapyAdjustmentView: View {
         })
         .onAppear {
             if !showDisclaimer {
+                loadProfile()
                 loadSuggestions()
             }
         }
@@ -568,6 +571,138 @@ struct TherapyAdjustmentView: View {
         }
         
         return warnings
+    }
+    
+    private func loadProfile() {
+        diabetesProfileService.fetchProfile { result in
+            DispatchQueue.main.async {
+                switch result {
+                case .success(let profileData):
+                    self.profile = profileData
+                case .failure(_):
+                    // Profile loading failed, will use default values
+                    self.profile = nil
+                }
+            }
+        }
+    }
+    
+    private func getBasalValueForTimeSlot(_ timeSlot: String) -> Double {
+        guard let profile = profile,
+              let store = profile.store,
+              let profileData = store.values.first,
+              let basalArray = profileData.basal,
+              !basalArray.isEmpty else {
+            return 1.0 // Default fallback
+        }
+        
+        // Parse time slot to extract start hour
+        // timeSlot format: "06:00 - 12:00" or "12:00 - 18:00"
+        let hourString = timeSlot.components(separatedBy: " - ").first ?? "00:00"
+        let components = hourString.components(separatedBy: ":")
+        
+        guard components.count >= 1,
+              let targetHour = Int(components[0]) else {
+            return basalArray.first?.value ?? 1.0
+        }
+        
+        // Find the basal rate that applies at this hour
+        // Basal entries are typically at key times (midnight, 6am, noon, 6pm, etc.)
+        // We want the most recent basal rate before or at this hour
+        var bestMatch = basalArray.first
+        
+        for basalEntry in basalArray {
+            let basalComponents = basalEntry.time.components(separatedBy: ":")
+            if basalComponents.count >= 1,
+               let basalHour = Int(basalComponents[0]) {
+                if basalHour <= targetHour {
+                    bestMatch = basalEntry
+                }
+            }
+        }
+        
+        return bestMatch?.value ?? 1.0
+    }
+    
+    private func getISFValueForTimeSlot(_ timeSlot: String) -> Double {
+        guard let profile = profile,
+              let store = profile.store,
+              let profileData = store.values.first,
+              let sensArray = profileData.sens ?? profileData.sensitivity,
+              !sensArray.isEmpty else {
+            return 50.0 // Default fallback
+        }
+        
+        // Parse time slot to extract start hour
+        let hourString = timeSlot.components(separatedBy: " - ").first ?? "00:00"
+        let components = hourString.components(separatedBy: ":")
+        
+        guard components.count >= 1,
+              let targetHour = Int(components[0]) else {
+            return sensArray.first?.value ?? 50.0
+        }
+        
+        // Find the ISF that applies at this hour (same logic as basal)
+        var bestMatch = sensArray.first
+        
+        for sensEntry in sensArray {
+            let sensComponents = sensEntry.time.components(separatedBy: ":")
+            if sensComponents.count >= 1,
+               let sensHour = Int(sensComponents[0]) {
+                if sensHour <= targetHour {
+                    bestMatch = sensEntry
+                }
+            }
+        }
+        
+        return bestMatch?.value ?? 50.0
+    }
+    
+    private func getCarbRatioForTimeSlot(_ timeSlot: String) -> (value: Double, time: String)? {
+        guard let profile = profile,
+              let store = profile.store,
+              let profileData = store.values.first,
+              let carbRatioArray = profileData.carbratio ?? profileData.carb_ratio,
+              !carbRatioArray.isEmpty else {
+            return nil
+        }
+        
+        // Parse time slot to extract start hour
+        let hourString = timeSlot.components(separatedBy: " - ").first ?? "12:00"
+        let components = hourString.components(separatedBy: ":")
+        
+        guard components.count >= 1,
+              let targetHour = Int(components[0]) else {
+            // Return first carb ratio as fallback
+            return carbRatioArray.first.map { (value: $0.value, time: $0.time) }
+        }
+        
+        // Find the carb ratio that applies at this hour
+        var bestMatch = carbRatioArray.first
+        
+        for carbEntry in carbRatioArray {
+            let carbComponents = carbEntry.time.components(separatedBy: ":")
+            if carbComponents.count >= 1,
+               let carbHour = Int(carbComponents[0]) {
+                if carbHour <= targetHour {
+                    bestMatch = carbEntry
+                }
+            }
+        }
+        
+        return bestMatch.map { (value: $0.value, time: $0.time) }
+    }
+    
+    private func getMealPeriodName(for hour: Int) -> String {
+        if hour >= 5 && hour < 12 {
+            return "Breakfast"
+        } else if hour >= 12 && hour < 17 {
+            return "Lunch"
+        } else if hour >= 17 && hour < 22 {
+            return "Dinner"
+        } else {
+            return "Meal time"
+        }
     }
     
     private func loadSuggestions() {
@@ -760,8 +895,8 @@ struct TherapyAdjustmentView: View {
             let basalMinDataPoints = isClosedLoop ? 10 : 3 // More data required for closed loop
             
             if analysis.averageGlucose > highGlucose + basalThreshold && analysis.dataPoints >= basalMinDataPoints {
-                // High glucose pattern - suggest small basal increase
-                let adjustmentPercent = min(5, max(2, Int((analysis.averageGlucose - highGlucose) / 20)))
+                // High glucose pattern - suggest basal increase (10-15% range for meaningful change)
+                let adjustmentPercent = min(15, max(10, Int((analysis.averageGlucose - highGlucose) / 10)))
                 let pointsAboveTarget = Int(analysis.averageGlucose - highGlucose)
                 
                 // Determine priority based on severity
@@ -774,6 +909,9 @@ struct TherapyAdjustmentView: View {
                     priority = .low // Slightly high BG
                 }
                 
+                let currentBasal = getBasalValueForTimeSlot(timeSlot)
+                let suggestedBasal = currentBasal * (1.0 + Double(adjustmentPercent) / 100.0)
+                
                 var reasoning = "\(priorityText(priority))\n\n"
                 reasoning += "📊 PATTERN ANALYSIS:\n"
                 reasoning += "   • Average BG: \(Int(analysis.averageGlucose)) mg/dL\n"
@@ -784,7 +922,7 @@ struct TherapyAdjustmentView: View {
                     reasoning += "   • Closed loop active: Only baseline profile adjustment suggested\n"
                 }
                 reasoning += "\n💉 RECOMMENDATION:\n"
-                reasoning += "   Increase basal rate by \(adjustmentPercent)% (approximately 0.02-0.05 U/hr).\n\n"
+                reasoning += "   Increase basal rate from \(String(format: "%.2f", currentBasal)) to \(String(format: "%.2f", suggestedBasal)) U/hr (\(adjustmentPercent)% increase).\n\n"
                 reasoning += "📝 WHY THIS WORKS:\n"
                 if isClosedLoop {
                     reasoning += "   Your closed loop system is making temporary adjustments, but the persistent pattern suggests your baseline basal profile needs adjustment. This will help the algorithm work more effectively.\n\n"
@@ -798,18 +936,21 @@ struct TherapyAdjustmentView: View {
                     id: UUID(),
                     type: .basalRate,
                     timeSlot: timeSlot,
-                    currentValue: 1.0, // Default - would need to get from user profile
-                    suggestedValue: 1.0 * (1.0 + Double(adjustmentPercent) / 100.0),
+                    currentValue: currentBasal,
+                    suggestedValue: suggestedBasal,
                     priority: priority,
                     reasoning: reasoning
                 ))
             } else if analysis.averageGlucose < lowGlucose - (isClosedLoop ? 15.0 : 8.0) && analysis.dataPoints >= basalMinDataPoints {
-                // Low glucose pattern - suggest small basal decrease
-                let adjustmentPercent = min(5, max(2, Int((lowGlucose - analysis.averageGlucose) / 20)))
+                // Low glucose pattern - suggest basal decrease (10-15% range for meaningful change)
+                let adjustmentPercent = min(15, max(10, Int((lowGlucose - analysis.averageGlucose) / 10)))
                 let pointsBelowTarget = Int(lowGlucose - analysis.averageGlucose)
                 
                 // HIGH priority for low BG - safety critical!
                 let priority: Priority = pointsBelowTarget > 10 ? .high : .medium
+                
+                let currentBasal = getBasalValueForTimeSlot(timeSlot)
+                let suggestedBasal = currentBasal * (1.0 - Double(adjustmentPercent) / 100.0)
                 
                 var reasoning = "\(priorityText(priority))\n\n"
                 reasoning += "📊 PATTERN ANALYSIS:\n"
@@ -821,7 +962,7 @@ struct TherapyAdjustmentView: View {
                     reasoning += "   • Closed loop active: Baseline profile adjustment needed\n"
                 }
                 reasoning += "\n💉 RECOMMENDATION:\n"
-                reasoning += "   Decrease basal rate by \(adjustmentPercent)% (approximately 0.02-0.05 U/hr).\n\n"
+                reasoning += "   Decrease basal rate from \(String(format: "%.2f", currentBasal)) to \(String(format: "%.2f", suggestedBasal)) U/hr (\(adjustmentPercent)% decrease).\n\n"
                 reasoning += "📝 WHY THIS WORKS:\n"
                 if isClosedLoop {
                     reasoning += "   Your closed loop system is suspending or reducing insulin, but the persistent low pattern suggests your baseline basal profile is too aggressive. Lowering it will help prevent lows and reduce algorithm interventions.\n\n"
@@ -835,21 +976,24 @@ struct TherapyAdjustmentView: View {
                     id: UUID(),
                     type: .basalRate,
                     timeSlot: timeSlot,
-                    currentValue: 1.0,
-                    suggestedValue: 1.0 * (1.0 - Double(adjustmentPercent) / 100.0),
+                    currentValue: currentBasal,
+                    suggestedValue: suggestedBasal,
                     priority: priority,
                     reasoning: reasoning
                 ))
             }
             
             if analysis.timeInRange < 60 && analysis.dataPoints >= 6 {
+                let currentISF = getISFValueForTimeSlot(timeSlot)
+                let suggestedISF = currentISF * 0.90 // 10% decrease for meaningful change
+                
                 var reasoning = "\(priorityText(.low))\n\n"
                 reasoning += "📊 PATTERN ANALYSIS:\n"
                 reasoning += "   • Time in range: \(Int(analysis.timeInRange))%\n"
                 reasoning += "   • Target: 70%+\n"
                 reasoning += "   • Data points: \(analysis.dataPoints) readings\n\n"
                 reasoning += "💉 RECOMMENDATION:\n"
-                reasoning += "   Adjust correction factor by 2-3 points (from 1:50 to 1:47-48).\n\n"
+                reasoning += "   Adjust correction factor from 1:\(Int(currentISF)) to 1:\(Int(suggestedISF)).\n\n"
                 reasoning += "📝 WHY THIS WORKS:\n"
                 reasoning += "   Correction factor (ISF) determines how much 1 unit of insulin lowers BG. If you're spending too much time out of range during this period, your correction doses may not be strong enough.\n\n"
                 reasoning += "⚠️ IMPLEMENTATION:\n"
@@ -859,8 +1003,8 @@ struct TherapyAdjustmentView: View {
                     id: UUID(),
                     type: .correctionFactor,
                     timeSlot: timeSlot,
-                    currentValue: 50.0, // Default - would need to get from user profile
-                    suggestedValue: 48.0, // Small 4% decrease
+                    currentValue: currentISF,
+                    suggestedValue: suggestedISF,
                     priority: .low,
                     reasoning: reasoning
                 ))
@@ -879,7 +1023,7 @@ struct TherapyAdjustmentView: View {
             guard effectiveness.correctionCount >= 3 else { continue }
             
             let avgActualISF = effectiveness.avgActualISF
-            let assumedISF = 50.0 // Default assumption - ideally get from profile
+            let assumedISF = getISFValueForTimeSlot(timeSlot)
             
             // If actual ISF is significantly different from assumed, suggest adjustment
             let difference = abs(avgActualISF - assumedISF)
@@ -948,28 +1092,64 @@ struct TherapyAdjustmentView: View {
                 priority = .low // Less frequent
             }
             
-            var reasoning = "\(priorityText(priority))\n\n"
-            reasoning += "📊 PATTERN ANALYSIS:\n"
-            reasoning += "   • Carb treatments: \(treatmentAnalysis.carbCount) in \(selectedTimeRange) days\n"
-            reasoning += "   • Average: \(String(format: "%.1f", carbsPerDay)) per day\n\n"
-            reasoning += "💉 RECOMMENDATION:\n"
-            reasoning += "   Adjust carb ratio by 1-2 points (from 1:15 to 1:13-14).\n\n"
-            reasoning += "📝 WHY THIS WORKS:\n"
-            reasoning += "   Your carb ratio determines how much insulin covers your food. If you're frequently treating high BG after meals, your carb ratio may need strengthening.\n\n"
-            reasoning += "⏱️ TIMING TIP:\n"
-            reasoning += "   Pre-bolus 15-20 minutes before meals. This gives insulin time to start working when carbs hit your bloodstream, preventing post-meal spikes.\n\n"
-            reasoning += "⚠️ IMPLEMENTATION:\n"
-            reasoning += "   Change one meal at a time (breakfast, lunch, or dinner). Wait 3-4 days to see the pattern before adjusting other meals."
-            
-            suggestions.append(AdjustmentSuggestion(
-                id: UUID(),
-                type: .carbRatio,
-                timeSlot: "Meal Times",
-                currentValue: 15.0,
-                suggestedValue: 14.0, // Small 7% decrease
-                priority: priority,
-                reasoning: reasoning
-            ))
+            // Get the actual carb ratio from the profile
+            // Default to noon (lunch time) if we can't determine a specific time
+            let defaultTimeSlot = "12:00"
+            if let carbRatioData = getCarbRatioForTimeSlot(defaultTimeSlot) {
+                let currentRatio = carbRatioData.value
+                let ratioTime = carbRatioData.time
+                let suggestedRatio = currentRatio * 0.90 // 10% decrease for meaningful change
+                
+                // Determine meal period from the time
+                let timeComponents = ratioTime.components(separatedBy: ":")
+                let hour = timeComponents.count >= 1 ? Int(timeComponents[0]) ?? 12 : 12
+                let mealPeriodName = getMealPeriodName(for: hour)
+                
+                var reasoning = "\(priorityText(priority))\n\n"
+                reasoning += "📊 PATTERN ANALYSIS:\n"
+                reasoning += "   • Carb treatments: \(treatmentAnalysis.carbCount) in \(selectedTimeRange) days\n"
+                reasoning += "   • Average: \(String(format: "%.1f", carbsPerDay)) per day\n\n"
+                reasoning += "💉 RECOMMENDATION:\n"
+                reasoning += "   \(mealPeriodName): Adjust carb ratio from 1:\(Int(currentRatio)) to 1:\(Int(suggestedRatio)).\n\n"
+                reasoning += "📝 WHY THIS WORKS:\n"
+                reasoning += "   Your carb ratio determines how much insulin covers your food. If you're frequently treating high BG after meals, your carb ratio may need strengthening.\n\n"
+                reasoning += "⏱️ TIMING TIP:\n"
+                reasoning += "   Pre-bolus 15-20 minutes before meals. This gives insulin time to start working when carbs hit your bloodstream, preventing post-meal spikes.\n\n"
+                reasoning += "⚠️ IMPLEMENTATION:\n"
+                reasoning += "   Change one meal at a time (breakfast, lunch, or dinner). Wait 3-4 days to see the pattern before adjusting other meals."
+                
+                suggestions.append(AdjustmentSuggestion(
+                    id: UUID(),
+                    type: .carbRatio,
+                    timeSlot: ratioTime, // Use actual time from profile instead of "Meal Times"
+                    currentValue: currentRatio,
+                    suggestedValue: suggestedRatio,
+                    priority: priority,
+                    reasoning: reasoning
+                ))
+            } else {
+                // If no profile data available, use defaults
+                let defaultRatio = 15.0
+                let defaultSuggested = 13.5 // 10% decrease
+                var reasoning = "\(priorityText(priority))\n\n"
+                reasoning += "📊 PATTERN ANALYSIS:\n"
+                reasoning += "   • Carb treatments: \(treatmentAnalysis.carbCount) in \(selectedTimeRange) days\n"
+                reasoning += "   • Average: \(String(format: "%.1f", carbsPerDay)) per day\n\n"
+                reasoning += "💉 RECOMMENDATION:\n"
+                reasoning += "   Adjust carb ratio from 1:\(Int(defaultRatio)) to 1:\(Int(defaultSuggested)).\n\n"
+                reasoning += "📝 WHY THIS WORKS:\n"
+                reasoning += "   Your carb ratio determines how much insulin covers your food. If you're frequently treating high BG after meals, your carb ratio may need strengthening."
+                
+                suggestions.append(AdjustmentSuggestion(
+                    id: UUID(),
+                    type: .carbRatio,
+                    timeSlot: "Meal time",
+                    currentValue: defaultRatio,
+                    suggestedValue: defaultSuggested,
+                    priority: priority,
+                    reasoning: reasoning
+                ))
+            }
         }
         
         // Add insulin timing-specific suggestions
