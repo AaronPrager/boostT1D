@@ -510,16 +510,16 @@ function analyzeBasalNeeds(
           priority = 'medium';
           reasoning = `${periodHighPercent.toFixed(1)}% of ${period.description} readings above ${highTarget} mg/dL. Consider modest basal increase.`;
         } else {
-          adjustmentPercentage = 8;
+          adjustmentPercentage = 10;
           priority = 'medium';
-          reasoning = `${period.description} average of ${periodAvg.toFixed(0)} mg/dL is elevated. Consider small basal increase.`;
+          reasoning = `${period.description} average of ${periodAvg.toFixed(0)} mg/dL is elevated. Consider basal increase.`;
         }
         confidence = 'high';
       }
       // Check for moderately elevated averages
       else if (periodAvg > highTarget + 15) {
-        adjustmentPercentage = 5;
-        reasoning = `${period.description} average of ${periodAvg.toFixed(0)} mg/dL is moderately elevated. Consider small basal increase.`;
+        adjustmentPercentage = 10;
+        reasoning = `${period.description} average of ${periodAvg.toFixed(0)} mg/dL is moderately elevated. Consider basal increase.`;
         priority = 'low';
         confidence = 'medium';
       }
@@ -668,10 +668,10 @@ function analyzeCarbRatios(
           adjustmentPercentage = -12;
           priority = 'high';
         } else if (mealHighPercent > 30) {
-          adjustmentPercentage = -8;
+          adjustmentPercentage = -10;
           priority = 'medium';
         } else {
-          adjustmentPercentage = -5;
+          adjustmentPercentage = -10;
           priority = 'low';
         }
 
@@ -695,19 +695,30 @@ function analyzeCarbRatios(
   if (treatmentAnalysis && shouldAdjustCarbRatio(treatmentAnalysis, timeRangeDays!)) {
     const priority = getCarbRatioPriority(treatmentAnalysis, timeRangeDays!);
     
-    // Find the most commonly used carb ratio time
-    const mostCommonRatio = currentRatios[0]; // Default to first ratio
+    // Use the first available ratio's time slot
+    const mostCommonRatio = currentRatios[0];
     
-    const adjustmentPercentage = -7; // Small decrease (stronger ratio)
+    // Determine the meal period name based on the ratio's time
+    let mealPeriodName = 'Meal times';
+    const ratioHour = parseInt(mostCommonRatio.time.split(':')[0]);
+    if (ratioHour >= 5 && ratioHour < 12) {
+      mealPeriodName = 'Breakfast';
+    } else if (ratioHour >= 12 && ratioHour < 17) {
+      mealPeriodName = 'Lunch';
+    } else if (ratioHour >= 17 && ratioHour < 22) {
+      mealPeriodName = 'Dinner';
+    }
+    
+    const adjustmentPercentage = -10; // Meaningful decrease (stronger ratio)
     const suggestedValue = Math.round((mostCommonRatio.value * (1 + adjustmentPercentage / 100)) * 10) / 10;
     
     adjustments.push({
       type: 'carbratio',
-      timeSlot: 'Meal Times',
+      timeSlot: mostCommonRatio.time, // Use actual ratio time instead of generic 'Meal Times'
       currentValue: mostCommonRatio.value,
       suggestedValue: Math.max(1, suggestedValue),
       adjustmentPercentage,
-      reasoning: generateCarbRatioReasoning(treatmentAnalysis, timeRangeDays!),
+      reasoning: generateCarbRatioReasoning(treatmentAnalysis, timeRangeDays!, mealPeriodName),
       confidence: 'medium',
       priority,
     });
