@@ -80,12 +80,7 @@ export async function POST(req: Request) {
 
       const response = await fetch(url, fetchOptions);
 
-      if (!response.ok) {
-        console.error('Nightscout API error:', {
-          status: response.status,
-          statusText: response.statusText,
-        });
-        
+      if (!response.ok) {   
         if (response.status === 401) {
           return new NextResponse("Unauthorized access to Nightscout. Please check your API token.", { status: 401 });
         }
@@ -109,11 +104,9 @@ export async function POST(req: Request) {
       })).filter((reading: any) => {
         // Validate the reading
         if (!reading.date || isNaN(reading.date.getTime())) {
-          console.warn('Invalid date in reading:', reading);
           return false;
         }
         if (!reading.sgv || typeof reading.sgv !== 'number') {
-          console.warn('Invalid or missing sgv value:', reading);
           return false;
         }
         return true;
@@ -172,7 +165,6 @@ export async function POST(req: Request) {
       });
 
     } catch (fetchError: unknown) {
-      console.error('Error during Nightscout fetch:', fetchError);
       
       if (fetchError instanceof Error && fetchError.name === 'AbortError') {
         return new NextResponse("Request timeout while fetching from Nightscout", { status: 504 });
@@ -186,7 +178,6 @@ export async function POST(req: Request) {
       throw fetchError; // Re-throw for the outer catch block
     }
   } catch (error) {
-    console.error('Error syncing Nightscout data:', error);
     return new NextResponse(
       `Error syncing Nightscout data: ${error instanceof Error ? error.message : 'Unknown error'}`,
       { status: 500 }

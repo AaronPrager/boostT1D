@@ -49,7 +49,6 @@ export async function DELETE(
 
     return NextResponse.json({ message: 'Treatment deleted successfully' });
   } catch (error) {
-    console.error('Failed to delete treatment:', error);
     return NextResponse.json(
       { error: 'Failed to delete treatment', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }

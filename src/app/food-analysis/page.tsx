@@ -114,7 +114,6 @@ export default function FoodAnalysisPage() {
 
       if (!response.ok) {
         let errorMessage = 'Analysis failed';
-        console.error('Food analysis API error:', {
           status: response.status,
           statusText: response.statusText,
           url: response.url
@@ -122,10 +121,8 @@ export default function FoodAnalysisPage() {
         
         try {
           const errorData = await response.json();
-          console.error('Error response data:', errorData);
           errorMessage = errorData.error || errorMessage;
         } catch (parseError) {
-          console.error('Failed to parse error response as JSON:', parseError);
           // If response is not JSON, use status text or default message
           errorMessage = response.statusText || errorMessage;
         }
@@ -135,7 +132,6 @@ export default function FoodAnalysisPage() {
       const data = await response.json();
       setAnalysis(data);
     } catch (error) {
-      console.error('Analysis error:', error);
       if (error instanceof Error) {
         setError(error.message);
       } else {

@@ -23,7 +23,6 @@ export async function POST(request: Request) {
     const data = await request.json();
 
     if (!data.readings || !Array.isArray(data.readings)) {
-      console.error('Invalid data structure:', data);
       return NextResponse.json({ error: 'Invalid data structure: readings array is required' }, { status: 400 });
     }
 
@@ -39,7 +38,6 @@ export async function POST(request: Request) {
     const validReadings = data.readings.filter((r: unknown) => {
       try {
         if (!r || typeof r !== 'object') {
-          console.warn('Invalid reading object:', r);
           return false;
         }
         // Type assertion for reading
@@ -54,12 +52,10 @@ export async function POST(request: Request) {
         }
 
         if (!reading.date) {
-          console.warn('Missing date in reading:', reading);
           return false;
         }
 
         if (!reading.sgv || typeof reading.sgv !== 'number') {
-          console.warn('Invalid or missing sgv value:', reading);
           return false;
         }
 
@@ -69,7 +65,6 @@ export async function POST(request: Request) {
         }
 
         if (isNaN(reading.date.getTime())) {
-          console.warn('Invalid date:', reading.date, 'Original:', reading.timestamp);
           return false;
         }
 
@@ -90,7 +85,6 @@ export async function POST(request: Request) {
 
         return true;
       } catch (error) {
-        console.warn('Error processing reading:', error, 'Reading:', r);
         return false;
       }
     });
@@ -142,10 +136,6 @@ export async function POST(request: Request) {
       count: createdReadings.count
     });
   } catch (error) {
-    console.error('Failed to store readings:', error);
-    if (error instanceof Error) {
-      console.error('Error details:', error.message, error.stack);
-    }
     return NextResponse.json(
       { error: 'Failed to store readings', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
@@ -334,7 +324,6 @@ export async function GET(request: Request) {
       const timeA = a.date?.getTime();
       const timeB = b.date?.getTime();
       if (!timeA || !timeB) {
-        console.warn('Invalid timestamp in reading:', !timeA ? a : b);
         return 0;
       }
       return timeB - timeA;
@@ -342,7 +331,6 @@ export async function GET(request: Request) {
 
     return NextResponse.json(sortedReadings);
   } catch (error) {
-    console.error('Failed to fetch readings:', error);
     return NextResponse.json(
       { error: 'Failed to fetch readings' },
       { status: 500 }

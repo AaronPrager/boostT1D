@@ -47,7 +47,6 @@ function LoginForm() {
       });
 
       if (result?.error) {
-        console.error('SignIn error:', result.error);
         setError('Invalid email or password. Please try again.');
       } else if (result?.ok) {
 
@@ -69,14 +68,11 @@ function LoginForm() {
         }
         
         // If we get here, session didn't establish properly
-        console.warn('Session not established after login, redirecting anyway');
         router.push('/welcome');
       } else {
-        console.error('SignIn returned unexpected result:', result);
         setError('Something went wrong. Please try again.');
       }
     } catch (error) {
-      console.error('Login exception:', error);
       if (error instanceof Error) {
         setError(`Login failed: ${error.message}`);
       } else {

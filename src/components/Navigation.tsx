@@ -21,7 +21,6 @@ export default function Navigation() {
         redirect: true 
       });
     } catch (error) {
-      console.error('Sign out error:', error);
       // Fallback: manually redirect to home page
       router.push('/');
     }
@@ -37,7 +36,6 @@ export default function Navigation() {
           setUserPhoto(profileData.photo || null);
         }
       } catch (error) {
-        console.error('Error fetching user photo:', error);
       }
     }
   };

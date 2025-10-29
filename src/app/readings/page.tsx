@@ -163,7 +163,6 @@ export default function ReadingsPage() {
         setSettings(data);
       }
     } catch (error) {
-      console.error('Error fetching settings:', error);
     }
   };
 
@@ -184,11 +183,9 @@ export default function ReadingsPage() {
         await fetchReadings();
       } else {
         const errorData = await response.json();
-        console.error('Failed to delete reading:', errorData);
         alert(`Failed to delete reading: ${errorData.error || 'Unknown error'}`);
       }
     } catch (error) {
-      console.error('Error deleting reading:', error);
       alert('An error occurred while deleting the reading.');
     }
   };
@@ -235,11 +232,9 @@ export default function ReadingsPage() {
           await fetchReadings();
         }, 500);
       } else {
-        console.error('Failed to save reading:', result);
         alert(`Failed to save reading: ${result.error || 'Unknown error'}`);
       }
     } catch (error) {
-      console.error('Error adding reading:', error);
       alert('An error occurred while saving the reading.');
     }
   };
@@ -258,7 +253,6 @@ export default function ReadingsPage() {
           // Fetch readings data (without automatic sync)
           await fetchReadings();
         } catch (error) {
-          console.error('Error loading readings data:', error);
           setError('Failed to load readings data. Please try refreshing the page.');
         } finally {
           setLoading(false);
@@ -320,7 +314,6 @@ export default function ReadingsPage() {
       setLastFetchTime(new Date());
 
     } catch (error) {
-      console.error('Error fetching readings:', error);
       setError('Failed to fetch readings. Please check your settings and try again.');
     } finally {
       setLoading(false);
@@ -342,7 +335,6 @@ export default function ReadingsPage() {
           await fetchReadings();
         }
       } catch (error) {
-        console.error('Error syncing from Nightscout:', error);
       }
     }
   };

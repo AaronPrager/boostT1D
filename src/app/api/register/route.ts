@@ -127,13 +127,6 @@ export async function POST(req: Request) {
       });
     } catch (error) {
       if (error instanceof PrismaClientKnownRequestError) {
-        console.error('Prisma error details:', {
-          name: error.name,
-          code: error.code,
-          meta: error.meta,
-          message: error.message,
-          stack: error.stack
-        });
         return NextResponse.json({ 
           message: "Database error while creating user", 
           error: {
@@ -145,12 +138,7 @@ export async function POST(req: Request) {
       }
       // Handle other types of errors
       const err = error as Error;
-      console.error('Unknown database error:', {
-        error: err,
-        name: err.name,
-        message: err.message,
-        stack: err.stack
-      });
+
       return NextResponse.json({ 
         message: "Error creating user",
         error: err.message || "Unknown error"
@@ -159,9 +147,7 @@ export async function POST(req: Request) {
       await prisma.$disconnect();
     }
   } catch (error) {
-    console.error("Registration error:", error);
     if (error instanceof Error) {
-      console.error("Error details:", error.message, error.stack);
       return NextResponse.json({ message: error.message, stack: error.stack }, { status: 500 });
     }
     return NextResponse.json({ message: "Internal error" }, { status: 500 });

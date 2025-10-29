@@ -61,7 +61,6 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error("Error sending buddy request:", error);
     return NextResponse.json({ 
       error: "Failed to send buddy request" 
     }, { status: 500 });
@@ -98,7 +97,6 @@ export async function GET() {
     return NextResponse.json({ connections });
 
   } catch (error) {
-    console.error("Error fetching buddy connections:", error);
     return NextResponse.json({ 
       error: "Failed to fetch buddy connections" 
     }, { status: 500 });
@@ -156,7 +154,6 @@ export async function PUT(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error("Error updating buddy connection:", error);
     return NextResponse.json({ 
       error: "Failed to update buddy connection" 
     }, { status: 500 });

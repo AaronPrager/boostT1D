@@ -77,7 +77,6 @@ export async function sendPasswordResetEmail(data: EmailData) {
     await transporter.sendMail(mailOptions);
     return { success: true };
   } catch (error) {
-    console.error('Email sending error:', error);
     return { success: false, error };
   }
 } 

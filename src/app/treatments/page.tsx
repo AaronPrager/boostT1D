@@ -40,7 +40,6 @@ export default function TreatmentsPage() {
           setIsManualMode(!data.nightscoutUrl || !data.nightscoutApiToken);
         }
       } catch (err) {
-        console.error('Failed to fetch settings:', err);
       }
     }
     fetchSettings();
@@ -101,11 +100,9 @@ export default function TreatmentsPage() {
         await fetchTreatments();
       } else {
         const errorText = await response.text();
-        console.warn('Nightscout sync failed:', errorText);
         // Don't show error to user for auto-sync, just log it
       }
     } catch (error) {
-      console.warn('Nightscout sync error:', error);
       // Don't show error to user for auto-sync, just log it
     }
   };
@@ -229,11 +226,9 @@ export default function TreatmentsPage() {
         await fetchTreatments();
       } else {
         const errorData = await response.json();
-        console.error('Failed to delete treatment:', errorData);
         setError(`Failed to delete treatment: ${errorData.error || 'Unknown error'}`);
       }
     } catch (error) {
-      console.error('Error deleting treatment:', error);
       setError('An error occurred while deleting the treatment.');
     }
   }

@@ -199,7 +199,6 @@ export async function GET() {
     });
 
   } catch (error) {
-    console.error("Error finding buddy matches:", error);
     return NextResponse.json({ 
       error: "Failed to find buddy matches" 
     }, { status: 500 });

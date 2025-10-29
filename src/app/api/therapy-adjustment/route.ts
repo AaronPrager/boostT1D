@@ -299,7 +299,6 @@ export async function POST(request: Request) {
 
     return NextResponse.json(suggestions);
   } catch (error) {
-    console.error('Error generating therapy adjustments:', error);
     return new NextResponse(
       error instanceof Error ? error.message : 'Failed to generate adjustments',
       { status: 500 }
@@ -734,13 +733,6 @@ function analyzeSensitivity(
 ): TherapyAdjustment[] {
   const adjustments: TherapyAdjustment[] = [];
   
-  // Only suggest sensitivity adjustments if there's high variability AND we can make a meaningful suggestion
-  if (glucoseVariability > 40) {
-    // For now, we don't have enough data to make specific sensitivity adjustments
-    // Just return empty array - the high variability will be mentioned in overall recommendations
-    // TODO: Implement proper sensitivity analysis when we have meal/insulin data
-  }
-
   return adjustments;
 }
 

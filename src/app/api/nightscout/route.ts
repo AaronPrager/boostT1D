@@ -85,11 +85,6 @@ export async function GET(req: Request) {
       const response = await fetch(url, fetchOptions);
 
       if (!response.ok) {
-        console.error('Nightscout API error:', {
-          status: response.status,
-          statusText: response.statusText,
-        });
-        
         if (response.status === 401) {
           return new NextResponse("Unauthorized access to Nightscout. Please check your API token.", { status: 401 });
         }
@@ -116,7 +111,6 @@ export async function GET(req: Request) {
       throw fetchError; // Re-throw for the outer catch block
     }
   } catch (error) {
-    console.error('Error fetching Nightscout data:', error);
     return new NextResponse(
       `Error fetching Nightscout data: ${error instanceof Error ? error.message : 'Unknown error'}`,
       { status: 500 }
