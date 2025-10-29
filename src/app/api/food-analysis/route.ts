@@ -349,13 +349,21 @@ Please be as accurate as possible and consider typical serving sizes. Respond in
             // COB fetch failed, will remain 0
           }
         } catch (error) {
+     
           nightscoutError = error instanceof Error ? error.message : 'Unknown error';
           
+          // Fallback: fetch recent treatments for manual IOB and COB calculation
+          try {
+
             recentTreatments = await fetchRecentTreatments(
               user.settings.nightscoutUrl,
               user.settings.nightscoutApiToken,
               6 // Look back 6 hours
             );
+
+          } catch (fallbackError) {
+          }
+        }
       }
     }
     

@@ -114,10 +114,6 @@ export default function FoodAnalysisPage() {
 
       if (!response.ok) {
         let errorMessage = 'Analysis failed';
-          status: response.status,
-          statusText: response.statusText,
-          url: response.url
-        });
         
         try {
           const errorData = await response.json();
