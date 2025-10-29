@@ -79,7 +79,6 @@ export default function Step1Auth({ onNext, initialData }: Step1AuthProps) {
         password: formData.password
       });
     } catch (error) {
-      console.error('Error checking email:', error);
       setErrors({ email: 'Error checking email availability. Please try again.' });
     } finally {
       setIsChecking(false);

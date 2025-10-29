@@ -91,7 +91,6 @@ export default function DashboardPage() {
         setUserName(userData.name || userData.email?.split('@')[0] || 'User');
       }
     } catch (error) {
-      console.error('Error fetching user data:', error);
       // Fallback to session data
       setUserName(session?.user?.name || session?.user?.email?.split('@')[0] || 'User');
     }
@@ -137,7 +136,6 @@ export default function DashboardPage() {
           // Then fetch dashboard data (without automatic sync)
           await fetchDashboardData(newStart, newEnd);
         } catch (error) {
-          console.error('Error loading dashboard data:', error);
           setError('Failed to load dashboard data. Please try refreshing the page.');
           setLoading(false);
         }
@@ -162,7 +160,6 @@ export default function DashboardPage() {
         setSettings(data);
       }
     } catch (error) {
-      console.error('Error fetching settings:', error);
     }
   };
 
@@ -182,11 +179,9 @@ export default function DashboardPage() {
         await fetchDashboardData();
       } else {
         const errorText = await response.text();
-        console.warn('Nightscout sync failed:', errorText);
         // Don't show error to user for auto-sync, just log it
       }
     } catch (error) {
-      console.warn('Nightscout sync error:', error);
       // Don't show error to user for auto-sync, just log it
     }
   };
@@ -330,7 +325,6 @@ export default function DashboardPage() {
         setTimeout(() => setRefreshMessage(null), 3000);
       }
     } catch (error) {
-      console.error('Error fetching dashboard data:', error);
       setError('Failed to load dashboard data. Please check your settings and try again.');
     } finally {
       setLoading(false);

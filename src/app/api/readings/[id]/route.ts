@@ -57,7 +57,6 @@ export async function DELETE(
 
     return NextResponse.json({ message: 'Reading deleted successfully' });
   } catch (error) {
-    console.error('Failed to delete reading:', error);
     return NextResponse.json(
       { error: 'Failed to delete reading', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }

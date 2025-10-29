@@ -79,7 +79,6 @@ export default function DiabetesProfilePage() {
         setManualMode(isManual);
         }
       } catch (error) {
-      console.error('Error checking manual mode:', error);
       // Default to manual mode if we can't check settings
       setManualMode(true);
       }
@@ -118,7 +117,6 @@ export default function DiabetesProfilePage() {
       await refreshProfileFromNightscout();
       
     } catch (err) {
-      console.error('Error loading profile:', err);
       setError(err instanceof Error ? err.message : 'Failed to load profile from database');
       setLoadingMessage('');
     } finally {
@@ -184,7 +182,6 @@ export default function DiabetesProfilePage() {
         }
       }
     } catch (err) {
-      console.error('❌ Error refreshing profile:', err);
       const errorMessage = err instanceof Error ? err.message : 'Failed to refresh profile from Nightscout';
 
       setError('Failed to connect to Nightscout. Check your URL and API token.');

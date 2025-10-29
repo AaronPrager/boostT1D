@@ -33,10 +33,8 @@ export default function UserProfileHeader({ showDetailed = false, className = ''
           const data = await response.json();
           setProfile(data);
         } else {
-          console.error('UserProfileHeader - Failed to fetch profile:', response.status);
         }
       } catch (error) {
-        console.error('UserProfileHeader - Error fetching profile:', error);
       } finally {
         setLoading(false);
       }

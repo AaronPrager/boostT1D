@@ -73,7 +73,6 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Nightscout connection test error:', error);
     return NextResponse.json(
       { 
         success: false, 

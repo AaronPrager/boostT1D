@@ -139,11 +139,7 @@ export async function fetchNightscoutIOB(
   apiToken: string
 ): Promise<{ iob: number; status: NightscoutStatus; source: string }> {
   try {
-    console.log('🔍 Starting Nightscout IOB fetch...');
-    console.log('📡 Original Nightscout URL:', nightscoutUrl);
-    console.log('🔑 API Token length:', apiToken?.length || 0);
-    console.log('🔑 API Token preview:', apiToken?.substring(0, 10) + '...');
-    
+
     // Clean and validate the Nightscout URL
     let baseUrl = nightscoutUrl.trim();
     if (!baseUrl.startsWith('http://') && !baseUrl.startsWith('https://')) {
@@ -153,13 +149,11 @@ export async function fetchNightscoutIOB(
       baseUrl = baseUrl.slice(0, -1);
     }
     
-    console.log('🔧 Cleaned Nightscout URL:', baseUrl);
 
-    // Fetch status from Nightscout
+    // Get status from Nightscout
     const statusUrl = `${baseUrl}/api/v1/status.json`;
-    console.log('🌐 Fetching from URL:', statusUrl);
     
-    // Also try alternative endpoints that some Nightscout instances might use
+    // Try alternative endpoints that some Nightscout instances might use
     const alternativeUrls = [
       `${baseUrl}/api/v1/status.json`,
       `${baseUrl}/api/v1/entries.json?count=1`,
@@ -168,7 +162,6 @@ export async function fetchNightscoutIOB(
       `${baseUrl}/status.json`  // Try without version
     ];
     
-    console.log('🔍 Will try these URLs:', alternativeUrls);
     
     const headers: HeadersInit = {
       'Accept': 'application/json',
@@ -179,35 +172,16 @@ export async function fetchNightscoutIOB(
       const crypto = await import('crypto');
       const hashedToken = crypto.createHash('sha1').update(apiToken).digest('hex');
       headers['api-secret'] = hashedToken;
-      console.log('🔑 Using API token (hashed):', hashedToken.substring(0, 10) + '...');
-      
-      // Log the raw token for debugging (first 10 chars only)
-      console.log('🔑 Raw token (first 10 chars):', apiToken.substring(0, 10) + '...');
-      
-      // Some Nightscout instances might use different header names
-      console.log('🔑 Trying with api-secret header');
-    } else {
-      console.log('⚠️ No API token provided');
+            
     }
 
-    console.log('📤 Making request with headers:', Object.keys(headers));
-    
     const response = await fetch(statusUrl, { 
       method: 'GET',
       headers 
     });
     
-    console.log('📥 Response status:', response.status, response.statusText);
-    console.log('📥 Response headers:', Object.fromEntries(response.headers.entries()));
-    
     if (!response.ok) {
-      let errorBody = '';
-      try {
-        errorBody = await response.text();
-        console.log('📥 Error response body:', errorBody);
-      } catch (e) {
-        console.log('📥 Could not read error response body');
-      }
+      let errorBody = await response.text();
       
       if (response.status === 401) {
         throw new Error(`Authentication failed (401). Please check your API token. Response: ${errorBody}`);
@@ -221,16 +195,8 @@ export async function fetchNightscoutIOB(
     }
 
     const status: NightscoutStatus = await response.json();
-    console.log('Raw Nightscout status response keys:', Object.keys(status));
     
-    // Log specific IOB-related fields for debugging
-    console.log('Checking IOB fields:');
-    console.log('  - status.iob:', status.iob);
-    console.log('  - status.activity:', status.activity);
-    console.log('  - status.openaps?.suggested?.iob:', status.openaps?.suggested?.iob);
-    console.log('  - status.openaps?.suggested?.microBolusIOB:', status.openaps?.suggested?.microBolusIOB);
-    console.log('  - status.bolus?.amount:', status.bolus?.amount);
-    
+   
     // Extract IOB from various possible locations in the status
     let iob = 0;
     let source = 'unknown';
@@ -239,32 +205,23 @@ export async function fetchNightscoutIOB(
     if (status.iob !== undefined && status.iob !== null) {
       iob = status.iob;
       source = 'status.iob';
-      console.log('✅ Found IOB in status.iob:', iob);
     } else if (status.openaps?.suggested?.iob !== undefined && status.openaps.suggested.iob !== null) {
       iob = status.openaps.suggested.iob;
       source = 'openaps.suggested.iob';
-      console.log('✅ Found IOB in openaps.suggested.iob:', iob);
     } else if (status.openaps?.suggested?.microBolusIOB !== undefined && status.openaps.suggested.microBolusIOB !== null) {
       iob = status.openaps.suggested.microBolusIOB;
       source = 'openaps.suggested.microBolusIOB';
-      console.log('✅ Found IOB in openaps.suggested.microBolusIOB:', iob);
     } else if (status.bolus?.amount !== undefined && status.bolus.amount !== null) {
       // Fallback: if no IOB but recent bolus, estimate
       iob = status.bolus.amount * 0.5; // Rough estimate
       source = 'estimated_from_bolus';
-      console.log('⚠️ No direct IOB found, estimating from bolus amount:', status.bolus.amount, '→', iob);
     } else if (status.activity !== undefined && status.activity !== null) {
       // Some systems use 'activity' for IOB
       iob = status.activity;
       source = 'status.activity';
-      console.log('✅ Found IOB in status.activity:', iob);
     } else {
-      console.log('❌ No IOB found in status, trying devicestatus endpoint...');
       
-      // Try to fetch from devicestatus endpoint as fallback
-      try {
         const devicestatusUrl = `${baseUrl}/api/v1/devicestatus.json?count=1`;
-        console.log('🔍 Trying devicestatus endpoint:', devicestatusUrl);
         
         const devicestatusResponse = await fetch(devicestatusUrl, { headers });
         if (devicestatusResponse.ok) {
@@ -277,33 +234,16 @@ export async function fetchNightscoutIOB(
             if (latestEntry.openaps?.iob?.iob !== undefined && latestEntry.openaps.iob.iob !== null) {
               iob = latestEntry.openaps.iob.iob;
               source = 'devicestatus.openaps.iob.iob';
-              console.log('✅ Found IOB in devicestatus.openaps.iob.iob:', iob);
             } else if (latestEntry.openaps?.iob?.bolusiob !== undefined && latestEntry.openaps.iob.bolusiob !== null) {
               iob = latestEntry.openaps.iob.bolusiob;
               source = 'devicestatus.openaps.iob.bolusiob';
-              console.log('✅ Found IOB in devicestatus.openaps.iob.bolusiob:', iob);
             } else if (latestEntry.iob !== undefined && latestEntry.iob !== null) {
               iob = latestEntry.iob;
               source = 'devicestatus.iob';
-              console.log('✅ Found IOB in devicestatus.iob:', iob);
-            } else {
-              console.log('❌ No IOB found in devicestatus either');
-            }
+            } 
           }
         }
-      } catch (devicestatusError) {
-        console.log('⚠️ Failed to fetch from devicestatus endpoint:', devicestatusError instanceof Error ? devicestatusError.message : 'Unknown error');
-      }
     }
-
-    // Validate IOB value
-    if (isNaN(iob) || iob < 0) {
-      console.log('⚠️ Invalid IOB value detected:', iob, '- setting to 0');
-      iob = 0;
-      source = 'invalid_value';
-    }
-
-    console.log(`🎯 Final Nightscout IOB: ${iob}u (source: ${source})`);
 
     return {
       iob: Math.round(iob * 10) / 10, // Round to 1 decimal
@@ -311,7 +251,6 @@ export async function fetchNightscoutIOB(
       source
     };
   } catch (error) {
-    console.error('❌ Error fetching Nightscout IOB:', error);
     return {
       iob: 0,
       status: {},
@@ -494,112 +433,64 @@ export function calculateCOB(
   };
 }
 
-/**
- * Fetch current COB from Nightscout
- * @param nightscoutUrl Nightscout URL
- * @param apiToken Nightscout API token
- * @returns Current COB from Nightscout
- */
 export async function fetchNightscoutCOB(
   nightscoutUrl: string,
   apiToken: string
-): Promise<{ cob: number; status: any; source: string }> {
-  try {
-    console.log('🔍 Starting Nightscout COB fetch...');
-    
-    // Clean and validate the Nightscout URL
-    let baseUrl = nightscoutUrl.trim();
-    if (!baseUrl.startsWith('http://') && !baseUrl.startsWith('https://')) {
-      baseUrl = 'https://' + baseUrl;
-    }
-    if (baseUrl.endsWith('/')) {
-      baseUrl = baseUrl.slice(0, -1);
-    }
-
-    // Try to fetch COB from devicestatus endpoint (where IOB is also stored)
-    const devicestatusUrl = `${baseUrl}/api/v1/devicestatus.json?count=1`;
-    console.log('🌐 Fetching COB from:', devicestatusUrl);
-    
-    const headers: HeadersInit = {
-      'Accept': 'application/json',
-      'Content-Type': 'application/json'
-    };
-
-    if (apiToken) {
-      const crypto = await import('crypto');
-      const hashedToken = crypto.createHash('sha1').update(apiToken).digest('hex');
-      headers['api-secret'] = hashedToken;
-    }
-
-    const response = await fetch(devicestatusUrl, { headers });
-    
-    if (!response.ok) {
-      throw new Error(`Failed to fetch devicestatus: ${response.status} ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    
-    if (data.length === 0) {
-      console.log('⚠️ No devicestatus entries found');
-      return { cob: 0, status: {}, source: 'no_data' };
-    }
-
-    const latestEntry = data[0];
-    console.log('📊 Raw devicestatus response keys:', Object.keys(latestEntry));
-    
-    // Look for COB in various locations
-    let cob = 0;
-    let source = 'not_found';
-
-    if (latestEntry.openaps?.suggested?.COB !== undefined && latestEntry.openaps.suggested.COB !== null) {
-      cob = latestEntry.openaps.suggested.COB;
-      source = 'openaps.suggested.COB';
-      console.log('✅ Found COB in openaps.suggested.COB:', cob);
-    } else if (latestEntry.openaps?.cob !== undefined && latestEntry.openaps.cob !== null) {
-      cob = latestEntry.openaps.cob;
-      source = 'openaps.cob';
-      console.log('✅ Found COB in openaps.cob:', cob);
-    } else if (latestEntry.cob !== undefined && latestEntry.cob !== null) {
-      cob = latestEntry.cob;
-      source = 'cob';
-      console.log('✅ Found COB in cob:', cob);
-    } else {
-      console.log('❌ No COB found in devicestatus');
-    }
-
-    // Validate COB value
-    if (isNaN(cob) || cob < 0) {
-      console.log('⚠️ Invalid COB value detected:', cob, '- setting to 0');
-      cob = 0;
-      source = 'invalid_value';
-    }
-
-    console.log(`🎯 Final Nightscout COB: ${cob}g (source: ${source})`);
-
-    return {
-      cob: Math.round(cob * 10) / 10, // Round to 1 decimal
-      status: latestEntry,
-      source
-    };
-  } catch (error) {
-    console.error('❌ Error fetching Nightscout COB:', error);
-    return {
-      cob: 0,
-      status: {},
-      source: 'error'
-    };
+): Promise<number> {
+  let baseUrl = nightscoutUrl.trim();
+  if (!baseUrl.startsWith('http://') && !baseUrl.startsWith('https://')) {
+    baseUrl = 'https://' + baseUrl;
   }
+  if (baseUrl.endsWith('/')) {
+    baseUrl = baseUrl.slice(0, -1);
+  }
+
+  const devicestatusUrl = `${baseUrl}/api/v1/devicestatus.json?count=1`;
+  
+  const headers: HeadersInit = {
+    'Accept': 'application/json',
+    'Content-Type': 'application/json'
+  };
+
+  if (apiToken) {
+    const crypto = await import('crypto');
+    const hashedToken = crypto.createHash('sha1').update(apiToken).digest('hex');
+    headers['api-secret'] = hashedToken;
+  }
+
+  const response = await fetch(devicestatusUrl, { headers });
+  
+  if (!response.ok) {
+    return 0;
+  }
+
+  const data = await response.json();
+  
+  if (data.length === 0) {
+    return 0;
+  }
+
+  const latestEntry = data[0];
+  
+  let cob = 0;
+
+  if (latestEntry.openaps?.suggested?.COB !== undefined && latestEntry.openaps.suggested.COB !== null) {
+    cob = latestEntry.openaps.suggested.COB;
+  } else if (latestEntry.openaps?.cob !== undefined && latestEntry.openaps.cob !== null) {
+    cob = latestEntry.openaps.cob;
+  } else if (latestEntry.cob !== undefined && latestEntry.cob !== null) {
+    cob = latestEntry.cob;
+  }
+
+  if (isNaN(cob) || cob < 0) {
+    cob = 0;
+  }
+
+  return Math.round(cob * 10) / 10;
 }
 
 /**
  * Calculate safe bolus recommendation using Nightscout's IOB
- * @param carbs Grams of carbohydrates
- * @param currentGlucose Current blood glucose
- * @param targetGlucose Target blood glucose
- * @param carbRatio Carb ratio (grams per unit)
- * @param insulinSensitivity Insulin sensitivity factor (mg/dL per unit)
- * @param nightscoutIOB Current IOB from Nightscout
- * @returns Safe bolus recommendation
  */
 export function calculateSafeBolusWithNightscoutIOB(
   carbs: number,
@@ -716,13 +607,6 @@ export function calculateSafeBolusWithNightscoutIOB(
 
 /**
  * Calculate safe bolus recommendation considering IOB (fallback method)
- * @param carbs Grams of carbohydrates
- * @param currentGlucose Current blood glucose
- * @param targetGlucose Target blood glucose
- * @param carbRatio Carb ratio (grams per unit)
- * @param insulinSensitivity Insulin sensitivity factor (mg/dL per unit)
- * @param currentIOB Current insulin on board
- * @returns Safe bolus recommendation
  */
 export function calculateSafeBolus(
   carbs: number,
@@ -807,10 +691,6 @@ export function calculateSafeBolus(
   // Safety warnings
   const safetyWarnings: string[] = [];
   
-
-  
-
-  
   if (safeBolus > 10) {
     safetyWarnings.push('Large bolus recommended - double-check carb estimate and IOB calculation');
   }
@@ -894,7 +774,6 @@ export async function fetchRecentTreatments(
       treatment.eventType === 'Bolus' || treatment.eventType === 'SMB'
     );
   } catch (error) {
-    console.error('Error fetching recent treatments:', error);
     return [];
   }
 } 

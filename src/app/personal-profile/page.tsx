@@ -280,7 +280,6 @@ export default function PersonalProfile() {
         setIsManualMode(!data.nightscoutUrl);
       }
     } catch (error) {
-      console.error('Error fetching profile:', error);
     } finally {
       setLoading(false);
     }
@@ -347,11 +346,9 @@ export default function PersonalProfile() {
         }
       } else {
         const errorData = await res.json();
-        console.error('Save profile error:', errorData);
         alert(`Failed to save profile: ${errorData.message || 'Unknown error'}`);
       }
     } catch (error) {
-      console.error('Save profile exception:', error);
       alert(`Failed to save profile: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setSaving(false);
@@ -439,7 +436,6 @@ export default function PersonalProfile() {
       };
       reader.readAsDataURL(file);
     } catch (error) {
-      console.error('Error uploading photo:', error);
       alert('Failed to upload photo');
       setUploadingPhoto(false);
     }
@@ -475,7 +471,6 @@ export default function PersonalProfile() {
         alert('Failed to delete account');
       }
     } catch (error) {
-      console.error('Error deleting account:', error);
       alert('Failed to delete account');
     } finally {
       setDeleting(false);

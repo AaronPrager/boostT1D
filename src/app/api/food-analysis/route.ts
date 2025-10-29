@@ -157,7 +157,6 @@ async function getUserProfile(userEmail: string) {
       })).sort((a: {time: string}, b: {time: string}) => a.time.localeCompare(b.time)) || []
     };
   } catch (error) {
-    console.error('Error fetching profile:', error);
     return null;
   }
 }
@@ -210,7 +209,6 @@ async function getCurrentGlucose(userEmail: string) {
     const entries = await response.json();
     return entries && entries.length > 0 ? entries[0].sgv : null;
   } catch (error) {
-    console.error('Error fetching glucose:', error);
     return null;
   }
 }
@@ -223,7 +221,6 @@ export async function POST(request: NextRequest) {
     // Check if API key is configured
 
     if (!process.env.GOOGLE_AI_API_KEY) {
-      console.error('❌ GOOGLE_AI_API_KEY is not set! Returning 503 error.');
       return NextResponse.json({
         error: "Food analysis service is currently unavailable. Please try again later."
       }, { status: 503 });
@@ -289,7 +286,6 @@ Please be as accurate as possible and consider typical serving sizes. Respond in
         throw new Error('No JSON found in response');
       }
     } catch (parseError) {
-      console.error('Failed to parse Google AI response:', text);
       // Return a fallback response
       return NextResponse.json({
         success: true,
@@ -345,38 +341,21 @@ Please be as accurate as possible and consider typical serving sizes. Respond in
 
           // Also fetch COB from Nightscout
           try {
-            const cobResult = await fetchNightscoutCOB(
+            nightscoutCOB = await fetchNightscoutCOB(
               user.settings.nightscoutUrl,
               token
             );
-            
-            nightscoutCOB = cobResult.cob;
-
           } catch (cobError) {
-
+            // COB fetch failed, will remain 0
           }
         } catch (error) {
-          console.error('❌ Failed to fetch Nightscout IOB, falling back to manual calculation:', error);
-          console.error('❌ Error details:', {
-            message: error instanceof Error ? error.message : 'Unknown error',
-            stack: error instanceof Error ? error.stack : 'No stack trace',
-            name: error instanceof Error ? error.name : 'Unknown error type'
-          });
           nightscoutError = error instanceof Error ? error.message : 'Unknown error';
           
-          // Fallback: fetch recent treatments for manual IOB and COB calculation
-          try {
-
             recentTreatments = await fetchRecentTreatments(
               user.settings.nightscoutUrl,
               user.settings.nightscoutApiToken,
               6 // Look back 6 hours
             );
-
-          } catch (fallbackError) {
-            console.error('❌ Failed to fetch recent treatments for IOB/COB:', fallbackError);
-          }
-        }
       }
     }
     
@@ -517,7 +496,6 @@ Please be as accurate as possible and consider typical serving sizes. Respond in
     return NextResponse.json(analysis);
 
   } catch (error) {
-    console.error('Food analysis error:', error);
     
     // Check if it's a Google AI API error
     if (error instanceof Error && error.message && error.message.includes('API key')) {

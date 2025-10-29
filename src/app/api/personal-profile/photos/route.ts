@@ -47,7 +47,6 @@ export async function POST(request: Request) {
     });
 
   } catch (error) {
-    console.error('Error uploading photo:', error);
     return new NextResponse(
       error instanceof Error ? error.message : 'Failed to upload photo',
       { status: 500 }

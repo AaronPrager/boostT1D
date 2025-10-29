@@ -31,7 +31,6 @@ export async function GET() {
     // Return the diabetes profile data from the data field
     return NextResponse.json(profile.data || {});
   } catch (error) {
-    console.error('Error fetching diabetes profile:', error);
     return new NextResponse(
       error instanceof Error ? error.message : 'Failed to fetch diabetes profile',
       { status: 500 }
@@ -71,7 +70,6 @@ export async function POST(request: Request) {
 
     return NextResponse.json(savedProfile);
   } catch (error) {
-    console.error('Error saving diabetes profile:', error);
     return new NextResponse(
       error instanceof Error ? error.message : 'Failed to save diabetes profile',
       { status: 500 }
@@ -107,7 +105,6 @@ export async function PUT(request: Request) {
 
     return NextResponse.json(updatedProfile);
   } catch (error) {
-    console.error('Error updating diabetes profile:', error);
     return new NextResponse(
       error instanceof Error ? error.message : 'Failed to update diabetes profile',
       { status: 500 }

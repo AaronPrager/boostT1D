@@ -71,7 +71,6 @@ export default function BuddiesPage() {
       const data = await response.json();
       setMatches(data.matches || []);
     } catch (error) {
-      console.error('Error loading matches:', error);
       setError(error instanceof Error ? error.message : 'Failed to load buddy matches');
       setMatches([]);
     } finally {
@@ -120,7 +119,6 @@ export default function BuddiesPage() {
       setConnectionMessage('');
       setSelectedUser(null);
     } catch (error) {
-      console.error('Error sending connection request:', error);
       setError(error instanceof Error ? error.message : 'Failed to send connection request');
     } finally {
       setConnectingTo(null);
@@ -174,7 +172,6 @@ export default function BuddiesPage() {
       setShowResponseModal(false);
       setSelectedUser(null);
     } catch (error) {
-      console.error('Error responding to connection request:', error);
       setError(error instanceof Error ? error.message : 'Failed to respond to connection request');
     } finally {
       setConnectingTo(null);

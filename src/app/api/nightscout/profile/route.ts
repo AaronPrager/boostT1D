@@ -66,11 +66,6 @@ export async function GET() {
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Nightscout error response:', {
-        status: response.status,
-        statusText: response.statusText,
-        body: errorText
-      });
 
       if (response.status === 401) {
         return NextResponse.json({ 
@@ -110,7 +105,6 @@ export async function GET() {
     }
 
     if (!profileData?.basal) {
-      console.error('Could not find profile data:', defaultProfile);
       return NextResponse.json({ 
         error: 'No profile data found. Please check your Nightscout profile setup.',
         details: 'Profile structure does not contain required settings'
@@ -157,7 +151,6 @@ export async function GET() {
 
     return NextResponse.json(formattedProfile);
   } catch (error) {
-    console.error('Error fetching Nightscout profile:', {
       error,
       message: error instanceof Error ? error.message : 'Unknown error',
       stack: error instanceof Error ? error.stack : undefined
@@ -201,7 +194,6 @@ export async function POST(request: Request) {
 
     return NextResponse.json(profile);
   } catch (error) {
-    console.error('Error fetching Nightscout profile:', error);
     return new NextResponse(
       error instanceof Error ? error.message : 'Failed to fetch profile',
       { status: 500 }

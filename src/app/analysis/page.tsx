@@ -50,7 +50,6 @@ export default function AnalysisPage() {
           setSettings(data);
         }
       } catch (error) {
-        console.error('Error fetching settings:', error);
       }
     };
 
@@ -100,7 +99,6 @@ export default function AnalysisPage() {
       }
     } catch (error) {
       setError('Failed to analyze therapy adjustments');
-      console.error('Error:', error);
     } finally {
       setLoading(false);
     }
@@ -135,7 +133,6 @@ export default function AnalysisPage() {
         setError(result.message || 'Failed to sync data from Nightscout.');
       }
     } catch (error) {
-      console.error('Error syncing data:', error);
       setError('Failed to sync data from Nightscout. Please check your connection and try again.');
     } finally {
       setLoading(false);

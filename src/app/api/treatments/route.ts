@@ -90,11 +90,9 @@ export async function GET(req: NextRequest) {
               absolute: treatment.absolute || null,
             }));
         } else {
-          console.warn('Failed to fetch from Nightscout');
           allTreatments = [];
         }
       } catch (error) {
-        console.warn('Error fetching from Nightscout:', error);
         allTreatments = [];
       }
     } else {
@@ -135,7 +133,6 @@ export async function GET(req: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Error fetching treatments:', error);
     return new NextResponse('Internal server error', { status: 500 });
   }
 }
@@ -176,7 +173,6 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(treatment);
   } catch (error) {
-    console.error('Error creating treatment:', error);
     return new NextResponse('Internal server error', { status: 500 });
   }
 } 

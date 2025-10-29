@@ -49,7 +49,6 @@ export async function GET() {
 
     return NextResponse.json(personalProfileData);
   } catch (error) {
-    console.error('[GET /api/personal-profile] Error:', error);
     return new NextResponse(
       error instanceof Error ? error.message : 'Failed to fetch personal profile',
       { status: 500 }
@@ -132,7 +131,6 @@ export async function PUT(req: Request) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Error updating personal profile:', error);
     return new NextResponse(
       error instanceof Error ? error.message : 'Failed to update personal profile',
       { status: 500 }
@@ -168,7 +166,6 @@ export async function DELETE() {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Error deleting user account:', error);
     return new NextResponse(
       error instanceof Error ? error.message : 'Failed to delete user account',
       { status: 500 }

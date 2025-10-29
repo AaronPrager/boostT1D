@@ -59,7 +59,6 @@ export default function TherapyAdjustmentPage() {
           setSettings(data);
         }
       } catch (error) {
-        console.error('Error fetching settings:', error);
       }
     };
 
@@ -111,17 +110,14 @@ export default function TherapyAdjustmentPage() {
           setSuggestions(data);
 
         } else {
-          console.error('Invalid response structure:', data);
           setError('Invalid response format from server. Please try again.');
           setSuggestions(null);
         }
       } else {
-        console.error('Unexpected response format:', data);
         setError('Unexpected response format from server. Please try again.');
         setSuggestions(null);
       }
     } catch (error) {
-      console.error('Error:', error);
       if (error instanceof Error) {
         setError(`Failed to analyze therapy adjustments: ${error.message}`);
       } else {
