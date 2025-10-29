@@ -66,7 +66,6 @@ export default function PersonalProfileCard({ profile, showFullDetails = false }
 
   return (
     <div className="bg-white shadow rounded-lg p-6">
-      {/* Header with photo and basic info */}
       <div className="flex items-start space-x-4">
         <div className="flex-shrink-0">
           {profile.photo ? (
@@ -100,14 +99,12 @@ export default function PersonalProfileCard({ profile, showFullDetails = false }
         </div>
       </div>
 
-      {/* About section */}
       {profile.about && (
         <div className="mt-4">
           <p className="text-sm text-gray-700">{profile.about}</p>
         </div>
       )}
 
-      {/* Contact information */}
       {showFullDetails && (
         <div className="mt-6 space-y-4">
           {profile.phone && (

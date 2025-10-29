@@ -13,7 +13,6 @@ export default function OnboardingLayout({ currentStep, totalSteps, children }: 
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
-      {/* Progress Bar */}
       <div className="sticky top-0 left-0 right-0 z-50 bg-white shadow-sm">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between mb-2">
@@ -30,7 +29,6 @@ export default function OnboardingLayout({ currentStep, totalSteps, children }: 
             </span>
           </div>
           
-          {/* Progress Bar */}
           <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
             <div 
               className="bg-gradient-to-r from-blue-600 to-indigo-600 h-2 rounded-full transition-all duration-500 ease-out"
@@ -40,7 +38,6 @@ export default function OnboardingLayout({ currentStep, totalSteps, children }: 
         </div>
       </div>
 
-      {/* Content */}
       <div className="py-8 px-4 sm:px-6 lg:px-8">
         <div className="max-w-2xl mx-auto">
           {children}

@@ -485,7 +485,6 @@ export default function PersonalProfile() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 py-8">
       <div className="max-w-4xl mx-auto">
         <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-          {/* Header */}
           <div className="bg-gradient-to-r from-slate-700 to-slate-800 px-8 py-6">
             <div className="flex justify-between items-center">
               <div>
@@ -519,9 +518,7 @@ export default function PersonalProfile() {
             </div>
           </div>
 
-          {/* Content */}
           <div className="p-8">
-            {/* Photo Section */}
             <div className="mb-8 flex items-center space-x-6 p-6 bg-gradient-to-r from-slate-50 to-blue-50 rounded-xl border border-slate-200">
               <div className="relative">
                 {profile.photo ? (
@@ -565,7 +562,6 @@ export default function PersonalProfile() {
               </div>
             </div>
 
-            {/* Hidden file input */}
             <input
               ref={fileInputRef}
               type="file"
@@ -574,9 +570,7 @@ export default function PersonalProfile() {
               className="hidden"
             />
 
-                        {/* Form Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Full Name */}
               <div className="space-y-2">
                 <label className="block text-sm font-semibold text-slate-700">Full Name *</label>
                 {isEditing ? (
@@ -593,7 +587,6 @@ export default function PersonalProfile() {
                 {validationErrors.name && <p className="text-red-600 text-sm font-medium">{validationErrors.name}</p>}
               </div>
 
-              {/* Email */}
               <div className="space-y-2">
                 <label className="block text-sm font-semibold text-slate-700">Email *</label>
                 {isEditing ? (
@@ -610,7 +603,6 @@ export default function PersonalProfile() {
                 {validationErrors.email && <p className="text-red-600 text-sm font-medium">{validationErrors.email}</p>}
               </div>
 
-              {/* Age */}
               <div className="space-y-2">
                 <label className="block text-sm font-semibold text-slate-700">Age *</label>
                 {isEditing ? (
@@ -629,7 +621,6 @@ export default function PersonalProfile() {
                 {validationErrors.age && <p className="text-red-600 text-sm font-medium">{validationErrors.age}</p>}
               </div>
 
-              {/* Country */}
               <div className="space-y-2">
                 <label className="block text-sm font-semibold text-slate-700">Country *</label>
                 {isEditing ? (
@@ -650,7 +641,6 @@ export default function PersonalProfile() {
                 {validationErrors.country && <p className="text-red-600 text-sm font-medium">{validationErrors.country}</p>}
               </div>
 
-              {/* State (if US) */}
               {((isEditing && editingProfile.country === 'US') || (!isEditing && profile.country === 'US')) && (
                 <div className="space-y-2">
                   <label className="block text-sm font-semibold text-slate-700">State *</label>
@@ -673,7 +663,6 @@ export default function PersonalProfile() {
                 </div>
               )}
 
-              {/* Phone (optional) */}
               <div className="space-y-2">
                 <label className="block text-sm font-semibold text-slate-700">Phone</label>
                 {isEditing ? (
@@ -688,7 +677,6 @@ export default function PersonalProfile() {
                 )}
               </div>
 
-              {/* Years Since Diagnosis */}
               <div className="space-y-2">
                 <label className="block text-sm font-semibold text-slate-700">Years Since T1D Diagnosis</label>
                 {isEditing ? (
@@ -717,9 +705,7 @@ export default function PersonalProfile() {
               </div>
             </div>
 
-            {/* Full Width Fields */}
             <div className="mt-8 space-y-6">
-              {/* Activities and Interests */}
               <div className="space-y-2">
                 <label className="block text-sm font-semibold text-slate-700">Activities & Interests</label>
                 {isEditing ? (
@@ -735,7 +721,6 @@ export default function PersonalProfile() {
                 )}
               </div>
 
-              {/* About */}
               <div className="space-y-2">
                 <label className="block text-sm font-semibold text-slate-700">About</label>
                 {isEditing ? (
@@ -752,7 +737,6 @@ export default function PersonalProfile() {
               </div>
             </div>
 
-            {/* Nightscout Settings Section */}
             <div className="mt-8 p-6 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200">
               <div className="flex items-center mb-6">
                 <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mr-4">
@@ -766,7 +750,6 @@ export default function PersonalProfile() {
                 </div>
               </div>
 
-              {/* Manual Mode Toggle */}
               <div className="mb-6 p-4 bg-white rounded-lg border border-blue-200">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center">
@@ -812,7 +795,6 @@ export default function PersonalProfile() {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Nightscout URL */}
                 <div className="space-y-2">
                   <label className="block text-sm font-semibold text-slate-700">Nightscout URL</label>
                   {isEditing ? (
@@ -833,7 +815,6 @@ export default function PersonalProfile() {
                   )}
                 </div>
 
-                {/* Nightscout API Token */}
                 <div className="space-y-2">
                   <label className="block text-sm font-semibold text-slate-700">API Token</label>
                   {isEditing ? (
@@ -870,7 +851,6 @@ export default function PersonalProfile() {
                   )}
                 </div>
 
-                {/* Low Glucose Threshold */}
                 <div className="space-y-2">
                   <label className="block text-sm font-semibold text-slate-700">Low Glucose Threshold (mg/dL)</label>
                   {isEditing ? (
@@ -887,7 +867,6 @@ export default function PersonalProfile() {
                   )}
                 </div>
 
-                {/* High Glucose Threshold */}
                 <div className="space-y-2">
                   <label className="block text-sm font-semibold text-slate-700">High Glucose Threshold (mg/dL)</label>
                   {isEditing ? (
@@ -906,7 +885,6 @@ export default function PersonalProfile() {
               </div>
             </div>
 
-            {/* Delete Profile Section - Only show when editing */}
             {isEditing && (
               <div className="mt-12 pt-8 border-t border-slate-200">
                 <div className="bg-red-50 rounded-lg p-6 border border-red-200">
@@ -935,7 +913,6 @@ export default function PersonalProfile() {
         </div>
       </div>
 
-      {/* Delete Confirmation Modal */}
       {showDeleteConfirmation && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl p-6 max-w-md mx-4 shadow-2xl">

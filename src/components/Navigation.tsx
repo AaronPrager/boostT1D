@@ -90,7 +90,6 @@ export default function Navigation() {
     <nav className="bg-white shadow-xl border-b-2 border-blue-600 mb-6" ref={dropdownRef}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-20">
-          {/* Logo */}
           <div className="flex items-center">
             <div className="flex-shrink-0">
               <Link href="/" className="flex items-center hover:opacity-80 transition-opacity">
@@ -107,11 +106,9 @@ export default function Navigation() {
             </div>
           </div>
 
-          {/* Desktop Navigation */}
           {session && (
             <div className="hidden sm:flex sm:items-center sm:space-x-8 sm:flex-1 sm:justify-evenly sm:mx-8">
               <>
-                {/* Diabetes Management Dropdown */}
                 <div className="relative">
                 <button
                   onClick={() => toggleDropdown('diabetes')}
@@ -165,17 +162,14 @@ export default function Navigation() {
                 )}
               </div>
 
-              {/* Carb Estimator - Standalone */}
               <Link href="/food-analysis" className="text-gray-700 hover:text-blue-600 px-4 py-2 rounded-lg text-sm font-semibold transition-colors hover:bg-blue-50">
                 🍎 Carb Estimator
               </Link>
 
-              {/* Buddies - Standalone */}
               <Link href="/buddies" className="text-gray-700 hover:text-blue-600 px-4 py-2 rounded-lg text-sm font-semibold transition-colors hover:bg-blue-50">
                 👥 Buddies
               </Link>
 
-              {/* Account Dropdown */}
               <div className="relative">
                 <button
                   onClick={() => toggleDropdown('account')}
@@ -223,7 +217,6 @@ export default function Navigation() {
             </div>
           )}
           
-          {/* Desktop Sign In/Out */}
           <div className="hidden sm:flex sm:items-center">
             {session ? (
               <button
@@ -244,7 +237,6 @@ export default function Navigation() {
             )}
           </div>
 
-          {/* Mobile menu button */}
           <div className="sm:hidden">
             <button
               onClick={toggleMobileMenu}
@@ -261,13 +253,11 @@ export default function Navigation() {
           </div>
         </div>
 
-        {/* Mobile menu */}
         {mobileMenuOpen && (
           <div className="sm:hidden bg-white border-t border-gray-200 shadow-xl">
             <div className="px-4 pt-4 pb-6 space-y-2">
               {session && (
                 <>
-                  {/* Diabetes Management Section */}
                   <div className="border-t border-gray-200 pt-4">
                     <div className="px-4 py-2 text-sm font-bold text-gray-500 uppercase tracking-wider">
                       Diabetes Management
@@ -312,7 +302,6 @@ export default function Navigation() {
                     </Link>
                   </div>
 
-                  {/* Carb Estimator */}
                   <div className="border-t border-gray-200 pt-4">
                     <Link 
                       href="/food-analysis" 
@@ -323,7 +312,6 @@ export default function Navigation() {
                     </Link>
                   </div>
 
-                  {/* Buddies */}
                   <div className="border-t border-gray-200 pt-4">
                     <Link 
                       href="/buddies" 
@@ -334,7 +322,6 @@ export default function Navigation() {
                     </Link>
                   </div>
 
-                  {/* Account Section */}
                   <div className="border-t border-gray-200 pt-4">
                     <div className="px-4 py-2 text-sm font-bold text-gray-500 uppercase tracking-wider">
                       Account
@@ -359,7 +346,6 @@ export default function Navigation() {
                 </>
               )}
 
-              {/* Sign In/Out Section */}
               <div className="border-t border-gray-200 pt-4">
                 {session ? (
                   <button

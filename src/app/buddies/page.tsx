@@ -227,7 +227,6 @@ export default function BuddiesPage() {
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header */}
         <div className="bg-white shadow rounded-lg p-6 mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Find Your T1D Buddy</h1>
           <p className="text-lg text-gray-600">
@@ -235,7 +234,6 @@ export default function BuddiesPage() {
           </p>
         </div>
 
-        {/* Error Message */}
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-6">
             <div className="flex">
@@ -251,7 +249,6 @@ export default function BuddiesPage() {
           </div>
         )}
 
-        {/* Matches */}
         {matches.length === 0 ? (
           <div className="bg-white shadow rounded-lg p-8 text-center">
             <div className="mx-auto w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4">
@@ -274,7 +271,6 @@ export default function BuddiesPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {matches.map((match) => (
               <div key={match.user.id} className="bg-white shadow rounded-lg overflow-hidden">
-                {/* Profile Header */}
                 <div className="p-6">
                   <div className="flex items-center mb-4">
                     <div className="flex-shrink-0">
@@ -306,7 +302,6 @@ export default function BuddiesPage() {
                     </div>
                   </div>
 
-                  {/* User Details */}
                   <div className="space-y-2 mb-4">
                     {match.user.diagnosisAge && (
                       <p className="text-sm text-gray-600">
@@ -325,7 +320,6 @@ export default function BuddiesPage() {
                     )}
                   </div>
 
-                  {/* Contact Information - Only shown for approved connections */}
                   {match.connectionStatus?.status === 'approved' && (match.user.email || match.user.phone) && (
                     <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
                       <div className="flex items-center mb-2">
@@ -362,14 +356,12 @@ export default function BuddiesPage() {
                     </div>
                   )}
 
-                  {/* About */}
                   {match.user.about && (
                     <p className="text-sm text-gray-700 mb-4 line-clamp-3">
                       {match.user.about}
                     </p>
                   )}
 
-                  {/* Match Reasons */}
                   <div className="mb-4">
                     <p className="text-xs font-medium text-gray-500 mb-2">Why you match:</p>
                     <ul className="space-y-1">
@@ -384,7 +376,6 @@ export default function BuddiesPage() {
                     </ul>
                   </div>
 
-                  {/* Connect Button */}
                   <button
                     onClick={() => handleConnectRequest(match.user, match)}
                     disabled={connectingTo === match.user.id || (match.connectionStatus?.status === 'pending' && match.connectionStatus.type === 'sent') || match.connectionStatus?.status === 'approved' || match.connectionStatus?.status === 'rejected'}
@@ -408,7 +399,6 @@ export default function BuddiesPage() {
           </div>
         )}
 
-        {/* Connection Message Modal */}
         {showMessageModal && selectedUser && (
           <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
             <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
@@ -452,7 +442,6 @@ export default function BuddiesPage() {
           </div>
         )}
 
-        {/* Response Modal */}
         {showResponseModal && selectedUser && (
           <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
             <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">

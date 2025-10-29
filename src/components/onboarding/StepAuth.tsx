@@ -87,7 +87,6 @@ export default function Step1Auth({ onNext, initialData }: Step1AuthProps) {
 
   return (
     <div className="bg-white rounded-2xl shadow-xl p-8 sm:p-12">
-      {/* Header */}
       <div className="text-center mb-8">
         <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
           <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -98,7 +97,6 @@ export default function Step1Auth({ onNext, initialData }: Step1AuthProps) {
         <p className="text-gray-600">Let's start with your basic information</p>
       </div>
 
-      {/* Email Exists Error */}
       {emailExists && (
         <div className="bg-red-50 border-2 border-red-200 rounded-xl p-6 mb-6">
           <div className="flex items-start space-x-3">
@@ -137,9 +135,7 @@ export default function Step1Auth({ onNext, initialData }: Step1AuthProps) {
         </div>
       )}
 
-      {/* Form */}
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Name */}
         <div>
           <label htmlFor="name" className="block text-sm font-semibold text-gray-700 mb-2">
             Full Name
@@ -159,7 +155,6 @@ export default function Step1Auth({ onNext, initialData }: Step1AuthProps) {
           )}
         </div>
 
-        {/* Email */}
         <div>
           <label htmlFor="email" className="block text-sm font-semibold text-gray-700 mb-2">
             Email Address
@@ -179,7 +174,6 @@ export default function Step1Auth({ onNext, initialData }: Step1AuthProps) {
           )}
         </div>
 
-        {/* Password */}
         <div>
           <label htmlFor="password" className="block text-sm font-semibold text-gray-700 mb-2">
             Password
@@ -217,7 +211,6 @@ export default function Step1Auth({ onNext, initialData }: Step1AuthProps) {
           )}
         </div>
 
-        {/* Confirm Password */}
         <div>
           <label htmlFor="confirmPassword" className="block text-sm font-semibold text-gray-700 mb-2">
             Confirm Password
@@ -255,7 +248,6 @@ export default function Step1Auth({ onNext, initialData }: Step1AuthProps) {
           )}
         </div>
 
-        {/* Submit Button */}
         <button
           type="submit"
           disabled={isChecking}

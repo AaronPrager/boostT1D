@@ -7,7 +7,6 @@ export default function Footer() {
     <footer className="bg-gradient-to-r from-gray-900 to-gray-800 mt-auto">
       <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
         
-        {/* Legal Disclaimers */}
         <div className="mt-8 pt-8 border-t border-gray-700">
           <div className="bg-gray-800 rounded-lg p-6 mb-6">
             <h4 className="text-white font-semibold text-lg mb-4">⚠️ Important Medical Disclaimer</h4>

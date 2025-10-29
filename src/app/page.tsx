@@ -33,7 +33,6 @@ export default function Home() {
   // Show welcome page for non-authenticated users
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50">
-      {/* Header */}
       <header className="bg-white shadow-xl border-b border-gray-200 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-20">
@@ -60,7 +59,6 @@ export default function Home() {
         </div>
       </header>
 
-      {/* Hero Section */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
         <div className="text-center mb-20 py-12">
           <div className="inline-flex items-center px-6 py-3 bg-blue-100 text-blue-800 text-sm font-semibold rounded-full mb-8">
@@ -86,7 +84,6 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Food Carbs Estimator Section */}
         <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-3xl shadow-2xl border border-blue-200 p-12 max-w-4xl mx-auto mb-20">
           <div className="text-center">
             <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-blue-600 rounded-3xl flex items-center justify-center mb-8 mx-auto shadow-lg">
@@ -113,10 +110,8 @@ export default function Home() {
           </div>
         </div>
 
-        {/* About Aaron Section */}
         <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-3xl shadow-2xl border border-blue-200 p-12 max-w-4xl mx-auto">
           <div className="flex flex-col items-center">
-            {/* Aaron's Photo */}
             <div className="mb-8">
               <div className="relative">
                 <img
@@ -166,7 +161,6 @@ export default function Home() {
 
       </main>
 
-      {/* Footer */}
       <Footer />
     </div>
   );

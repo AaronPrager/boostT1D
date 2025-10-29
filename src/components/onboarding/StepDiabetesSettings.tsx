@@ -114,7 +114,6 @@ export default function Step3DiabetesSettings({ onNext, onBack, initialData }: S
 
   return (
     <div className="bg-white rounded-2xl shadow-xl p-8 sm:p-12">
-      {/* Header */}
       <div className="text-center mb-8">
         <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
           <svg className="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -126,9 +125,7 @@ export default function Step3DiabetesSettings({ onNext, onBack, initialData }: S
         <p className="text-gray-600">Configure your glucose data source</p>
       </div>
 
-      {/* Form */}
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Manual Mode Toggle */}
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
           <div className="flex items-start">
             <div className="flex items-center h-5">
@@ -151,7 +148,6 @@ export default function Step3DiabetesSettings({ onNext, onBack, initialData }: S
           </div>
         </div>
 
-        {/* Nightscout Settings (only if not manual mode) */}
         {!formData.isManualMode && (
           <div className="space-y-6 p-6 bg-gray-50 rounded-lg border border-gray-200">
             <h3 className="text-lg font-semibold text-gray-900 flex items-center">
@@ -161,7 +157,6 @@ export default function Step3DiabetesSettings({ onNext, onBack, initialData }: S
               Nightscout Connection
             </h3>
 
-            {/* Nightscout URL */}
             <div>
               <label htmlFor="nightscoutUrl" className="block text-sm font-semibold text-gray-700 mb-2">
                 Nightscout URL
@@ -181,7 +176,6 @@ export default function Step3DiabetesSettings({ onNext, onBack, initialData }: S
               )}
             </div>
 
-            {/* API Token */}
             <div>
               <label htmlFor="nightscoutApiToken" className="block text-sm font-semibold text-gray-700 mb-2">
                 API Token
@@ -213,7 +207,6 @@ export default function Step3DiabetesSettings({ onNext, onBack, initialData }: S
               </p>
             </div>
 
-            {/* Test Connection Button */}
             <button
               type="button"
               onClick={testConnection}
@@ -240,7 +233,6 @@ export default function Step3DiabetesSettings({ onNext, onBack, initialData }: S
           </div>
         )}
 
-        {/* Manual Mode Info */}
         {formData.isManualMode && (
           <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
             <div className="flex">
@@ -259,7 +251,6 @@ export default function Step3DiabetesSettings({ onNext, onBack, initialData }: S
           </div>
         )}
 
-        {/* Target Glucose Range */}
         <div className="space-y-4">
           <h3 className="text-lg font-semibold text-gray-900">Target Glucose Range</h3>
           <div className="grid grid-cols-2 gap-4">
@@ -308,7 +299,6 @@ export default function Step3DiabetesSettings({ onNext, onBack, initialData }: S
           </p>
         </div>
 
-        {/* Navigation Buttons */}
         <div className="flex gap-4 pt-4">
           <button
             type="button"

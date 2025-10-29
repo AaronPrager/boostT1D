@@ -336,7 +336,6 @@ export default function DiabetesProfilePage() {
             </div>
           )}
 
-      {/* Show profile data when not in manual mode OR when in manual mode but not editing */}
       {!manualMode && profile && (
         <div className="max-w-4xl mx-auto">
           <div className="bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-gray-200 p-6 rounded-xl shadow-lg space-y-4">
@@ -345,7 +344,6 @@ export default function DiabetesProfilePage() {
             </div>
           
               <div className="space-y-6">
-                {/* General Settings */}
                 <div>
                   <h3 className="text-lg font-semibold mb-3 text-gray-900">General Settings</h3>
                   <div className="space-y-3">
@@ -362,7 +360,6 @@ export default function DiabetesProfilePage() {
                   </div>
                 </div>
 
-                {/* Target Range */}
                 <div>
                   <h3 className="text-lg font-semibold mb-3 text-gray-900">Target Range</h3>
                   <p className="text-sm text-gray-600 mb-4">Ideal glucose range for optimal diabetes management</p>
@@ -391,7 +388,6 @@ export default function DiabetesProfilePage() {
                   </div>
                 </div>
 
-                {/* ISF */}
                 <div>
                   <h3 className="text-xl font-semibold mb-4 text-gray-900">Insulin Sensitivity Factor (ISF)</h3>
                   <div className="space-y-3">
@@ -410,7 +406,6 @@ export default function DiabetesProfilePage() {
                   </div>
                 </div>
 
-                {/* Carb Ratio */}
                 <div>
                   <h3 className="text-xl font-semibold mb-4 text-gray-900">Insulin-to-Carb Ratio (IC)</h3>
                   <div className="space-y-3">
@@ -429,7 +424,6 @@ export default function DiabetesProfilePage() {
                   </div>
                 </div>
 
-                {/* Basal Rates */}
                 <div>
                   <h3 className="text-xl font-semibold mb-4 text-gray-900">Basal Rates</h3>
                   <div className="space-y-3">
@@ -452,7 +446,6 @@ export default function DiabetesProfilePage() {
         </div>
       )}
 
-      {/* Show manual profile form when in manual mode and not editing */}
       {manualMode && !manualEditMode && (
         <div className="max-w-4xl mx-auto">
           <div className="bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-gray-200 p-6 rounded-xl shadow-lg space-y-4">
@@ -473,7 +466,6 @@ export default function DiabetesProfilePage() {
                 </div>
 
               <div className="space-y-6">
-                {/* General Settings */}
                 <div>
                   <h3 className="text-lg font-semibold mb-3 text-gray-900">General Settings</h3>
                   <div className="space-y-3">
@@ -490,7 +482,6 @@ export default function DiabetesProfilePage() {
                   </div>
                 </div>
 
-                {/* Target Range */}
                 <div>
                   <h3 className="text-lg font-semibold mb-3 text-gray-900">Target Range</h3>
                   <p className="text-sm text-gray-600 mb-4">Ideal glucose range for optimal diabetes management</p>
@@ -519,7 +510,6 @@ export default function DiabetesProfilePage() {
                   </div>
                 </div>
 
-                {/* ISF */}
                 <div>
                   <h3 className="text-xl font-semibold mb-4 text-gray-900">Insulin Sensitivity Factor (ISF)</h3>
                   <div className="space-y-3">
@@ -538,7 +528,6 @@ export default function DiabetesProfilePage() {
                   </div>
                 </div>
 
-                {/* Carb Ratio */}
                 <div>
                   <h3 className="text-xl font-semibold mb-4 text-gray-900">Insulin-to-Carb Ratio (IC)</h3>
                   <div className="space-y-3">
@@ -557,7 +546,6 @@ export default function DiabetesProfilePage() {
                   </div>
                 </div>
 
-                {/* Basal Rates */}
                 <div>
                   <h3 className="text-xl font-semibold mb-4 text-gray-900">Basal Rates</h3>
                   <div className="space-y-3">
@@ -580,7 +568,6 @@ export default function DiabetesProfilePage() {
         </div>
       )}
 
-      {/* Manual Edit Mode Form */}
       {manualEditMode && (
         <div className="max-w-4xl mx-auto">
           <div className="bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-gray-200 p-6 rounded-xl shadow-lg space-y-4">
@@ -608,12 +595,10 @@ export default function DiabetesProfilePage() {
             </div>
             
               <div className="space-y-6">
-              {/* General Settings */}
               <div className="bg-white p-4 rounded-lg border border-gray-200">
                 <h3 className="text-base font-semibold text-gray-900 mb-3">General Settings</h3>
                 
                 <div className="space-y-3">
-                  {/* DIA Setting */}
                   <div className="border border-gray-300 rounded-md p-4 bg-gradient-to-r from-slate-50 to-gray-50">
                     <label className="block text-sm font-semibold text-gray-700 mb-2">Duration of Insulin Action (DIA)</label>
                     <div className="mb-2">
@@ -634,7 +619,6 @@ export default function DiabetesProfilePage() {
                     <p className="text-sm text-gray-600 mt-2">How long insulin stays active in your body (typically 4-6 hours)</p>
                   </div>
 
-                  {/* Glucose Units Setting */}
                   <div className="border-2 border-gray-300 rounded-lg p-5 bg-gradient-to-r from-slate-50 to-gray-50">
                     <label className="block text-sm font-semibold text-gray-700 mb-2">Glucose Units</label>
                     <select 
@@ -650,7 +634,6 @@ export default function DiabetesProfilePage() {
                 </div>
               </div>
 
-              {/* Target Range */}
               <div className="bg-white p-4 rounded-lg border border-gray-200">
                 <h3 className="text-base font-semibold text-gray-900 mb-3">Target Range</h3>
                 <p className="text-xs text-gray-600 mb-3">Your ideal glucose range for optimal diabetes management (separate from alert thresholds)</p>
@@ -660,7 +643,6 @@ export default function DiabetesProfilePage() {
                     const highItem = manualProfile.target_high[idx];
                     return (
                       <div key={idx} className="border border-gray-300 rounded-md p-4 bg-gradient-to-r from-blue-50 to-indigo-50">
-                        {/* Time Input */}
                         <div className="mb-3">
                           <label className="block text-sm font-semibold text-gray-700 mb-2">Time Period</label>
                           <input 
@@ -674,7 +656,6 @@ export default function DiabetesProfilePage() {
                           />
                         </div>
 
-                        {/* Low and High Values */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                           <div>
                             <label className="block text-sm font-semibold text-gray-700 mb-2">Low Target (mg/dL)</label>
@@ -700,7 +681,6 @@ export default function DiabetesProfilePage() {
                           </div>
                         </div>
 
-                        {/* Remove Button */}
                         <button 
                           type="button" 
                           onClick={() => {
@@ -716,7 +696,6 @@ export default function DiabetesProfilePage() {
                   })}
                 </div>
                 
-                {/* Add Button */}
                 <div className="mt-6">
                   <button 
                     type="button" 
@@ -731,7 +710,6 @@ export default function DiabetesProfilePage() {
                 </div>
               </div>
 
-              {/* Insulin Sensitivity Factor (ISF) */}
               <div className="bg-white p-4 rounded-lg border border-gray-200">
                 <h3 className="text-base font-semibold text-gray-900 mb-3">Insulin Sensitivity Factor (ISF)</h3>
                 <p className="text-xs text-gray-600 mb-3">How much 1 unit of insulin lowers your blood glucose</p>
@@ -739,7 +717,6 @@ export default function DiabetesProfilePage() {
                 <div className="space-y-3">
                   {manualProfile.sens.map((item, idx) => (
                     <div key={idx} className="border border-gray-300 rounded-md p-4 bg-gradient-to-r from-purple-50 to-pink-50">
-                      {/* Time Input */}
                       <div className="mb-4">
                         <label className="block text-sm font-semibold text-gray-700 mb-2">Time Period</label>
                         <input 
@@ -750,7 +727,6 @@ export default function DiabetesProfilePage() {
                         />
                       </div>
 
-                      {/* Value Input */}
                       <div className="mb-4">
                         <label className="block text-sm font-semibold text-gray-700 mb-2">
                           ISF Value ({manualProfile.units === 'mg/dL' ? 'mg/dL per unit' : 'mmol/L per unit'})
@@ -765,7 +741,6 @@ export default function DiabetesProfilePage() {
                         />
                       </div>
 
-                      {/* Remove Button */}
                       <button 
                         type="button" 
                         onClick={() => removeManualTimeValue('sens', idx)} 
@@ -777,7 +752,6 @@ export default function DiabetesProfilePage() {
                   ))}
                 </div>
                 
-                {/* Add Button */}
                 <div className="mt-6">
                   <button 
                     type="button" 
@@ -789,7 +763,6 @@ export default function DiabetesProfilePage() {
                 </div>
               </div>
 
-              {/* Carb Ratio (IC) */}
               <div className="bg-white p-4 rounded-lg border border-gray-200">
                 <h3 className="text-base font-semibold text-gray-900 mb-3">Insulin-to-Carb Ratio (IC)</h3>
                 <p className="text-xs text-gray-600 mb-3">How many grams of carbs 1 unit of insulin covers</p>
@@ -797,7 +770,6 @@ export default function DiabetesProfilePage() {
                 <div className="space-y-3">
                   {manualProfile.carbratio.map((item, idx) => (
                     <div key={idx} className="border border-gray-300 rounded-md p-4 bg-gradient-to-r from-green-50 to-emerald-50">
-                      {/* Time Input */}
                       <div className="mb-4">
                         <label className="block text-sm font-semibold text-gray-700 mb-2">Time Period</label>
                         <input 
@@ -808,7 +780,6 @@ export default function DiabetesProfilePage() {
                         />
                       </div>
 
-                      {/* Value Input */}
                       <div className="mb-4">
                         <label className="block text-sm font-semibold text-gray-700 mb-2">
                           Carb Ratio (grams per unit)
@@ -823,7 +794,6 @@ export default function DiabetesProfilePage() {
                         />
                       </div>
 
-                      {/* Remove Button */}
                       <button 
                         type="button" 
                         onClick={() => removeManualTimeValue('carbratio', idx)} 
@@ -835,7 +805,6 @@ export default function DiabetesProfilePage() {
                     ))}
                 </div>
                 
-                {/* Add Button */}
                 <div className="mt-6">
                   <button 
                     type="button" 
@@ -847,7 +816,6 @@ export default function DiabetesProfilePage() {
                 </div>
               </div>
 
-              {/* Basal Rates */}
               <div className="bg-white p-4 rounded-lg border border-gray-200">
                 <h3 className="text-base font-semibold text-gray-900 mb-3">Basal Rates</h3>
                 <p className="text-xs text-gray-600 mb-3">Background insulin rates throughout the day</p>
@@ -855,7 +823,6 @@ export default function DiabetesProfilePage() {
                 <div className="space-y-3">
                   {manualProfile.basal.map((item, idx) => (
                     <div key={idx} className="border border-gray-300 rounded-md p-4 bg-gradient-to-r from-amber-50 to-yellow-50">
-                      {/* Time Input */}
                       <div className="mb-4">
                         <label className="block text-sm font-semibold text-gray-700 mb-2">Time Period</label>
                         <input 
@@ -866,7 +833,6 @@ export default function DiabetesProfilePage() {
                         />
                       </div>
 
-                      {/* Value Input */}
                       <div className="mb-4">
                         <label className="block text-sm font-semibold text-gray-700 mb-2">
                           Basal Rate (units/hour)
@@ -881,7 +847,6 @@ export default function DiabetesProfilePage() {
                         />
                       </div>
 
-                      {/* Remove Button */}
                       <button 
                         type="button" 
                         onClick={() => removeManualTimeValue('basal', idx)} 
@@ -893,7 +858,6 @@ export default function DiabetesProfilePage() {
                 ))}
                 </div>
                 
-                {/* Add Button */}
                 <div className="mt-6">
                   <button 
                     type="button" 
@@ -905,7 +869,6 @@ export default function DiabetesProfilePage() {
                 </div>
               </div>
 
-              {/* Error/Success Messages */}
               {manualProfileError && (
                 <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
                   <div className="flex">
@@ -933,7 +896,6 @@ export default function DiabetesProfilePage() {
                 </div>
             )}
 
-              {/* Action Buttons */}
               <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
                 <button 
                   type="button" 

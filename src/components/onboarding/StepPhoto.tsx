@@ -112,7 +112,6 @@ export default function StepPhoto({ onNext, onBack, initialData }: StepPhotoProp
 
   return (
     <div className="bg-white rounded-2xl shadow-xl p-8 sm:p-12">
-      {/* Header */}
       <div className="text-center mb-8">
         <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
           <svg className="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -124,10 +123,8 @@ export default function StepPhoto({ onNext, onBack, initialData }: StepPhotoProp
         <p className="text-gray-600">Help others recognize you (optional)</p>
       </div>
 
-      {/* Photo Upload Area */}
       <div className="mb-8">
         <div className="flex flex-col items-center">
-          {/* Photo Preview or Placeholder */}
           <div className="mb-6">
             {photo ? (
               <div className="relative">
@@ -160,7 +157,6 @@ export default function StepPhoto({ onNext, onBack, initialData }: StepPhotoProp
             )}
           </div>
 
-          {/* Upload Button */}
           <input
             ref={fileInputRef}
             type="file"
@@ -202,14 +198,12 @@ export default function StepPhoto({ onNext, onBack, initialData }: StepPhotoProp
             )}
           </button>
 
-          {/* Error Message */}
           {error && (
             <div className="mt-4 text-sm text-red-600 bg-red-50 px-4 py-2 rounded-lg">
               {error}
             </div>
           )}
 
-          {/* Help Text */}
           <p className="mt-4 text-sm text-gray-500 text-center">
             Images are automatically resized to 800x800px and compressed.<br />
             Supported formats: JPG, PNG, GIF (max 10MB before compression)
@@ -217,7 +211,6 @@ export default function StepPhoto({ onNext, onBack, initialData }: StepPhotoProp
         </div>
       </div>
 
-      {/* Navigation Buttons */}
       <div className="flex gap-4">
         <button
           type="button"

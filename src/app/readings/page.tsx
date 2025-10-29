@@ -697,12 +697,10 @@ export default function ReadingsPage() {
         <h1 className="text-3xl font-bold">Blood Glucose Data</h1>
       </div>
 
-      {/* Combined Current Status and Date Range Card */}
       <div className="mb-8">
         <div className="bg-gradient-to-r from-gray-50 to-blue-50 rounded-lg shadow-sm border border-blue-200 p-6">
           <div className="flex items-center justify-between">
             <div className="flex-1">
-              {/* Current Glucose Section */}
               {currentGlucose ? (
                 <div className="flex items-center space-x-6">
                   <div>
@@ -720,7 +718,6 @@ export default function ReadingsPage() {
                       </span>
                     </div>
                     
-                    {/* Measurement details */}
                     <div className="mt-2 space-y-1">
                       {currentGlucose.timestamp && (
                         <p className="text-sm text-gray-600">
@@ -778,9 +775,7 @@ export default function ReadingsPage() {
               )}
             </div>
             
-            {/* Date Range and Sync Controls */}
             <div className="flex items-center space-x-6">
-              {/* Date Range Controls */}
               <div className="flex items-center space-x-4">
                 <div>
                   <label className="block text-xs text-gray-500 mb-1">From</label>
@@ -802,7 +797,6 @@ export default function ReadingsPage() {
                 </div>
               </div>
               
-              {/* Last Updated Info */}
               {readings.length > 0 && (
                 <div className="text-sm text-gray-500">
                   <p>Last updated</p>
@@ -810,7 +804,6 @@ export default function ReadingsPage() {
                 </div>
               )}
               
-              {/* Sync Button */}
               {settings.nightscoutUrl && (
                 <button
                   onClick={syncFromNightscout}
@@ -840,7 +833,6 @@ export default function ReadingsPage() {
         </div>
       </div>
       
-      {/* Manual Mode - Add Reading Card */}
       {!settings.nightscoutUrl && (
         <div className="mb-8">
           <div className="bg-gradient-to-br from-orange-50 to-amber-50 border-2 border-orange-200 rounded-xl shadow-lg p-6">
@@ -869,7 +861,6 @@ export default function ReadingsPage() {
               )}
             </div>
 
-            {/* Add Reading Form */}
             {showAddReading && (
               <div className="bg-white rounded-lg border-2 border-gray-300 p-4 space-y-4">
                 <div className="flex items-center justify-between mb-3">
@@ -885,7 +876,6 @@ export default function ReadingsPage() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Glucose Value */}
                   <div className="border border-gray-300 rounded-md p-4 bg-gradient-to-r from-blue-50 to-indigo-50">
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
                       Glucose Value (mg/dL)
@@ -901,7 +891,6 @@ export default function ReadingsPage() {
                     />
                   </div>
 
-                  {/* Direction */}
                   <div className="border border-gray-300 rounded-md p-4 bg-gradient-to-r from-purple-50 to-pink-50">
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
                       Trend Direction
@@ -921,7 +910,6 @@ export default function ReadingsPage() {
                     </select>
                   </div>
 
-                  {/* Date */}
                   <div className="border-2 border-gray-300 rounded-lg p-5 bg-gradient-to-r from-green-50 to-emerald-50">
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
                       Date
@@ -934,7 +922,6 @@ export default function ReadingsPage() {
                     />
                   </div>
 
-                  {/* Time */}
                   <div className="border-2 border-gray-300 rounded-lg p-5 bg-gradient-to-r from-amber-50 to-yellow-50">
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
                       Time
@@ -948,7 +935,6 @@ export default function ReadingsPage() {
                   </div>
                 </div>
 
-                {/* Action Buttons */}
                 <div className="flex gap-4 pt-4">
                   <button
                     onClick={() => setShowAddReading(false)}
@@ -966,7 +952,6 @@ export default function ReadingsPage() {
               </div>
             )}
 
-            {/* Info Section */}
             {!showAddReading && (
               <div className="mt-6 p-4 bg-white rounded-lg border border-orange-200">
                 <div className="flex items-start gap-3">
@@ -985,7 +970,6 @@ export default function ReadingsPage() {
         </div>
       )}
 
-      {/* Tab Navigation */}
       <div className="bg-white rounded-lg shadow mb-8">
         <div className="border-b border-gray-200">
           <nav className="-mb-px flex space-x-8" aria-label="Tabs">
@@ -1023,7 +1007,6 @@ export default function ReadingsPage() {
         </div>
 
         <div className="p-6">
-          {/* Statistics Section - Always visible */}
           <div className="mb-8">
             <h2 className="text-xl font-semibold mb-4">Statistics ({filteredReadings.length} readings)</h2>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
@@ -1072,7 +1055,6 @@ export default function ReadingsPage() {
         </div>
         </div>
 
-          {/* Tab Content */}
           {activeTab === 'chart' && (
             <div>
               <h3 className="text-lg font-semibold mb-4">Glucose Chart</h3>

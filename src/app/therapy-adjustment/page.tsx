@@ -224,7 +224,6 @@ export default function TherapyAdjustmentPage() {
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Manual Mode Indicator Banner */}
         {!settings.nightscoutUrl && (
           <div className="mb-6 bg-gradient-to-r from-orange-100 via-amber-50 to-yellow-100 border-2 border-orange-300 rounded-xl shadow-lg p-6">
             <div className="flex items-start">
@@ -322,7 +321,6 @@ export default function TherapyAdjustmentPage() {
                   <h3 className="text-sm font-medium text-red-800">Analysis Error</h3>
                   <p className="text-sm text-red-700 mt-1">{error}</p>
                   
-                  {/* Provide helpful guidance based on error type */}
                   {error.includes('diabetes profile') && (
                     <div className="mt-3 bg-gray-50 border border-gray-200 rounded-md p-3">
                       <p className="text-sm text-gray-700">
@@ -359,7 +357,6 @@ export default function TherapyAdjustmentPage() {
             </div>
           )}
 
-          {/* Debug Information */}
           <div className="bg-gray-50 border border-gray-200 rounded-md p-4 mb-6">
             <div className="text-sm text-gray-600">
               <p><strong>Loading:</strong> {loading ? 'Yes' : 'No'}</p>
@@ -381,7 +378,6 @@ export default function TherapyAdjustmentPage() {
 
           {suggestions ? (
             <>
-              {/* Analysis Metrics */}
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
                 <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-lg text-center border border-green-200 shadow-sm">
                   <div className="text-2xl font-bold text-green-700">
@@ -421,7 +417,6 @@ export default function TherapyAdjustmentPage() {
                 </div>
               </div>
 
-              {/* Safety Warnings */}
               {suggestions.safetyWarnings.length > 0 && (
                 <div className="mb-8">
                   <div className="bg-white rounded-lg shadow-sm border border-gray-200">
@@ -441,7 +436,6 @@ export default function TherapyAdjustmentPage() {
                 </div>
               )}
 
-              {/* Overall Recommendations */}
               {suggestions.overallRecommendations.length > 0 && (
                 <div className="mb-8">
                   <div className="bg-white rounded-lg shadow-sm border border-gray-200">
@@ -464,7 +458,6 @@ export default function TherapyAdjustmentPage() {
                 </div>
               )}
 
-              {/* Basal Adjustments */}
               {suggestions.basalAdjustments.length > 0 && (
                 <div className="mb-8">
                   <div className="bg-white rounded-lg shadow-sm border border-gray-200">
@@ -480,7 +473,6 @@ export default function TherapyAdjustmentPage() {
                 </div>
               )}
 
-              {/* Carb Ratio Adjustments */}
               {suggestions.carbRatioAdjustments.length > 0 && (
                 <div className="mb-8">
                   <div className="bg-white rounded-lg shadow-sm border border-gray-200">
@@ -496,7 +488,6 @@ export default function TherapyAdjustmentPage() {
                 </div>
               )}
 
-              {/* Sensitivity Adjustments */}
               {suggestions.sensitivityAdjustments.length > 0 && (
                 <div className="mb-8">
                   <div className="bg-white rounded-lg shadow-sm border border-gray-200">
@@ -512,7 +503,6 @@ export default function TherapyAdjustmentPage() {
                 </div>
               )}
 
-              {/* Target Adjustments */}
               {suggestions.targetAdjustments.length > 0 && (
                 <div className="mb-8">
                   <div className="bg-white rounded-lg shadow-sm border border-gray-200">
@@ -528,7 +518,6 @@ export default function TherapyAdjustmentPage() {
                 </div>
               )}
 
-              {/* No Adjustments Message */}
               {suggestions.basalAdjustments.length === 0 && 
                suggestions.carbRatioAdjustments.length === 0 && 
                suggestions.sensitivityAdjustments.length === 0 && 
@@ -548,7 +537,6 @@ export default function TherapyAdjustmentPage() {
                 </div>
               )}
 
-              {/* Disclaimer */}
               <div className="mt-8 bg-gray-50 border border-gray-200 rounded-md p-4">
                 <div className="flex">
                   <div className="text-gray-500">⚠️</div>

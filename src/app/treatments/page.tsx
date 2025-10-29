@@ -237,7 +237,6 @@ export default function TreatmentsPage() {
     <div className="max-w-3xl mx-auto p-6">
       <h1 className="text-2xl font-bold mb-4">Nightscout Treatments</h1>
       
-      {/* Manual Mode Indicator Banner */}
       {isManualMode && (
         <div className="mb-6 bg-gradient-to-r from-orange-100 via-amber-50 to-yellow-100 border-2 border-orange-300 rounded-xl shadow-lg p-6">
           <div className="flex items-start">
@@ -282,7 +281,6 @@ export default function TreatmentsPage() {
         </div>
       )}
 
-      {/* Manual Treatment Entry Form */}
       {showManualEntry && (
         <div className="mb-6 bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-gray-200 rounded-xl shadow-lg p-6">
           <div className="flex items-center justify-between mb-4">
@@ -298,7 +296,6 @@ export default function TreatmentsPage() {
           </div>
           
           <div className="space-y-4">
-            {/* Date & Time Card */}
             <div className="bg-white rounded-lg p-4 border border-gray-200 shadow-sm">
               <label className="block text-sm font-semibold text-slate-800 mb-2">
                 Date & Time
@@ -311,7 +308,6 @@ export default function TreatmentsPage() {
               />
             </div>
 
-            {/* Treatment Type Card */}
             <div className="bg-white rounded-lg p-4 border border-gray-200 shadow-sm">
               <label className="block text-sm font-semibold text-slate-800 mb-2">
                 Treatment Type
@@ -331,7 +327,6 @@ export default function TreatmentsPage() {
               </select>
             </div>
             
-            {/* Insulin & Carbs Cards - Side by Side */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="bg-white rounded-lg p-4 border border-gray-200 shadow-sm">
                 <label className="block text-sm font-semibold text-slate-800 mb-2">
@@ -362,7 +357,6 @@ export default function TreatmentsPage() {
               </div>
             </div>
 
-            {/* Blood Glucose Card */}
             <div className="bg-white rounded-lg p-4 border border-gray-200 shadow-sm">
               <label className="block text-sm font-semibold text-slate-800 mb-2">
                 Blood Glucose <span className="text-xs font-normal text-slate-500">(mg/dL)</span>
@@ -377,7 +371,6 @@ export default function TreatmentsPage() {
               />
             </div>
             
-            {/* Notes Card */}
             <div className="bg-white rounded-lg p-4 border border-gray-200 shadow-sm">
               <label className="block text-sm font-semibold text-slate-800 mb-2">
                 Notes
@@ -437,11 +430,9 @@ export default function TreatmentsPage() {
         </div>
       )}
       
-      {/* Filter and Date Range Section */}
       <div className="bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-gray-200 rounded-xl shadow-lg p-6 mb-6">
         <h3 className="text-xl font-bold text-slate-800 mb-4">Filter Treatments</h3>
         <div className="space-y-4">
-          {/* Date Range Card */}
           <div className="bg-white rounded-lg p-4 border border-gray-200 shadow-sm">
             <label className="block text-sm font-semibold text-slate-800 mb-3">Date Range</label>
             <div className="space-y-3">
@@ -466,7 +457,6 @@ export default function TreatmentsPage() {
                 </div>
               </div>
               
-              {/* Quick Filter Buttons */}
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-xs font-medium text-slate-600">Quick:</span>
                 <button
@@ -512,7 +502,6 @@ export default function TreatmentsPage() {
             </div>
           </div>
           
-          {/* Treatment Type Filter Card */}
           <div className="bg-white rounded-lg p-4 border border-gray-200 shadow-sm">
             <label className="block text-sm font-semibold text-slate-800 mb-2">Treatment Type</label>
             <select
@@ -527,7 +516,6 @@ export default function TreatmentsPage() {
             </select>
           </div>
           
-          {/* Fetch Button Row */}
           <div className="flex flex-col sm:flex-row justify-between items-center gap-3 pt-2">
             {lastFetchTime && (
               <div className="text-xs text-slate-600 order-2 sm:order-1">
@@ -590,7 +578,6 @@ export default function TreatmentsPage() {
               Export to CSV
             </button>
           </div>
-          {/* Treatment Count */}
           <div className="mb-3 text-sm text-gray-600">
             Showing {filteredTreatments.length} of {treatments.length} treatments
             {treatmentTypeFilter !== 'all' && ` (filtered by ${treatmentTypeFilter})`}
