@@ -223,7 +223,6 @@ export default function AnalysisPage() {
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Manual Mode Indicator Banner */}
         {!settings.nightscoutUrl && (
           <div className="mb-6 bg-gradient-to-r from-orange-100 via-amber-50 to-yellow-100 border-2 border-orange-300 rounded-xl shadow-lg p-6">
             <div className="flex items-start">
@@ -300,7 +299,6 @@ export default function AnalysisPage() {
             </div>
           </div>
 
-          {/* Error Messages - Show specific errors based on API response */}
           {error && (
             <div className="mb-6 bg-gray-50 border border-gray-200 rounded-lg p-6">
               <div className="flex items-start">
@@ -318,7 +316,6 @@ export default function AnalysisPage() {
                     {error}
                   </p>
                   
-                  {/* Show general help for analysis errors */}
                   {!error.includes('No glucose data available') && !error.includes('Insufficient data') && !error.includes('diabetes profile') && (
                     <div className="bg-gray-50 rounded-lg p-4 mb-3">
                       <h4 className="text-gray-900 font-medium mb-2">To resolve this issue:</h4>
@@ -361,7 +358,6 @@ export default function AnalysisPage() {
                     </div>
                   )}
                   
-                  {/* Show sync button for data-related errors */}
                   {(error.includes('No glucose data available') || error.includes('Insufficient data')) && (
                     <div className="bg-blue-50 rounded-lg p-4 mb-3">
                       <h4 className="text-blue-900 font-medium mb-2">To get started:</h4>
@@ -394,7 +390,6 @@ export default function AnalysisPage() {
                     </div>
                   )}
 
-                  {/* Show profile setup for diabetes profile errors */}
                   {error.includes('diabetes profile') && (
                     <div className="bg-orange-50 rounded-lg p-4 mb-3">
                       <h4 className="text-orange-900 font-medium mb-2">To enable therapy analysis:</h4>
@@ -434,7 +429,6 @@ export default function AnalysisPage() {
 
           {suggestions && (
             <>
-              {/* Analysis Metrics */}
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
                 <div className="bg-green-50 p-4 rounded-lg text-center border border-green-200">
                   <div className="text-2xl font-bold text-green-700">
@@ -468,7 +462,6 @@ export default function AnalysisPage() {
                 </div>
               </div>
 
-              {/* Important Disclaimer */}
               <div className="mb-8 bg-gray-50 border border-gray-200 rounded-md p-4">
                 <div className="flex">
                   <div className="text-gray-500">⚠️</div>
@@ -483,7 +476,6 @@ export default function AnalysisPage() {
                 </div>
               </div>
 
-              {/* Overall Recommendations */}
               {suggestions.overallRecommendations.length > 0 && (
                 <div className="mb-8">
                   <h2 className="text-xl font-semibold text-gray-900 mb-4">📋 Overall Recommendations</h2>
@@ -500,7 +492,6 @@ export default function AnalysisPage() {
                 </div>
               )}
 
-              {/* Basal Adjustments */}
               {suggestions.basalAdjustments.length > 0 && (
                 <div className="mb-8">
                   <h2 className="text-xl font-semibold text-gray-900 mb-4">🕐 Basal Rate Adjustments</h2>
@@ -510,7 +501,6 @@ export default function AnalysisPage() {
                 </div>
               )}
 
-              {/* Carb Ratio Adjustments */}
               {suggestions.carbRatioAdjustments.length > 0 && (
                 <div className="mb-8">
                   <h2 className="text-xl font-semibold text-gray-900 mb-4">🍽️ Carb Ratio Adjustments</h2>
@@ -520,7 +510,6 @@ export default function AnalysisPage() {
           </div>
               )}
 
-              {/* Sensitivity Adjustments */}
               {suggestions.sensitivityAdjustments.length > 0 && (
                 <div className="mb-8">
                   <h2 className="text-xl font-semibold text-gray-900 mb-4">💉 Insulin Sensitivity Adjustments</h2>
@@ -530,7 +519,6 @@ export default function AnalysisPage() {
                 </div>
               )}
 
-              {/* Target Adjustments */}
               {suggestions.targetAdjustments.length > 0 && (
                 <div className="mb-8">
                   <h2 className="text-xl font-semibold text-gray-900 mb-4">🎯 Target Range Adjustments</h2>
@@ -540,7 +528,6 @@ export default function AnalysisPage() {
           </div>
               )}
 
-              {/* No Adjustments Message */}
               {suggestions.basalAdjustments.length === 0 && 
                suggestions.carbRatioAdjustments.length === 0 && 
                suggestions.sensitivityAdjustments.length === 0 && 

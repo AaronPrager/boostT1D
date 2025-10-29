@@ -200,7 +200,6 @@ export default function FoodAnalysisPage() {
             <p className="text-gray-600 mb-6">Upload a photo of your food to get an AI-powered estimate of carbohydrates and personalized insulin recommendations based on your pump settings.</p>
 
             <div className="space-y-6">
-              {/* File Upload Area */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Select Food Photo
@@ -264,7 +263,6 @@ export default function FoodAnalysisPage() {
                 </div>
               </div>
 
-              {/* Analysis Button */}
               {selectedFile && (
                 <div>
                   <button
@@ -287,7 +285,6 @@ export default function FoodAnalysisPage() {
                 </div>
               )}
 
-              {/* Error Display */}
               {error && (
                 <div className="bg-red-50 border border-red-200 rounded-md p-4">
                   <div className="flex">
@@ -303,10 +300,8 @@ export default function FoodAnalysisPage() {
                 </div>
               )}
 
-              {/* Analysis Results */}
               {analysis && (
                 <div className="space-y-4">
-                  {/* Carb Analysis Results */}
                   <div className="bg-green-50 border border-green-200 rounded-md p-4">
                     <div className="flex">
                       <div className="flex-shrink-0">
@@ -326,7 +321,6 @@ export default function FoodAnalysisPage() {
                     </div>
                   </div>
 
-                  {/* Insulin Recommendation - Only show for logged-in users */}
                   {session && analysis.insulin_recommendation && (
                     <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
                       <div className="flex">
@@ -339,7 +333,6 @@ export default function FoodAnalysisPage() {
                           <h3 className="text-sm font-medium text-blue-800">💉 Insulin Recommendation</h3>
                           <div className="mt-2 text-sm text-blue-700 space-y-2">
                             
-                            {/* Main Bolus Recommendation */}
                             <div className="bg-blue-100 rounded-lg p-3 border">
                               <div className="flex items-center">
                                 <p className="text-lg font-bold text-blue-900">
@@ -358,7 +351,6 @@ export default function FoodAnalysisPage() {
                               </div>
                             </div>
 
-                            {/* Breakdown */}
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
                               <div className="bg-white rounded p-2 border border-blue-200">
                                 <p className="font-medium">Carb Bolus</p>
@@ -387,7 +379,6 @@ export default function FoodAnalysisPage() {
                               </div>
                             </div>
 
-                            {/* Settings Used */}
                             <div className="text-xs text-blue-600 border-t border-blue-200 pt-2">
                               <p><strong>Carb Ratio:</strong> 1:{analysis.insulin_recommendation.carb_ratio} (active at {analysis.insulin_recommendation.carb_ratio_time})</p>
                               {analysis.insulin_recommendation.insulin_sensitivity && (
@@ -401,7 +392,6 @@ export default function FoodAnalysisPage() {
                               )}
                             </div>
 
-                            {/* IOB Breakdown */}
                             {analysis.insulin_recommendation.iob_breakdown && analysis.insulin_recommendation.iob_breakdown.length > 0 && (
                               <div className="mt-3 bg-gray-50 rounded p-3 border border-gray-200">
                                 <p className="text-xs font-medium text-gray-700 mb-2">📊 IOB Breakdown:</p>
@@ -416,7 +406,6 @@ export default function FoodAnalysisPage() {
                               </div>
                             )}
 
-                            {/* COB Breakdown */}
                             {analysis.insulin_recommendation.cob_breakdown && analysis.insulin_recommendation.cob_breakdown.length > 0 && (
                               <div className="mt-3 bg-green-50 rounded p-3 border border-green-200">
                                 <p className="text-xs font-medium text-green-700 mb-2">🍎 COB Breakdown:</p>
@@ -431,7 +420,6 @@ export default function FoodAnalysisPage() {
                               </div>
                             )}
 
-                            {/* Safety Warnings */}
                             {analysis.insulin_recommendation.safety_warnings && analysis.insulin_recommendation.safety_warnings.length > 0 && (
                               <div className="mt-3 space-y-2">
                                 {analysis.insulin_recommendation.safety_warnings.map((warning, index) => (
@@ -454,7 +442,6 @@ export default function FoodAnalysisPage() {
                               </div>
                             )}
 
-                            {/* Warning */}
                             {analysis.insulin_recommendation.warning && (
                               <div className="bg-yellow-100 border border-yellow-300 rounded p-2 mt-2">
                                 <div className="flex">
@@ -471,7 +458,6 @@ export default function FoodAnalysisPage() {
                     </div>
                   )}
 
-                  {/* Sign in prompt for non-logged-in users */}
                   {!session && (
                     <div className="bg-indigo-50 border border-indigo-200 rounded-md p-4">
                       <div className="flex">
@@ -498,7 +484,6 @@ export default function FoodAnalysisPage() {
                     </div>
                   )}
 
-                  {/* No Insulin Data Warning - Only for logged-in users */}
                   {session && !analysis.insulin_recommendation && (
                     <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4">
                       <div className="flex">
@@ -523,7 +508,6 @@ export default function FoodAnalysisPage() {
         </div>
       </div>
 
-      {/* Calculation Details Popup */}
       {showCalculationPopup && analysis?.insulin_recommendation && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">

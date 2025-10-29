@@ -136,7 +136,6 @@ export default function Step2GeneralInfo({ onNext, onBack, initialData }: Step2G
 
   return (
     <div className="bg-white rounded-2xl shadow-xl p-8 sm:p-12">
-      {/* Header */}
       <div className="text-center mb-8">
         <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
           <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -147,9 +146,7 @@ export default function Step2GeneralInfo({ onNext, onBack, initialData }: Step2G
         <p className="text-gray-600">Tell us a bit about yourself</p>
       </div>
 
-      {/* Form */}
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Age */}
         <div>
           <label htmlFor="age" className="block text-sm font-semibold text-gray-700 mb-2">
             Age
@@ -171,7 +168,6 @@ export default function Step2GeneralInfo({ onNext, onBack, initialData }: Step2G
           )}
         </div>
 
-        {/* Years Since Diagnosis */}
         <div>
           <label htmlFor="yearsSinceDiagnosis" className="block text-sm font-semibold text-gray-700 mb-2">
             Years Since T1D Diagnosis
@@ -196,7 +192,6 @@ export default function Step2GeneralInfo({ onNext, onBack, initialData }: Step2G
           )}
         </div>
 
-        {/* Country */}
         <div>
           <label htmlFor="country" className="block text-sm font-semibold text-gray-700 mb-2">
             Country
@@ -221,7 +216,6 @@ export default function Step2GeneralInfo({ onNext, onBack, initialData }: Step2G
           )}
         </div>
 
-        {/* State (only for US) */}
         {formData.country === 'US' && (
           <div>
             <label htmlFor="state" className="block text-sm font-semibold text-gray-700 mb-2">
@@ -248,7 +242,6 @@ export default function Step2GeneralInfo({ onNext, onBack, initialData }: Step2G
           </div>
         )}
 
-        {/* Navigation Buttons */}
         <div className="flex gap-4">
           <button
             type="button"

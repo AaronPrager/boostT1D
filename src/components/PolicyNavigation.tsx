@@ -134,7 +134,6 @@ export default function PolicyNavigation() {
     <nav className="bg-white shadow-lg border-b border-gray-200 mb-6" ref={dropdownRef}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
-          {/* Logo */}
           <div className="flex items-center">
             <div className="flex-shrink-0">
               <Link 
@@ -154,14 +153,12 @@ export default function PolicyNavigation() {
             </div>
           </div>
 
-          {/* Desktop Navigation */}
           {session && (
             <div className="hidden sm:flex sm:items-center sm:space-x-8 sm:flex-1 sm:justify-evenly sm:mx-8">
               <Link href="/policy" className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">
                 Dashboard
               </Link>
               
-              {/* Policy Analysis Dropdown */}
               <div className="relative">
                 <button
                   onClick={() => toggleDropdown('analysis')}
@@ -199,7 +196,6 @@ export default function PolicyNavigation() {
                 )}
               </div>
 
-              {/* Legislation Dropdown */}
               <div className="relative">
                 <button
                   onClick={() => toggleDropdown('legislation')}
@@ -237,7 +233,6 @@ export default function PolicyNavigation() {
                 )}
               </div>
 
-              {/* Advocacy Tools Dropdown */}
               <div className="relative">
                 <button
                   onClick={() => toggleDropdown('advocacy')}
@@ -275,7 +270,6 @@ export default function PolicyNavigation() {
                 )}
               </div>
 
-              {/* Data & Reports Dropdown */}
               <div className="relative">
                 <button
                   onClick={() => toggleDropdown('data')}
@@ -315,7 +309,6 @@ export default function PolicyNavigation() {
             </div>
           )}
 
-          {/* User Menu */}
           <div className="flex items-center space-x-4">
             {session ? (
               <div className="relative">
@@ -366,7 +359,6 @@ export default function PolicyNavigation() {
             ) : null}
           </div>
 
-          {/* Mobile menu button */}
           <div className="sm:hidden">
             <button
               onClick={toggleMobileMenu}
@@ -396,7 +388,6 @@ export default function PolicyNavigation() {
         </div>
       </div>
 
-      {/* Mobile menu */}
       {mobileMenuOpen && (
         <div className="sm:hidden">
           <div className="px-2 pt-2 pb-3 space-y-1">

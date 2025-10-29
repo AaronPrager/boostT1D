@@ -12,7 +12,6 @@ export default function Step4Terms({ onComplete, onBack }: Step4TermsProps) {
 
   return (
     <div className="bg-white rounded-2xl shadow-xl p-8 sm:p-12 max-h-[85vh] flex flex-col">
-      {/* Header */}
       <div className="text-center mb-6">
         <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
           <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -23,9 +22,7 @@ export default function Step4Terms({ onComplete, onBack }: Step4TermsProps) {
         <p className="text-gray-600">Please read and agree to continue</p>
       </div>
 
-      {/* Scrollable Terms Content */}
       <div className="flex-1 overflow-y-auto space-y-6 mb-6 px-2">
-        {/* Medical Disclaimer - Critical */}
         <div className="bg-red-50 border-2 border-red-200 rounded-lg p-4">
           <div className="flex">
             <svg className="h-6 w-6 text-red-600 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
@@ -40,9 +37,7 @@ export default function Step4Terms({ onComplete, onBack }: Step4TermsProps) {
           </div>
         </div>
 
-        {/* Terms Sections */}
         <div className="space-y-4 text-sm">
-          {/* Section 1 */}
           <div>
             <h4 className="font-bold text-gray-900 mb-1">1. No Medical Advice</h4>
             <p className="text-gray-700">
@@ -50,7 +45,6 @@ export default function Step4Terms({ onComplete, onBack }: Step4TermsProps) {
             </p>
           </div>
 
-          {/* Section 2 */}
           <div>
             <h4 className="font-bold text-gray-900 mb-1">2. AI-Generated Content</h4>
             <p className="text-gray-700">
@@ -58,7 +52,6 @@ export default function Step4Terms({ onComplete, onBack }: Step4TermsProps) {
             </p>
           </div>
 
-          {/* Section 3 */}
           <div>
             <h4 className="font-bold text-gray-900 mb-1">3. User Responsibility</h4>
             <p className="text-gray-700">
@@ -66,7 +59,6 @@ export default function Step4Terms({ onComplete, onBack }: Step4TermsProps) {
             </p>
           </div>
 
-          {/* Section 4 */}
           <div>
             <h4 className="font-bold text-gray-900 mb-1">4. Data Accuracy</h4>
             <p className="text-gray-700">
@@ -74,7 +66,6 @@ export default function Step4Terms({ onComplete, onBack }: Step4TermsProps) {
             </p>
           </div>
 
-          {/* Section 5 */}
           <div>
             <h4 className="font-bold text-gray-900 mb-1">5. Emergency Situations</h4>
             <p className="text-gray-700">
@@ -82,7 +73,6 @@ export default function Step4Terms({ onComplete, onBack }: Step4TermsProps) {
             </p>
           </div>
 
-          {/* Section 6 */}
           <div>
             <h4 className="font-bold text-gray-900 mb-1">6. Third-Party Integrations</h4>
             <p className="text-gray-700">
@@ -90,7 +80,6 @@ export default function Step4Terms({ onComplete, onBack }: Step4TermsProps) {
             </p>
           </div>
 
-          {/* Section 7 */}
           <div>
             <h4 className="font-bold text-gray-900 mb-1">7. Limitation of Liability</h4>
             <p className="text-gray-700">
@@ -98,7 +87,6 @@ export default function Step4Terms({ onComplete, onBack }: Step4TermsProps) {
             </p>
           </div>
 
-          {/* Section 8 */}
           <div>
             <h4 className="font-bold text-gray-900 mb-1">8. Privacy & Data Security</h4>
             <p className="text-gray-700">
@@ -106,7 +94,6 @@ export default function Step4Terms({ onComplete, onBack }: Step4TermsProps) {
             </p>
           </div>
 
-          {/* Section 9 */}
           <div>
             <h4 className="font-bold text-gray-900 mb-1">9. Healthcare Provider Consultation</h4>
             <p className="text-gray-700">
@@ -114,7 +101,6 @@ export default function Step4Terms({ onComplete, onBack }: Step4TermsProps) {
             </p>
           </div>
 
-          {/* Section 10 */}
           <div>
             <h4 className="font-bold text-gray-900 mb-1">10. Age Requirements</h4>
             <p className="text-gray-700">
@@ -122,7 +108,6 @@ export default function Step4Terms({ onComplete, onBack }: Step4TermsProps) {
             </p>
           </div>
 
-          {/* Section 11 */}
           <div>
             <h4 className="font-bold text-gray-900 mb-1">11. Changes to Terms</h4>
             <p className="text-gray-700">
@@ -130,7 +115,6 @@ export default function Step4Terms({ onComplete, onBack }: Step4TermsProps) {
             </p>
           </div>
 
-          {/* Section 12 */}
           <div>
             <h4 className="font-bold text-gray-900 mb-1">12. Acceptance of Terms</h4>
             <p className="text-gray-700">
@@ -139,7 +123,6 @@ export default function Step4Terms({ onComplete, onBack }: Step4TermsProps) {
           </div>
         </div>
 
-        {/* Final Note */}
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
           <div className="flex">
             <svg className="h-6 w-6 text-blue-600 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
@@ -155,7 +138,6 @@ export default function Step4Terms({ onComplete, onBack }: Step4TermsProps) {
         </div>
       </div>
 
-      {/* Agreement Checkbox */}
       <div className="border-t border-gray-200 pt-4">
         <button
           onClick={() => setHasAgreed(!hasAgreed)}
@@ -175,7 +157,6 @@ export default function Step4Terms({ onComplete, onBack }: Step4TermsProps) {
           </span>
         </button>
 
-        {/* Navigation Buttons */}
         <div className="flex gap-4">
           <button
             type="button"

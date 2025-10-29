@@ -367,7 +367,6 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {/* Header */}
         <div className="mb-8">
           <div className="flex items-center justify-between">
             <div>
@@ -389,7 +388,6 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Manual Mode Indicator Banner */}
         {!settings.nightscoutUrl && (
           <div className="mb-8 bg-gradient-to-r from-orange-100 via-amber-50 to-yellow-100 border-2 border-orange-300 rounded-xl shadow-lg p-6">
             <div className="flex items-start">
@@ -429,7 +427,6 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Success Message */}
         {refreshMessage && (
           <div className="mb-6 bg-green-50 border border-green-200 rounded-lg p-4">
             <div className="flex items-center">
@@ -458,7 +455,6 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Current Status Card */}
         {stats.currentGlucose && (
           <div className="mb-16">
             <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-8 hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 group">
@@ -474,7 +470,6 @@ export default function DashboardPage() {
                     </span>
                   </div>
                   
-                  {/* Measurement details */}
                   <div className="mt-3 space-y-1">
                     {stats.measurementTime && (
                       <p className="text-sm text-gray-600">
@@ -492,7 +487,6 @@ export default function DashboardPage() {
                   </div>
                 </div>
                 
-                {/* Sync Button Info */}
                 <div className="flex items-center space-x-4">
                   {settings.nightscoutUrl && (
                     <button
@@ -524,7 +518,6 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Enhanced Stats Grid - Only show if we have data */}
         {stats.totalReadings > 0 && (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8 mb-16">
             <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-8 hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 group text-center">
@@ -554,7 +547,6 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* A1C and Variability Row - Only show if we have data */}
         {stats.totalReadings > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-16">
             <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-8 hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 group text-center">
@@ -572,9 +564,7 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Two Column Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Recent Readings */}
           <div className="bg-white rounded-2xl shadow-xl border border-gray-100 hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 group">
             <div className="p-8 border-b border-gray-100">
               <div className="flex items-center justify-between">
@@ -626,7 +616,6 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Quick Actions */}
           <div className="bg-white rounded-2xl shadow-xl border border-gray-100 hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 group">
             <div className="p-8 border-b border-gray-100">
               <h3 className="text-2xl font-bold text-gray-900">Quick Actions</h3>

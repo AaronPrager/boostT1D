@@ -80,7 +80,6 @@ export default function UserProfileHeader({ showDetailed = false, className = ''
   return (
     <div className={`bg-white rounded-lg shadow p-6 ${className}`}>
       <div className="flex items-start space-x-4">
-        {/* Profile Photo */}
         <div className="flex-shrink-0">
           {(() => {
             return profile?.photo ? (
@@ -106,7 +105,6 @@ export default function UserProfileHeader({ showDetailed = false, className = ''
           })()}
         </div>
 
-        {/* Profile Information */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between">
             <div>
