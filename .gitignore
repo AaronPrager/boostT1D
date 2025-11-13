@@ -96,11 +96,6 @@ iOSInjectionProject/
 # Xcode Scheme Files
 *.xcscheme
 
-# Linting and Code Quality
-.eslintignore
-.eslintrc.json
-eslintconfig.mjs
-
 # IDE and Editor Files (if used)
 .vscode/
 .idea/
