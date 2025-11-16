@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
 interface TherapyAdjustment {
@@ -34,19 +33,15 @@ interface AdjustmentSuggestions {
 }
 
 export default function TherapyAdjustmentPage() {
-  const { data: session, status } = useSession();
-  const router = useRouter();
+  const { data: session } = useSession();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [suggestions, setSuggestions] = useState<AdjustmentSuggestions | null>(null);
   const [analysisDateRange, setAnalysisDateRange] = useState(3);
   const [settings, setSettings] = useState<{ nightscoutUrl: string }>({ nightscoutUrl: '' });
 
-  useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.push('/login');
-    }
-  }, [status, router]);
+  // Don't check status === 'unauthenticated' as it can get stuck in Vercel
+  // Let the page render and check session directly
 
   // Fetch settings to check if manual mode
   useEffect(() => {
@@ -206,19 +201,34 @@ export default function TherapyAdjustmentPage() {
     </div>
   );
 
-  if (status === 'loading') {
+  // Loading state - only show if we're actually loading data
+  if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
+          <p className="mt-4 text-gray-600">Loading therapy adjustments...</p>
         </div>
       </div>
     );
   }
 
+  // Authentication check - only show access denied if we're sure there's no session
   if (!session) {
-    return null;
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-gray-900">Access Denied</h1>
+          <p className="mt-2 text-gray-600">Please sign in to view therapy adjustments.</p>
+          <Link 
+            href="/login"
+            className="mt-4 inline-block bg-gray-900 text-white px-4 py-2 rounded-md hover:bg-gray-800 transition-colors"
+          >
+            Sign In
+          </Link>
+        </div>
+      </div>
+    );
   }
 
   return (
