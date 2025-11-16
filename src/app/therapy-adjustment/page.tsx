@@ -39,9 +39,16 @@ export default function TherapyAdjustmentPage() {
   const [suggestions, setSuggestions] = useState<AdjustmentSuggestions | null>(null);
   const [analysisDateRange, setAnalysisDateRange] = useState(3);
   const [settings, setSettings] = useState<{ nightscoutUrl: string }>({ nightscoutUrl: '' });
+  const [sessionChecked, setSessionChecked] = useState(false);
 
-  // Don't check status === 'unauthenticated' as it can get stuck in Vercel
-  // Let the page render and check session directly
+  // Give session time to load before checking (like readings page does)
+  useEffect(() => {
+    // Small delay to allow session to load
+    const timer = setTimeout(() => {
+      setSessionChecked(true);
+    }, 100);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Fetch settings to check if manual mode
   useEffect(() => {
@@ -50,10 +57,10 @@ export default function TherapyAdjustmentPage() {
         const response = await fetch('/api/settings');
         if (response.ok) {
           const data = await response.json();
-
           setSettings(data);
         }
       } catch (error) {
+        // Silently fail - settings are optional
       }
     };
 
@@ -127,6 +134,7 @@ export default function TherapyAdjustmentPage() {
     if (session) {
       fetchAdjustmentSuggestions();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session, analysisDateRange]);
 
   // Debug: Monitor analysisDateRange changes
@@ -213,8 +221,9 @@ export default function TherapyAdjustmentPage() {
     );
   }
 
-  // Authentication check - only show access denied if we're sure there's no session
-  if (!session) {
+  // Authentication check - only check after we've given session time to load
+  // This prevents showing "Access Denied" before session has loaded (Vercel issue)
+  if (sessionChecked && !session) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
