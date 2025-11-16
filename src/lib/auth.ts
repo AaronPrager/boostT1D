@@ -14,6 +14,21 @@ declare module 'next-auth' {
   }
 }
 
+// Get the base URL for NextAuth
+function getBaseUrl() {
+  // In production on Vercel, use VERCEL_URL or NEXTAUTH_URL
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`;
+  }
+  if (process.env.NEXTAUTH_URL) {
+    return process.env.NEXTAUTH_URL;
+  }
+  // Fallback for local development
+  return 'http://localhost:3000';
+}
+
+const isProduction = process.env.NODE_ENV === 'production';
+
 export const authOptions: NextAuthOptions = {
   providers: [
     CredentialsProvider({
@@ -99,8 +114,8 @@ export const authOptions: NextAuthOptions = {
         return url;
       }
       
-      // Use the current request URL to get the correct port
-      const currentUrl = process.env.NEXTAUTH_URL || baseUrl;
+      // Use the configured base URL
+      const currentUrl = getBaseUrl();
       return `${currentUrl}/welcome`;
     },
   },
@@ -111,8 +126,9 @@ export const authOptions: NextAuthOptions = {
   jwt: {
     maxAge: 24 * 60 * 60, // 1 day
   },
-  debug: false,
+  debug: false, // Set to true temporarily if debugging auth issues
   secret: process.env.NEXTAUTH_SECRET,
+  trustHost: true, // Required for Vercel deployments
   cookies: {
     sessionToken: {
       name: `next-auth.session-token`,
@@ -120,7 +136,7 @@ export const authOptions: NextAuthOptions = {
         httpOnly: true,
         sameSite: 'lax',
         path: '/',
-        secure: process.env.NODE_ENV === 'production',
+        secure: isProduction, // Always secure in production
         maxAge: 24 * 60 * 60, // 1 day
       },
     },
