@@ -128,7 +128,6 @@ export const authOptions: NextAuthOptions = {
   },
   debug: false, // Set to true temporarily if debugging auth issues
   secret: process.env.NEXTAUTH_SECRET,
-  trustHost: true, // Required for Vercel deployments
   cookies: {
     sessionToken: {
       name: `next-auth.session-token`,
