@@ -337,28 +337,33 @@ export default function DashboardPage() {
   };
 
 
-  // Loading and authentication states
-  if (status === 'loading' || !session || loading) {
+  // Loading state - only show loading spinner if we're actually loading data
+  if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-400 mx-auto mb-4"></div>
-          <h1 className="text-2xl font-bold text-gray-900">
-            {status === 'loading' ? 'Loading...' : !session ? 'Access Denied' : 'Loading Dashboard...'}
-          </h1>
-          <p className="mt-2 text-gray-600">
-            {status === 'loading' ? 'Checking your authentication status.' : 
-             !session ? 'Please sign in to view your dashboard.' : 
-             'Fetching your latest data.'}
-          </p>
-          {!session && (
-            <Link 
-              href="/login"
-              className="mt-4 inline-block bg-gray-900 text-white px-4 py-2 rounded-md hover:bg-gray-800 transition-colors"
-            >
-              Sign In
-            </Link>
-          )}
+          <h1 className="text-2xl font-bold text-gray-900">Loading Dashboard...</h1>
+          <p className="mt-2 text-gray-600">Fetching your latest data.</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Authentication check - only show access denied if we're sure there's no session
+  // Don't check status === 'loading' as it can get stuck in Vercel
+  if (!session) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-gray-900">Access Denied</h1>
+          <p className="mt-2 text-gray-600">Please sign in to view your dashboard.</p>
+          <Link 
+            href="/login"
+            className="mt-4 inline-block bg-gray-900 text-white px-4 py-2 rounded-md hover:bg-gray-800 transition-colors"
+          >
+            Sign In
+          </Link>
         </div>
       </div>
     );

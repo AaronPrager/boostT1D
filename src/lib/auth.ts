@@ -136,7 +136,28 @@ export const authOptions: NextAuthOptions = {
         sameSite: 'lax',
         path: '/',
         secure: isProduction, // Always secure in production
+        // Don't set domain - let browser handle it automatically for Vercel
         maxAge: 24 * 60 * 60, // 1 day
+      },
+    },
+    callbackUrl: {
+      name: `next-auth.callback-url`,
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: isProduction,
+        maxAge: 24 * 60 * 60,
+      },
+    },
+    csrfToken: {
+      name: `next-auth.csrf-token`,
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: isProduction,
+        maxAge: 24 * 60 * 60,
       },
     },
   },
