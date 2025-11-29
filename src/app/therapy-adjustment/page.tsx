@@ -34,30 +34,25 @@ interface AdjustmentSuggestions {
 
 export default function TherapyAdjustmentPage() {
   const { data: session } = useSession();
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true); // Start with true like readings page
+  const [sessionLoaded, setSessionLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [suggestions, setSuggestions] = useState<AdjustmentSuggestions | null>(null);
   const [analysisDateRange, setAnalysisDateRange] = useState(3);
   const [settings, setSettings] = useState<{ nightscoutUrl: string }>({ nightscoutUrl: '' });
 
-  // Fetch settings to check if manual mode
-  useEffect(() => {
-    const fetchSettings = async () => {
-      try {
-        const response = await fetch('/api/settings');
-        if (response.ok) {
-          const data = await response.json();
-          setSettings(data);
-        }
-      } catch (error) {
-        // Silently fail - settings are optional
+  // Fetch settings function
+  const fetchSettings = async () => {
+    try {
+      const response = await fetch('/api/settings');
+      if (response.ok) {
+        const data = await response.json();
+        setSettings(data);
       }
-    };
-
-    if (session) {
-      fetchSettings();
+    } catch (error) {
+      // Silently fail - settings are optional
     }
-  }, [session]);
+  };
 
   const fetchAdjustmentSuggestions = async () => {
     setLoading(true);
@@ -120,13 +115,53 @@ export default function TherapyAdjustmentPage() {
     }
   };
 
+  // Track when session has loaded (not undefined anymore)
   useEffect(() => {
-    // Only fetch if we have a session - like readings page does
+    // session will be undefined while loading, null if unauthenticated, or object if authenticated
+    if (session !== undefined) {
+      setSessionLoaded(true);
+      // If no session, stop loading immediately
+      if (!session) {
+        setLoading(false);
+      }
+    }
+  }, [session]);
+
+  // Automatic data loading on page load - like readings page
+  useEffect(() => {
     if (session) {
+      const loadData = async () => {
+        setLoading(true);
+        setError(null);
+        
+        try {
+          // First fetch settings
+          await fetchSettings();
+          
+          // Then fetch adjustment suggestions
+          await fetchAdjustmentSuggestions();
+        } catch (error) {
+          setError('Failed to load therapy adjustment data. Please try refreshing the page.');
+        } finally {
+          setLoading(false);
+        }
+      };
+      
+      loadData();
+    } else if (sessionLoaded && !session) {
+      // Session has loaded and user is not authenticated
+      setLoading(false);
+    }
+  }, [session, sessionLoaded]);
+  
+  // Refetch when analysisDateRange changes (if we have a session)
+  useEffect(() => {
+    // Only refetch if we have a session and we're not in initial load
+    if (session && !loading) {
       fetchAdjustmentSuggestions();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session, analysisDateRange]);
+  }, [analysisDateRange]);
 
   // Debug: Monitor analysisDateRange changes
   useEffect(() => {
@@ -200,8 +235,8 @@ export default function TherapyAdjustmentPage() {
     </div>
   );
 
-  // Loading state - only show if we're actually loading data
-  if (loading) {
+  // Loading state - show while loading data OR while session is loading
+  if (loading || !sessionLoaded) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -212,8 +247,8 @@ export default function TherapyAdjustmentPage() {
     );
   }
 
-  // Authentication check - check this at the very end like readings page does
-  // This allows the session to load before we check for it
+  // Authentication check - only after session has loaded
+  // This prevents API calls when there's no session (which causes 307 redirects)
   if (!session) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
