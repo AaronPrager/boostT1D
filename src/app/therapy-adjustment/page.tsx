@@ -39,16 +39,6 @@ export default function TherapyAdjustmentPage() {
   const [suggestions, setSuggestions] = useState<AdjustmentSuggestions | null>(null);
   const [analysisDateRange, setAnalysisDateRange] = useState(3);
   const [settings, setSettings] = useState<{ nightscoutUrl: string }>({ nightscoutUrl: '' });
-  const [sessionChecked, setSessionChecked] = useState(false);
-
-  // Give session time to load before checking (like readings page does)
-  useEffect(() => {
-    // Small delay to allow session to load
-    const timer = setTimeout(() => {
-      setSessionChecked(true);
-    }, 100);
-    return () => clearTimeout(timer);
-  }, []);
 
   // Fetch settings to check if manual mode
   useEffect(() => {
@@ -131,6 +121,7 @@ export default function TherapyAdjustmentPage() {
   };
 
   useEffect(() => {
+    // Only fetch if we have a session - like readings page does
     if (session) {
       fetchAdjustmentSuggestions();
     }
@@ -221,9 +212,9 @@ export default function TherapyAdjustmentPage() {
     );
   }
 
-  // Authentication check - only check after we've given session time to load
-  // This prevents showing "Access Denied" before session has loaded (Vercel issue)
-  if (sessionChecked && !session) {
+  // Authentication check - check this at the very end like readings page does
+  // This allows the session to load before we check for it
+  if (!session) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
