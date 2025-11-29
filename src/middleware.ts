@@ -24,9 +24,8 @@ export const config = {
   matcher: [
     "/profile/:path*",
     "/settings/:path*",
-    // Removed /dashboard/:path*, /therapy-adjustment/:path*, and /treatments/:path* 
+    // Removed /dashboard/:path*, /therapy-adjustment/:path*, /treatments/:path*, and /analysis/:path*
     // - let pages handle their own auth checks like /readings does
     // API routes will still enforce authentication server-side
-    "/analysis/:path*",
   ],
 }; 

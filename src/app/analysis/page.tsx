@@ -35,10 +35,19 @@ interface AdjustmentSuggestions {
 export default function AnalysisPage() {
   const { data: session } = useSession();
   const [loading, setLoading] = useState(false);
+  const [sessionLoaded, setSessionLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [suggestions, setSuggestions] = useState<AdjustmentSuggestions | null>(null);
   const [analysisDateRange, setAnalysisDateRange] = useState(3);
   const [settings, setSettings] = useState<{ nightscoutUrl: string }>({ nightscoutUrl: '' });
+
+  // Track when session has loaded (not undefined anymore)
+  useEffect(() => {
+    // session will be undefined while loading, null if unauthenticated, or object if authenticated
+    if (session !== undefined) {
+      setSessionLoaded(true);
+    }
+  }, [session]);
 
   // Fetch settings to check if manual mode
   useEffect(() => {
@@ -198,12 +207,31 @@ export default function AnalysisPage() {
     }
   }, [analysisDateRange]);
 
+  // Show loading while session is loading
+  if (!sessionLoaded) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Authentication check - only after session has loaded
   if (!session) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900">Please sign in</h1>
-          <p className="mt-2 text-gray-600">You need to be signed in to view this page.</p>
+          <h1 className="text-2xl font-bold text-gray-900">Access Denied</h1>
+          <p className="mt-2 text-gray-600">Please sign in to view this page.</p>
+          <Link 
+            href="/login"
+            className="mt-4 inline-block bg-gray-900 text-white px-4 py-2 rounded-md hover:bg-gray-800 transition-colors"
+          >
+            Sign In
+          </Link>
         </div>
       </div>
     );
